@@ -254,7 +254,7 @@
  }
 --- a/tas-work/NOTES.md
 +++ b/tas-work/NOTES.md
-@@ -84,3 +84,236 @@
+@@ -84,3 +84,242 @@
  - Corridor 1 from a Teero-like crossing (900,465,25,-13 spent): 294-296 (Teero 298). Our pre-start crossing gives ~306.
  - TileExists lookup cache in CCollision (opt-in flag, TAS only): step 1.54 -> 1.20 us, identical replays.
  - chain.py: segment chain over distance gates with several configs (gains ~1-2 ticks/gate; slow).
@@ -491,3 +491,9 @@
 +- `lagtrack.py RUN [from to every]`: lag behind Teero's track by nearest point (k frame). Chain c: +5 at rt 375,
 +  +22 at 675, +38 at 925 (~6% slower on the return legs from our own states).
 +- rh.py `vset=r` (rothook+quant variants); chain r1 from c1_292 cut at rt 200, stopk=880.
++- **Chain r1** (rh.py vset=r from c1_292 cut at rt 200; leads in Teero-track ticks): k452 +0 (old chain b -7.7),
++  k552 -1 (b: -13), k652 -3 (c: -22), k752 -3, k852 -9 (fastest variant -4, energy selection sel=0.02 picked a
++  slower one), k952 -15. Commits runs/rh/r1/c1..c6 (c6: rt 808 at k802). Stopped before windows cross the pickup.
++  Losses: ~1% up to k802, ~6% in k802-952 (lagtrack: +4 at rt 780 -> +14 at 960).
++- Clock check: the user's input csv has s_since_start = video - 1.383; the race clock that matches our c29 replay
++  is video - 1.4467 (teerox T0), i.e. 3.2 ticks less: Teero's pickup (data end, s 19.667) ~ rt 980.
