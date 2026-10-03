@@ -93,8 +93,23 @@ if args.get('vset') == 'g4':
         f'beam=10000 survevery=1 survive=50 ghost=1 hnow=600 ghoste=0.02 kcredit=2 kready=10',
         f'beam=20000 survevery=2 survive=40 ghost=3 hnow=1000 ghoste=0.01 sinks={PS2} ghostsink=1500 angles=128 hookdedup=0',
     ]
+if args.get('vset') == 'r':
+    # rotation-pulse hooks + whole-pixel speed terms (k401->651 benchmark from Teero's state: 653 vs 657, Teero 651)
+    RQ = 'rothook=1 quant=1'
+    VARIANTS = [
+        f'ghost=1 hnow=600 ghoste=0.02 angles=128 hookdedup=0 {RQ}',
+        f'ghost=1 hnow=600 ghoste=0.02 {RQ}',
+        f'ghost=3 hnow=1000 ghoste=0.02 sinks={SINKS} ghostsink=1500 angles=128 hookdedup=0 {RQ}',
+        f'ghost=1 hnow=600 ghoste=0.02 angles=128 hookdedup=0 pjc=250 pgc=250 {RQ}',
+    ]
 STOP_K = int(args.get('stopk', 99999))
 GREN_K = 990
+WIDE_R = [
+    'ghost=1 hnow=600 ghoste=0.02 beam=40000 angles=128 hookdedup=0 rothook=1 quant=1',
+    'ghost=1 hnow=450 ghoste=0.03 angles=96 rothook=1 quant=1',
+    f'ghost=3 hnow=1000 ghoste=0.02 sinks={SINKS} ghostsink=1500 beam=40000 rothook=1 quant=1',
+    'ghost=1 hnow=600 ghoste=0.01 beam=40000 angles=96 rothook=1 quant=1',
+]
 WIDE = [
     'ghost=1 hnow=600 ghoste=0.02 beam=40000',
     'ghost=1 hnow=450 ghoste=0.03 angles=96',
@@ -155,7 +170,7 @@ def main():
         gate = 'finish' if final else str(k0 + WINDOW)
         commitk = None if final else k0 + COMMIT
         maxticks = (FINISH_K - k0 if final else WINDOW) * 2 + 60
-        variants = WIDE if wide else (POST if k0 >= GREN_K else VARIANTS)
+        variants = (WIDE_R if args.get('vset') == 'r' else WIDE) if wide else (POST if k0 >= GREN_K else VARIANTS)
         variants = variants[:NVAR]
         step += 1
         with ThreadPoolExecutor(len(variants)) as ex:

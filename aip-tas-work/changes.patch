@@ -254,7 +254,7 @@
  }
 --- a/tas-work/NOTES.md
 +++ b/tas-work/NOTES.md
-@@ -84,3 +84,222 @@
+@@ -84,3 +84,236 @@
  - Corridor 1 from a Teero-like crossing (900,465,25,-13 spent): 294-296 (Teero 298). Our pre-start crossing gives ~306.
  - TileExists lookup cache in CCollision (opt-in flag, TAS only): step 1.54 -> 1.20 us, identical replays.
  - chain.py: segment chain over distance gates with several configs (gains ~1-2 ticks/gate; slow).
@@ -477,3 +477,17 @@
 +  vy 12.5 (E 272 -> 229) instead of turning the fall first (c1_rot293 keeps E 271 -> 442 after the jump).
 +- lns.py: env LNS_DIR, LNS_ROT=1 (rothook in every variant), LNS_LA=10 (hookla, forces the time model),
 +  LNS_MINCUT=rt (never cut before that race tick).
++- **x > 8800 is a bad corridor-1 gate**: c1_292 reaches it flat at 40 px/t, y 724, air jump spent, ~190 px from the
++  freeze wall of the up-shaft (x 8800-8992) -> can't turn. The section really ends in the right shaft (x 9312-9472,
++  falling): Teero y > 450 there at ~334.5 (track shifted to the user's clock), our 56.08 run ~341. `pre gatey=Y`
++  (gate needs x > gatex and y > gatey; past gatex states are ranked by the time to fall to gatey) - but pre's beam
++  dies at the up-shaft wall from the corridor (all states fast and flat). Use seg (ghost model) for the turn.
++- User's checkpoint (Oct 3): no testing past the grenade pickup until we beat Teero there (~rt 982-983).
++  User data: teero/teero_inputs_pre_grenade.csv (dir / jump / aim per video frame up to the pickup).
++- seg ports: `rothook=1` (rotation pulses towards the reference tangent), `hookla=N` (pending-hook scoring),
++  `quant=1` (speed terms use the whole-pixel displacement per tick). k401->651 from Teero's state (Teero 651),
++  ghost=1 hnow=600 ghoste=0.02 angles=128 hookdedup=0: base 657; +rothook 655; +hookla 660; +both 666;
++  **+rothook+quant 653**; +rothook+quant+hookla 656. -> in seg use rothook=1 quant=1, no hookla.
++- `lagtrack.py RUN [from to every]`: lag behind Teero's track by nearest point (k frame). Chain c: +5 at rt 375,
++  +22 at 675, +38 at 925 (~6% slower on the return legs from our own states).
++- rh.py `vset=r` (rothook+quant variants); chain r1 from c1_292 cut at rt 200, stopk=880.

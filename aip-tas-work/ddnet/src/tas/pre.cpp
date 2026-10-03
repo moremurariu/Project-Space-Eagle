@@ -94,6 +94,8 @@ struct SPreParams
 	float m_ContSlack = 120;
 	// post-start segment: keep searching after the start line up to a gate
 	float m_GateX = 0;
+	float m_GateY = -1e9f; // gate also needs y > GateY (e.g. entering a shaft downwards); past GateX states are
+	                       // ranked by the time to fall to GateY
 	float m_Lambda = 0.09f; // ticks per unit of energy at the gate
 	float m_VRef = 25;
 	int m_PostBeam = 20000;
@@ -841,6 +843,7 @@ int main(int argc, const char **argv)
 		else if(K == "survive") gs_P.m_Survive = std::stoi(V);
 		else if(K == "contslack") gs_P.m_ContSlack = std::stof(V);
 		else if(K == "gatex") gs_P.m_GateX = std::stof(V);
+		else if(K == "gatey") gs_P.m_GateY = std::stof(V);
 		else if(K == "lambda") gs_P.m_Lambda = std::stof(V);
 		else if(K == "vref") gs_P.m_VRef = std::stof(V);
 		else if(K == "postbeam") gs_P.m_PostBeam = std::stoi(V);
@@ -944,7 +947,7 @@ int main(int argc, const char **argv)
 						vec2 P = Tmp.Pos(), V = Tmp.Vel();
 						if(!G.m_Started && (P.y < gs_P.m_PostYMin || P.y > gs_P.m_PostYMax))
 							continue; // crossing outside the wanted height band
-						if(P.x > gs_P.m_GateX)
+						if(P.x > gs_P.m_GateX && P.y > gs_P.m_GateY)
 						{
 							SCross C;
 							C.m_Pos = P;
@@ -953,6 +956,8 @@ int main(int argc, const char **argv)
 							C.m_Hook = Tmp.HookState();
 							C.m_Raw = Ee;
 							float Over = V.x > 1 ? (P.x - gs_P.m_GateX) / V.x : 0.0f;
+							if(gs_P.m_GateY > -1e8f)
+								Over = std::min(Over, V.y > 1 ? (P.y - gs_P.m_GateY) / V.y : 0.0f);
 							C.m_E = -((float)Rt - Over) + gs_P.m_GateLambda * Ee;
 							C.m_Step = Step;
 							C.m_Parent = i;
@@ -988,6 +993,13 @@ int main(int argc, const char **argv)
 							}
 							else
 								Sc = -(float)Rt - TRem(P.x, Ee);
+						}
+						if(gs_P.m_GateY > -1e8f && P.x > gs_P.m_GateX)
+						{
+							// past the gate column: what is left is the drop to GateY
+							float Dy = gs_P.m_GateY - P.y, Vy = V.y;
+							float T = Vy * Vy + 4 * 0.25f * Dy; // Dy = Vy t + t^2/4
+							Sc = -(float)Rt - (Dy <= 0 ? 0.0f : (-Vy + std::sqrt(std::max(T, 0.0f))) / 0.5f);
 						}
 						SCand Cd{Sc, i, In, CellKey(Tmp) * 2 + 1, Tmp.Hash()};
 						Cd.m_Post = true;

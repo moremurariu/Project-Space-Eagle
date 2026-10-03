@@ -108,6 +108,10 @@ struct SParams
 	int m_FireLook = 12;
 	int m_Survive = 20;
 	float m_HookRange = 420;
+	int m_Quant = 0; // speed terms use the whole-pixel displacement per tick (positions are rounded every tick)
+	int m_RotHook = 0; // add rotation-pulse hook aims (first-tick grab, boundary of |v| growth, turn towards the reference tangent)
+	int m_HookLA = 0; // score a flying / held hook by its predicted first applied pull within this many ticks
+	float m_HookIdle = 0.02f; // ... a hook predicted to never pull costs this (ticks)
 	int m_HookDedup = 1; // keep one hook aim per hit tile
 	int m_Prefire = 0; // judge shots still in flight neutrally, separate states by their explosion point
 	std::string m_ShotRef; // Teero's shot catalog (tsv)
@@ -474,6 +478,20 @@ static float TrackInc(const CTasGame &G)
 }
 
 // estimated total race time of a (started) state; lower is better
+// current progress per tick along the tangent
+static float AlongSpeed(vec2 V, vec2 Tg, float MinV)
+{
+	float Sp = length(V);
+	if(gs_P.m_Quant)
+	{
+		float Rm = Sp > 11 ? gs_Ref.Disp(Sp) / Sp : 1.0f;
+		vec2 D(std::round(V.x * Rm), std::round(V.y));
+		return std::max(dot(D, Tg), MinV);
+	}
+	float Along = Sp > 1e-3f ? dot(V, Tg) / Sp : 0.0f;
+	return std::max(gs_Ref.Disp(Sp) * Along, MinV);
+}
+
 static float EstTotal(const CTasGame &G, float *pEe = nullptr)
 {
 	float Frac;
@@ -491,7 +509,7 @@ static float EstTotal(const CTasGame &G, float *pEe = nullptr)
 		float Sp = length(V);
 		vec2 Tg = gs_Ref.Tangent(I);
 		float Along = Sp > 1e-3f ? dot(V, Tg) / Sp : 0.0f;
-		float Vn = std::max(gs_Ref.Disp(Sp) * Along, 3.0f);
+		float Vn = AlongSpeed(V, Tg, 3.0f);
 		if(gs_P.m_Ghost == 4)
 		{
 			// energy relative to the reference's own energy here, worth its time difference up to the next sink
@@ -575,7 +593,7 @@ static float EstTotal(const CTasGame &G, float *pEe = nullptr)
 		float Sp = length(V);
 		vec2 Tg = gs_Ref.Tangent(I);
 		float Along = Sp > 1e-3f ? dot(V, Tg) / Sp : 0.0f;
-		float Vn = std::max(gs_Ref.Disp(Sp) * Along, 5.0f);
+		float Vn = AlongSpeed(V, Tg, 5.0f);
 		float Ve = gs_Ref.SpeedAt(I, Ee);
 		float Rest = gs_Ref.m_vL[J] - (gs_Ref.m_vL[I] + Frac * (gs_Ref.m_vL[std::min(I + 1, (int)gs_Ref.m_vL.size() - 1)] - gs_Ref.m_vL[I]));
 		float H = std::min(gs_P.m_HNow, std::max(Rest, 0.0f));
@@ -775,6 +793,157 @@ static void PadAims(const CTasGame &G, std::vector<std::pair<int16_t, int16_t>> 
 	}
 }
 
+// velocity right after this tick's gravity / jump / direction input (before the hook)
+static vec2 PreHookVel(const CTasGame &G, int Dir, int Jump)
+{
+	vec2 V = G.Vel();
+	V.y += 0.5f;
+	if(Jump)
+	{
+		if(G.Grounded())
+			V.y = -13.2f;
+		else if(!(G.Jumped() & 2))
+			V.y = -12.0f;
+	}
+	const bool Gr = G.Grounded();
+	const float Acc = Gr ? 2.0f : 1.5f, Max = Gr ? 10.0f : 5.0f;
+	if(Dir == 0)
+		V.x *= Gr ? 0.5f : 0.95f;
+	else if(Dir > 0 && V.x <= Max)
+		V.x = std::min(V.x + Acc, Max);
+	else if(Dir < 0 && V.x >= -Max)
+		V.x = std::max(V.x - Acc, -Max);
+	return V;
+}
+
+static vec2 HookPull(vec2 To, int Dir)
+{
+	vec2 H = normalize(To) * 3.0f;
+	if(H.y > 0)
+		H.y *= 0.3f;
+	H.x *= ((H.x < 0 && Dir < 0) || (H.x > 0 && Dir > 0)) ? 0.95f : 0.75f;
+	return H;
+}
+
+// Rotation pulse: a hook fired at a solid tile 47..122 px away grabs and pulls in the same tick along the aim. Above
+// 15 px/t the pull only applies if |v| does not grow; the best aim sits on that boundary and turns v the most towards
+// the reference tangent. Up to 3 aims: the boundary one, 1 and 3 degrees inside it.
+static void RotHookAims(const CTasGame &G, int Dir, int Jump, std::vector<std::pair<int16_t, int16_t>> &vOut)
+{
+	vOut.clear();
+	const SMapInfo &M = CTasGame::Map();
+	const vec2 P = G.Pos(), V = PreHookVel(G, Dir, Jump);
+	const vec2 Tg = gs_Ref.Tangent(G.m_RefIdx);
+	const float L0 = length(V);
+	auto Reach = [&](int i) {
+		float Ang = i * pi / 720.0f;
+		vec2 D(std::cos(Ang), std::sin(Ang));
+		for(float r = 42.0f; r <= 122.0f; r += 1.0f)
+		{
+			vec2 Q = P + D * r;
+			int T = M.Tile((int)std::floor(Q.x / 32), (int)std::floor(Q.y / 32));
+			if(T == TILE_SOLID)
+				return r > 47.0f;
+			if(T == TILE_NOHOOK)
+				return false;
+		}
+		return false;
+	};
+	auto NewV = [&](int i) { float Ang = i * pi / 720.0f; return V + HookPull(vec2(std::cos(Ang), std::sin(Ang)), Dir); };
+	auto Ok = [&](int i) { float Ln = length(NewV(i)); return Ln < 15.0f - 0.01f || Ln < L0 - 0.004f; };
+	float Best = dot(V, Tg) + 0.02f;
+	int BestI = -100000;
+	for(int i = -720; i < 720; i++)
+	{
+		if(!Ok(i))
+			continue;
+		float A = dot(NewV(i), Tg);
+		if(A <= Best || !Reach(i))
+			continue;
+		Best = A;
+		BestI = i;
+	}
+	if(BestI == -100000)
+		return;
+	for(int k = 0; k < 3; k++)
+	{
+		int i = BestI;
+		if(k)
+		{
+			int Off = k == 1 ? 4 : 12;
+			int i1 = BestI + Off, i2 = BestI - Off;
+			bool Ok1 = Ok(i1) && Reach(i1), Ok2 = Ok(i2) && Reach(i2);
+			if(Ok1 && (!Ok2 || dot(NewV(i1), Tg) > dot(NewV(i2), Tg)))
+				i = i1;
+			else if(Ok2)
+				i = i2;
+			else
+				continue;
+		}
+		float Ang = i * pi / 720.0f;
+		int16_t TX = (int16_t)std::lround(std::cos(Ang) * 1000), TY = (int16_t)std::lround(std::sin(Ang) * 1000);
+		if(TX || TY)
+			vOut.push_back({TX, TY});
+	}
+}
+
+// A hook in flight or held whose pull has not applied yet: predict (ballistic tee, straight hook) the first tick its
+// pull would apply; returns false if none within m_HookLA ticks, else the predicted position and velocities.
+static bool HookLookahead(const CTasGame &G, int Dir, vec2 &PosOut, vec2 &VFree, vec2 &VPull)
+{
+	const CCharacterCore &C = G.Chr()->m_Core;
+	const int HS = C.m_HookState;
+	if(HS != HOOK_FLYING && HS != HOOK_GRABBED)
+		return false;
+	const SMapInfo &M = CTasGame::Map();
+	vec2 P = C.m_Pos, V = C.m_Vel, A = C.m_HookPos, D = C.m_HookDir;
+	bool Grabbed = HS == HOOK_GRABBED;
+	for(int n = 0; n < gs_P.m_HookLA; n++)
+	{
+		V.y += 0.5f;
+		if(!Grabbed)
+		{
+			vec2 NA = A + D * 80.0f;
+			if(distance(P, NA) > 380.0f)
+				return false;
+			bool Hit = false;
+			for(float r = 0; r <= 80.0f; r += 2.0f)
+			{
+				vec2 Q = A + D * r;
+				int T = M.Tile((int)std::floor(Q.x / 32), (int)std::floor(Q.y / 32));
+				if(T == TILE_NOHOOK)
+					return false;
+				if(T == TILE_SOLID)
+				{
+					A = Q;
+					Hit = true;
+					break;
+				}
+			}
+			if(!Hit)
+				A = NA;
+			Grabbed = Hit;
+		}
+		if(Grabbed && distance(A, P) > 46.0f)
+		{
+			vec2 NV = V + HookPull(A - P, Dir);
+			float Ln = length(NV);
+			if(Ln < 15.0f || Ln < length(V))
+			{
+				PosOut = P;
+				VFree = V;
+				VPull = NV;
+				return true;
+			}
+		}
+		float L = length(V);
+		float Rm = L > 11 ? gs_Ref.Disp(L) / L : 1.0f;
+		P.x += V.x * Rm;
+		P.y += V.y;
+	}
+	return false;
+}
+
 static void GenActions(const CTasGame &G, const STasInput &Prev, std::vector<STasInput> &vOut, bool Pad = false)
 {
 	vOut.clear();
@@ -826,6 +995,7 @@ static void GenActions(const CTasGame &G, const STasInput &Prev, std::vector<STa
 				vOut.push_back(R);
 			}
 			else
+			{
 				for(auto [TX, TY] : s_vHooks)
 				{
 					STasInput H = In;
@@ -834,6 +1004,20 @@ static void GenActions(const CTasGame &G, const STasInput &Prev, std::vector<STa
 					H.m_TY = TY;
 					vOut.push_back(H);
 				}
+				if(gs_P.m_RotHook)
+				{
+					static thread_local std::vector<std::pair<int16_t, int16_t>> s_vRot;
+					RotHookAims(G, Dir, Jump, s_vRot);
+					for(auto [TX, TY] : s_vRot)
+					{
+						STasInput H = In;
+						H.m_Hook = 1;
+						H.m_TX = TX;
+						H.m_TY = TY;
+						vOut.push_back(H);
+					}
+				}
+			}
 			// shots keep the hook as it is (the hook's direction is fixed at launch)
 			int FireDir = 1;
 			{
@@ -951,6 +1135,10 @@ int main(int argc, const char **argv)
 		else if(K == "survive") gs_P.m_Survive = std::stoi(V);
 		else if(K == "hookrange") gs_P.m_HookRange = std::stof(V);
 		else if(K == "hookdedup") gs_P.m_HookDedup = std::stoi(V);
+		else if(K == "rothook") gs_P.m_RotHook = std::stoi(V);
+		else if(K == "quant") gs_P.m_Quant = std::stoi(V);
+		else if(K == "hookla") gs_P.m_HookLA = std::stoi(V);
+		else if(K == "hookidle") gs_P.m_HookIdle = std::stof(V);
 		else if(K == "prefire") gs_P.m_Prefire = std::stoi(V);
 		else if(K == "shotref") gs_P.m_ShotRef = V;
 		else if(K == "shotbonus") gs_P.m_ShotBonus = std::stof(V);
@@ -1216,6 +1404,21 @@ int main(int argc, const char **argv)
 					}
 					float Ee;
 					float S = EstTotal(*pEval, &Ee);
+					if(gs_P.m_HookLA > 0 && pEval == &Tmp && Tmp.HookState() >= HOOK_FLYING)
+					{
+						vec2 Pp, Vf, Vp;
+						if(HookLookahead(Tmp, In.m_Dir, Pp, Vf, Vp))
+						{
+							// value change the predicted pull makes (evaluated at the predicted point)
+							Look.CopyFrom(Tmp);
+							Look.SetState(Pp, Vf);
+							float Sf = EstTotal(Look);
+							Look.SetState(Pp, Vp);
+							S += EstTotal(Look) - Sf;
+						}
+						else
+							S += gs_P.m_HookIdle;
+					}
 					if(gs_P.m_TrackW > 0)
 						S = Tmp.m_TrackCost + gs_P.m_TrackTie * S;
 					S -= Tmp.m_Bonus;
