@@ -291,3 +291,15 @@ c1_best by -17 px at race tick 20, -77 at 60 (flat to 120), -120 at 200+; his x 
   c1_best 1430). `rotpulse.py PREFIX N [down|up|any]` does this by hand; `pre ... rothook=1` adds these aims
   (boundary aim and 1 / 3 deg inside it) to the search's hook set (the per-tile dedup of the normal hook targets
   can't express them: they need sub-tile precision).
+- **Far rotation pulses** (`farrot.py PREFIX amin amax step hold`): fire up-right at a ceiling tile 200-300 px away,
+  hold until the first tick the pull is accepted (the anchor reaches ~93 deg from v), release: dvx +0.5..+1.1,
+  |v| -0.01..-0.1. The search had these aims but lost them: while the hook flies / waits, the state ties with free
+  flight (and with ~30 useless hook variants), so it rarely survives 4-6 ticks of beam cuts.
+  `pre ... hookla=10` scores a flying/held hook by a ballistic prediction of its first applied pull (time model
+  value change), and a hook predicted to never pull loses `hookidle` (0.02 ticks).
+- Results (x > 8800, race ticks, server-checked): rothook=1 trref hnow=300 from vl1p: **293** (`c1_rot293.txt`, old
+  opening, lead -76 px at rt 60, +1 px at rt 276); pulse opening (runs/c1x/rp80.txt) + rothook: 295; + hookla=10:
+  **293** (`c1_la293.txt`, lead -2 at rt 30, -33 at rt 60, -3 at rt 276). The pulse-opening runs land on block 2 with
+  vy 12.5 (E 272 -> 229) instead of turning the fall first (c1_rot293 keeps E 271 -> 442 after the jump).
+- lns.py: env LNS_DIR, LNS_ROT=1 (rothook in every variant), LNS_LA=10 (hookla, forces the time model),
+  LNS_MINCUT=rt (never cut before that race tick).

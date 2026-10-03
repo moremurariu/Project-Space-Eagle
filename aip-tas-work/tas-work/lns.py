@@ -23,7 +23,10 @@ PRE = '../ddnet/build-sim/pre'
 LAB = '../ddnet/build-sim/lab'
 MAP = 'AiP-Gores.map'
 STOPX = 8800
-D = 'runs/lns'
+D = os.environ.get('LNS_DIR', 'runs/lns')
+ROT = int(os.environ.get('LNS_ROT', '0'))
+MINCUT = int(os.environ.get('LNS_MINCUT', '0'))
+LA = int(os.environ.get('LNS_LA', '0'))
 os.makedirs(D, exist_ok=True)
 
 
@@ -70,6 +73,13 @@ def variant(rng):
     else:
         v['lambda'] = rng.choice([0.03, 0.05, 0.07, 0.09])
         v['vref'] = rng.choice([25, 30])
+    if ROT:
+        v['rothook'] = 1
+    if LA:
+        v['hookla'] = LA
+        if 'trref' not in v:  # the lookahead only works with the time model
+            v['trref'] = 'teero_track.txt'
+            v['hnow'] = rng.choice([150, 300])
     return v
 
 
@@ -88,7 +98,7 @@ def job(seed):
     if not started:
         return
     first = started[0]
-    cut_rt = int(rng.triangular(0, best_rt - 15, best_rt * 0.35))
+    cut_rt = max(MINCUT, int(rng.triangular(0, best_rt - 15, best_rt * 0.35)))
     idx = next(i for i in started if rts[i] >= cut_rt) + 1
     pf = os.path.join(D, f'j{k}_pf.txt')
     with open(pf, 'w') as f:

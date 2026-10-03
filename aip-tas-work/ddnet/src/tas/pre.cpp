@@ -109,6 +109,8 @@ struct SPreParams
 	int m_PostDir1 = 0; // after the start only hold right (all our corridor runs do)
 	float m_GhostShare = 0; // part of the post beam ranked with a penalty for leaving the reference height
 	float m_GhostMu = 1; // ticks per tile of height difference
+	int m_HookLA = 0; // time model: score a hook in flight / held by its predicted first pull within this many ticks
+	float m_HookIdle = 0.02f; // ... and a held hook predicted to never pull loses this much (ticks)
 	int m_RotHook = 0; // add 'rotation pulse' hooks: the angle that turns the velocity most towards +x without
 	                   // raising |v|, if a solid tile is within the first-tick hook reach (grab + pull same tick)
 };
@@ -459,6 +461,82 @@ static float TRem(float X, float E)
 }
 
 // post-start mode: energy with credits for the jumps still available
+static float JumpCredit(const CTasGame &G)
+{
+	int J = JumpsLeft(G);
+	return (J >= 1 ? gs_P.m_PJC : 0.0f) + (J == 2 ? gs_P.m_PGC : 0.0f);
+}
+
+// time-model value of being at P with velocity V (without the race tick)
+static float TimeValue(vec2 P, vec2 V, float Credit)
+{
+	float L = std::max(length(V), 1e-3f);
+	float Vn = std::max(Disp(L) * (V.x > 0 ? V.x / L : 0.0f), 5.0f);
+	float H = std::min(gs_P.m_HNow, std::max(gs_P.m_GateX - P.x, 0.0f));
+	return -(H / Vn + TRem(P.x + H, dot(V, V) - P.y + Credit));
+}
+
+// A hook in flight or held whose pull has not applied yet: predict (ballistic tee, straight hook) the first
+// tick its pull would apply and return the change of the time value that pull makes (0: none predicted).
+static float HookLookahead(const CTasGame &G, int Dir, bool &Pulls)
+{
+	Pulls = false;
+	const CCharacterCore &C = G.Chr()->m_Core;
+	const int HS = C.m_HookState;
+	if(HS != HOOK_FLYING && HS != HOOK_GRABBED)
+		return 0.0f;
+	const SMapInfo &M = CTasGame::Map();
+	vec2 P = C.m_Pos, V = C.m_Vel, A = C.m_HookPos, D = C.m_HookDir;
+	bool Grabbed = HS == HOOK_GRABBED;
+	const float Credit = JumpCredit(G);
+	for(int n = 0; n < gs_P.m_HookLA; n++)
+	{
+		V.y += 0.5f;
+		if(!Grabbed)
+		{
+			vec2 NA = A + D * 80.0f;
+			if(distance(P, NA) > 380.0f)
+				return 0.0f;
+			bool Hit = false;
+			for(float r = 0; r <= 80.0f; r += 2.0f)
+			{
+				vec2 Q = A + D * r;
+				int T = M.Tile((int)std::floor(Q.x / 32), (int)std::floor(Q.y / 32));
+				if(T == TILE_NOHOOK)
+					return 0.0f;
+				if(T == TILE_SOLID)
+				{
+					A = Q;
+					Hit = true;
+					break;
+				}
+			}
+			if(!Hit)
+				A = NA;
+			Grabbed = Hit;
+		}
+		if(Grabbed && distance(A, P) > 46.0f)
+		{
+			vec2 H = normalize(A - P) * 3.0f;
+			if(H.y > 0)
+				H.y *= 0.3f;
+			H.x *= ((H.x < 0 && Dir < 0) || (H.x > 0 && Dir > 0)) ? 0.95f : 0.75f;
+			vec2 NV = V + H;
+			float Ln = length(NV);
+			if(Ln < 15.0f || Ln < length(V))
+			{
+				Pulls = true;
+				return TimeValue(P, NV, Credit) - TimeValue(P, V, Credit);
+			}
+		}
+		float L = length(V);
+		float Rm = L > 11 ? Disp(L) / L : 1.0f;
+		P.x += V.x * Rm;
+		P.y += V.y;
+	}
+	return 0.0f;
+}
+
 static float EffEnergy(const CTasGame &G)
 {
 	vec2 V = G.Vel();
@@ -781,6 +859,8 @@ int main(int argc, const char **argv)
 		else if(K == "ghostmu") gs_P.m_GhostMu = std::stof(V);
 		else if(K == "postymax") gs_P.m_PostYMax = std::stof(V);
 		else if(K == "rothook") gs_P.m_RotHook = std::stoi(V);
+		else if(K == "hookla") gs_P.m_HookLA = std::stoi(V);
+		else if(K == "hookidle") gs_P.m_HookIdle = std::stof(V);
 		else if(K == "polish") PolishIn = V;
 		else if(K == "seconds") PolishSec = std::stod(V);
 		else if(K == "jv") gs_JV = std::stof(V);
@@ -899,6 +979,12 @@ int main(int argc, const char **argv)
 								float Vn = std::max(Disp(length(V)) * (V.x > 0 ? V.x / std::max(length(V), 1e-3f) : 0.0f), 5.0f);
 								float H = std::min(gs_P.m_HNow, std::max(gs_P.m_GateX - P.x, 0.0f));
 								Sc = -(float)Rt - (H / Vn + TRem(P.x + H, Ee));
+								if(gs_P.m_HookLA > 0 && Tmp.HookState() >= HOOK_FLYING)
+								{
+									bool Pulls;
+									float Gain = HookLookahead(Tmp, In.m_Dir, Pulls);
+									Sc += Pulls ? Gain : -gs_P.m_HookIdle;
+								}
 							}
 							else
 								Sc = -(float)Rt - TRem(P.x, Ee);
