@@ -1,0 +1,8 @@
+09:49:27 w2 it1 cut 2542/2933 [beam=2000 kcredit=1.25 kready=10 energyshare=0.4 jumpenergy=150 survive=15 vref=25] -> 2853 (best 2853) NEW BEST (1428s)
+09:59:48 w3 it1 cut 1676/2933 [beam=1000 kcredit=1 kready=8 energyshare=0.4 jumpenergy=150 survive=15 vref=30] -> 2834 (best 2834) NEW BEST (2050s)
+10:01:45 w0 it1 cut 2114/2933 [beam=1500 kcredit=1 kready=12 energyshare=0.4 jumpenergy=200 survive=15 vref=25] -> 2827 (best 2827) NEW BEST (2166s)
+10:12:37 w2 it2 cut 2536/2926 [beam=2000 kcredit=1 kready=10 energyshare=0.4 jumpenergy=200 survive=15 vref=25] -> 2850 (best 2827) (1390s)
+10:27:11 w3 it2 cut 2461/2907 [beam=2000 kcredit=1.25 kready=8 energyshare=0.4 jumpenergy=250 survive=20 vref=25] -> 2839 (best 2827) (1642s)
+10:38:50 w0 it2 cut 2036/2900 [beam=1500 kcredit=0.8 kready=8 energyshare=0.4 jumpenergy=250 survive=15 vref=25] -> 2853 (best 2827) (2226s)
+10:41:16 w2 it3 cut 2446/2900 [beam=2000 kcredit=1 kready=10 energyshare=0.3 jumpenergy=200 survive=15 vref=25] -> 2831 (best 2827) (1719s)
+10:45:23 w1 it1 cut 1612/2933 [beam=2000 kcredit=1.5 kready=12 energyshare=0.4 jumpenergy=150 survive=15 vref=30] -> 2808 (best 2808) NEW BEST (4785s)

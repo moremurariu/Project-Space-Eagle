@@ -1,0 +1,6 @@
+03:35:23 resuming after step 4 from runs/rh/c/c4.txt
+03:55:15 step 5: from rt 408 k 401 gate 651: best rt 673 (lead -22) [ghost=1 hnow=600 ghoste=0.02 pjc=250 pgc=250] commit rt 512 k 501 (v0:673/204, v1:673/324, v2:674/189, v3:682/160, 1188s)
+04:27:39 step 6: from rt 512 k 501 gate 751: best rt 778 (lead -27) [ghost=1 hnow=600 ghoste=0.02] commit rt 620 k 601 (v0:778/-1135, v1:778/-1135, v2:780/-1135, v3:780/-1092, 1867s)
+04:43:29 step 7: from rt 620 k 601 gate 851: best rt 882 (lead -31) [ghost=1 hnow=600 ghoste=0.02] commit rt 729 k 701 (v0:882/-511, v1:885/-458, v2:887/-608, v3:887/-801, 941s)
+04:55:19 step 8: from rt 729 k 701 gate 951: best rt 997 (lead -46) [ghost=1 hnow=600 ghoste=0.02 pjc=250 pgc=250] commit rt 834 k 801 (v0:997/-1026, v1:997/-906, v2:1001/-988, v3:1001/-990, 696s)
+05:11:03 step 9: from rt 834 k 801 gate 1051: best rt 1114 (lead -63) [ghost=1 hnow=600 ghoste=0.02 pjc=250 pgc=250] commit rt 942 k 901 (v0:1113/-214, v1:1114/32, v2:1117/-371, v3:1110/-361, 915s)

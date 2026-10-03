@@ -1,0 +1,266 @@
+# AiP-Gores TAS — working notes (session 43a18766, Oct 2)
+
+Goal: beat Teero's 50.72 s (2536 ticks) solo, no double start, grenade only, server-valid.
+Previous best (lost from /tmp, recoverable only by rerunning): 60.52 s.
+
+## Layout of this folder (persistent; /tmp scratch got wiped on Oct 1)
+- AiP-Gores.map, map.txt (mapdump grid: # solid, f freeze, E entity), map.png
+- teero/ : teero.mp4 (YouTube eHJJNU-hQoU), regtrack.py + reg_common.py (frame -> map registration)
+- teero_track.txt : Teero, `race_tick x y` at 50 Hz, ticks -70..2539 (start = video 1.434 s; finish 50.733 s, matches)
+- recovered/ : scripts recovered from old transcripts (e05f_, 44a4_, 50ec_ prefixes)
+- runs/ : outputs
+- Tools (built in /Users/c29/ddnet/build-sim, sources in /Users/c29/ddnet/src/tas):
+  - tas  : old beam search (copied from ddnet-fable worktree, + nofirebefore=)
+  - tas2 : new search (Pareto per spatial group, rollout option) — so far WORSE than tas
+  - lab  : physics lab: `lab map "gren;in 1 0 0 0 0 1 3;tp x y vx vy;scanfire 360 6 1"`, `replay FILE`
+  - build: `cd build-sim && ninja -j2 tas tas2 lab`
+
+## Physics facts (verified in code / lab)
+- Hook: accel 3 toward anchor (x *0.95 if holding toward it else *0.75; downward pull *0.3), applied only if
+  |v_new| < 15 or |v_new| < |v| (post-gravity). Above 15 px/t a hook can only brake/turn; near-lossless turning
+  when the anchor is ~93 deg from velocity (slightly behind perpendicular).
+- Air: holding the direction of motion costs nothing (SaturatedAdd only up to 5); dir 0 -> vx *= 0.95/tick; opposite -> -1.5/tick.
+- Velocity ramp: displacement = v * 1.4^-((50v-550)/2000) for v > 11 px/t; displacement peaks ~48 px/t at v~119.
+- Jumps set vy (ground -13.2, air -12). A one-tick ground touch on a bare (non-freeze) platform refills both jumps
+  with no vx loss if dir held (vx>10 unaffected by ground accel). The small gray floating blocks are energy sources.
+- Freeze is tested at the tee centre only -> centre can be 32 px from a freeze-lined solid surface.
+- Grenade: projectile 20 px/t, does not inherit tee velocity; explosion force 12*(1 - clamp((r-48)/87)) away from
+  explosion (needs >= 2), reload 25 ticks. Near a wall the explosion is the same tick -> ~12 px/t kick.
+  Kick vs aim is smooth; 64 angles is enough resolution.
+
+## Teero reference
+- Corridor 1 (start -> x 8800): 298 ticks. Crossing ~ (900,465) v (25,-13), jumps spent.
+- Grenade pickup: race tick 983 at (5410,2457), v ~ (2,14), air-jumps immediately.
+- Post-pickup: climbs the 2-tile shaft at 15 px/t (hook), top at +40, then grenade-accelerates to ~43 px/t (+72),
+  50-60 px/t peaks; reaches x>=9216 (tile 288, row ~56) at +161.
+
+## Test beds (old tas, beam 1000, 2 threads)
+- C1: tp=900,465,25,-13,3 stopx=8800: old tas 304 (Teero 298). tas2: 402-488 (bad).
+- A : tp=5410,2457,2,14,0 tpstarted=1 stopx=9216: old tas 184 (Teero 161), 90 s.
+  Ours level with Teero until +40 (we climb with a grenade), then lose ~14 tiles by +100 in acceleration.
+
+## Findings, Oct 2 (later)
+- Teero catalog (teero/catalog/shots.md, by a helper agent): 50 explosions after pickup, ~every 28-31 ticks,
+  46/50 point-blank (<=48 px, full 12 kick), ~2/3 on bare gray blocks, hooked at 36/50, ~10 pre-fired grenades.
+- Test bed caveat: tp at the pickup spot WITHOUT tpgren costs ~3 ticks (tee is 51 px from the pickup); use tpgren=1, repeat=1.
+  A1 (pickup -> x>=5760): old tas 58 (Teero 57) but arrives at 20 px/t vs Teero ~33.
+- The whole A deficit (182 vs 161) comes from the shaft exit: Teero leaves at ~26-33 px/t (vel (1.9,-11.8) -> (26.6,-8.9)
+  at k1021.6, i.e. ~+25 = two kicks), we leave at ~15-20.
+- Score diagnosis (lab distinit/scorefile): along Teero's line the beam score is 2-8 ticks WORSE than ours during ticks 21-37
+  (he climbs slower holding a pending grenade, along=0 at the top) and better from tick 45 on. Beam prunes his line.
+- Pads (lab padscan on the tracked climb runs/trk.txt): a shot at t1 in 12..26 aimed ~245-258 deg hits the underside of the
+  L-arm end (x 5200-5231, y 1951) at input tick 35..43.
+- Tools added: lab cmds scanfire/prefire/stack2/padscan/distinit/scorefile/nextexp/reload0; tas options nofirebefore,
+  firelookmax, projkey, pendshare/pendbonus/pendwin, tpgren, gcredit, kcredit/kready, clancap/clanperiod, optval,
+  commitfire, padcredit, tpfirst. polish (local search), nest (nested beam).
+- Negative results on A (all 182-206): alpha 20-80, energyshare 0/0.8, beam 3000 (182), fireangles 128, firelook 30-35 +
+  firerange 600, projkey, pendshare(+bonus), gcredit, kcredit, rollout 10/20, clan caps, optval, commitfire, harmonic,
+  clearance speed field, dynvref, randshare; nest (inner beam lookahead 16-40) no better than plain beam.
+- Full pipeline baseline (tas_full, beam 1000, 1 thread): grenade at race tick 1111 (Teero 983). full/pre1.txt.
+
+## !! Harness bug (found Oct 2): zsh does not word-split unquoted variables
+`A="beam=1000 tp=..."; ./tas ... $A` passes ONE argument -> tas parses only the first key. Many Oct-2 experiments
+that used $A/$B or multi-word $v in interactive zsh were invalid (runs started from spawn etc.). Use the bash wrappers
+runA.sh / runB.sh / queue.sh (bash scripts word-split correctly) or explicit args.
+Valid results so far: sweepA/expB (bash), padopt=0.5+firerange 600+projkey => 179, the fine-aim stack (178), A_r1-like runs with explicit args.
+
+## Exit stack reproduced (fine aim)
+Pre-fire at tick 14 (on the tracked climb runs/trk.txt), aim 259.2 deg -> explodes on the RIGHT FACE of the L-arm end
+(5247,~1930) at tick 40; point-blank left shot at 40 => vx 5 -> 28.2 (|v| 32) = Teero's exit. Window is ~0.1-0.3 deg wide:
+the 64-angle shot set can never find it. Needs edge-refined (bisection) aims for long shots.
+Even with it, A = 178 (Teero 161): after the exit our line climbs early (geodesic shortest path toward the arch);
+Teero stays low, lands on the block (184,60) at ~33 px/t, kicks off it hooked up, then keeps 35-43 disp through the arch.
+- macOS: never cp over an executable that has run (SIGKILL 137 from stale code signature); rm first.
+
+## Progress log (Oct 2 evening)
+- best_58.94.txt (pre1 + post1), best_57.66.txt (pre1 + post2 kcredit=1.5 kready=10),
+  best_57.08.txt (pre4: es0.6 repeat=1 macro 1..28 -> grenade 1095; post4 kcredit=1 kready=10).
+- Working levers: kcredit (point-blank kick potential credit, kready=10): A 181->174, B 1771->1763, full -64 ticks.
+  repeat=1 + energyshare 0.6 + finer macro holds pre-grenade: grenade 1111 -> 1095.
+- No effect / worse (valid runs): padopt, pendshare, pendroll, padaims (edge-refined), jumpbonus, rollout,
+  dynvref, alpha 16/24, energyshare 0.6 post, hookpen (hook braking accumulator), bandshare, crashpen, bendcredit,
+  fine hook angles (C: -6, C1: +6), commitfire (A -2, full +7).
+- Energy accounting: post-grenade hook braking -26..-33k v^2 vs explosions +21k; pre-grenade hooks -2.7..-3.7k.
+- Corridor 1 from a Teero-like crossing (900,465,25,-13 spent): 294-296 (Teero 298). Our pre-start crossing gives ~306.
+- TileExists lookup cache in CCollision (opt-in flag, TAS only): step 1.54 -> 1.20 us, identical replays.
+- chain.py: segment chain over distance gates with several configs (gains ~1-2 ticks/gate; slow).
+
+## Corridor 1 beaten (session of Oct 2, night; Linux VM, 4 cores)
+Result: **296 race ticks** from the start line to x > 8800 (Teero 298), from spawn, no teleport:
+`c1_best.txt` (one input line per tick from spawn, ends just past x = 8800). Checked on real server code
+(`TasReplay.Run` with `TAS_TRACE=1`, `./srvcheck.sh c1_best.txt`): start tick 73, x > 8800 at race tick 296, no freeze,
+no double start; positions and velocities equal to the simulator on all 369 ticks.
+
+### Setup fixes
+- Fresh `setup.sh` failed: `generated/server_data.h` missing (TAS targets didn't depend on it) and `g_pData` undefined
+  (`server_data.cpp` was in a `file(GLOB ...)`, which finds nothing before it is generated). Fixed in `CMakeLists.txt`
+  (explicit sources -> order dependency). `setup.sh` now also builds `pre`.
+- On this VM `/usr/local/bin/python3` (3.11) picks up the distro's 3.12 numpy/PIL and fails; plotting used a venv.
+
+### q14: corridor time vs crossing state (teleport, runT.sh)
+| tp (x,y,vx,vy,jumped) | E = v^2 - y | ticks |
+|---|---|---|
+| 900,250,30,0,spent | 650 | 271 |
+| 900,300,28,0,spent | 484 | 287 |
+| 900,465,28,0,air jump left | 319 + J | 289 |
+| 900,465,27,-13,spent | 433 | 292 |
+| 900,350,27,0,spent | 379 | 295 |
+| 900,420,27,-5,spent | 334 | 299 |
+| 900,400,26,5,air jump left | 301 + J | 302 |
+| 900,465,25,0,air jump left | 160 + J | 306 |
+Energy is the lever (~0.08-0.1 tick per unit of E); height matters much less than feared (the earlier NONE entries for
+g350/g420 in T.res did not reproduce: 295 and 299 now). Single searches vary by +-3-5 ticks, so read trends, not single rows.
+
+### Pre-start energy cap (why "Teero-like tp" was too optimistic)
+- The hook only accelerates while |v| < 15, so hook energy is capped at 225 - y_top = 147 (ceiling, y = 78).
+  Jumps add 13.2^2 = 174 (ground jump at vy = 0) and 12^2 = 144 (air jump at vy = 0).
+- Teero's route (ceiling, fall, swing, air jump on the line): at most 147 + 144 = **291**. Teero's track suggests
+  E rising during his free fall (147 -> ~205), which the physics can't do; most likely a few % scale error in the video
+  registration.
+  So `tp=900,465,25,-13,3` (E = 329) is ~40 E richer than Teero's real crossing; from our own crossings the old tas
+  corridor search gets 303-311, i.e. it was *not* already beating him.
+- Floor-edge route (ceiling, tangential landing at the spawn floor edge x ~ 650, ground jump): 147 + 174 = **321** plus an
+  unused air jump, but it crosses high (y ~ 220, rising) and the air jump is wasted (block 2 refills it before there is a
+  safe vy ~ 0 moment under the sloping freeze ceiling). Best found: E 298 + J (`runs/pre/co0p.txt`).
+- Two rooms (spawn room + room below via the shaft) don't help: at E >= 147 the turn radius (~v^2/3) is larger than the rooms,
+  so only one left-to-right pass is possible.
+
+### Corridor 1 structure (energy view)
+Bare blocks refill both jumps on a one-tick touch: block 1 x 1426-1614 (stand y 466, right after the line), block 2
+x 2208-2272 (y 594), block 3 x 3616-3712 (y 338), x 4576-4736 (y 498), x 5952-6112 (y 562-594), x 6688-6784 (y 594).
+Teero touches block 2 (k ~ 57), ground-jumps, air-jumps at k ~ 75. A ground jump off block 1 runs into the freeze ceiling
+that slopes down to y 480 by x 2300 (that trap cost the early gate experiments 175 E).
+The old tas search wastes energy: it slides over blocks without jumping (its energy share credits a grounded state with
+2 x jumpenergy = 400 > the 174 a jump gives), lands non-tangentially and brakes with hooks. Lowering jumpenergy (100/140)
+did not help (b0: 311 vs 303-311 with other configs; Teero tp: 303 vs 294-296).
+
+### New tool: `pre` (ddnet/src/tas/pre.cpp, built by setup.sh)
+Wide multithreaded beam with per-cell dedup and a global dominance table (a cell reached earlier with a better value
+prunes later visitors). Modes:
+- Pre-start crossings: ranked by E = v^2 - y (+ jw/gw credit for unused air/ground jumps); every start-line crossing is
+  recorded (survival-checked); `rank=cont` ranks crossings by the energy left after a short surviving continuation;
+  `ymin=` keeps only low crossings. Writes `out<k>.txt` prefixes.
+  `pre AiP-Gores.map beam=30000 maxticks=150 threads=4 rank=cont ymin=455 out=runs/pre/vl top=20`
+- `polish=FILE seconds=S [ymin=]`: hill-climb a pre-start prefix for the crossing value; `eval=FILE` prints it.
+- Post-start (corridor) mode `gatex=8800 gatelambda=0`: keeps searching after the line and records gate states.
+  Post-start ranking: `lambda*E_eff + x/vref - race_tick` (E_eff = E + pjc*air jump + pgc*grounded), or the time model
+  `trref=teero_track.txt`: race_tick + T_rem(x, E_eff), where T_rem integrates ds / disp(sqrt(E + y_ref(x))) along
+  Teero's smoothed line; `hnow=H` covers the next H px at the current horizontal speed (this was the step that worked:
+  being high and slow costs time now, which the pure energy model can't see). `postdir1=1` (only hold right after the
+  start; every input of our corridor runs is dir 1) makes it ~3x faster. `ghostshare`/`ghostmu`, `lamdecay`: no gain.
+- `runH.sh NAME PREFIX [extra]`: corridor run with the energy beam from a prefix (results in runs/H.res).
+- `lns.py BEST [minutes] [workers]`: iterated re-search: cut the best run at a random race tick, re-run `pre` from there
+  with a random variant, keep verified improvements (state in runs/lns/, log runs/lns/lns.log).
+- `polish ... race=1`: polish now can judge by race ticks (so pre-start inputs can be mutated too). It found nothing on
+  the 300 run.
+
+### Corridor 1 results (race ticks to x > 8800)
+- old tas search from our crossings: b0 303 (lucky; same prefix 309-311 with other configs), co0 308, lo0 306, lo2 307,
+  gate prefixes after block 1: 332-347.
+- energy beam, lambda 0.09: co0p 301, lo2 300 (`runs/pre/h_lo20.txt`), lo0 307, full spawn-to-gate run 304.
+  Wider beam (60k) 304, ghost share 302/305, time model without hnow 302.
+- re-search lo2's run from race tick 95 with `trref hnow=300`: 299 (skips the block-3 ground jump, stays low, uses the air
+  jump at x ~ 4500; that section went from -4 to -1.7 ticks vs Teero).
+- low crossing `runs/pre/vl1p.txt` (y 456, v (24.6, -11.5), E 279, jumps spent) + `trref hnow=300`: 297 (server-checked).
+- iterated re-search (lns.py, `postdir1=1`, mostly `trref hnow`) from the 297 run: **296** (cut at race tick 121,
+  `postbeam=45000 angles=64 trref=teero_track.txt hnow=300`); ~35 more jobs (incl. a reference line from our own run, `own_track.txt`) gave 296-305, nothing lower.
+- negative: crossing searches with more beam/angles found no better low crossing (best E 281 at y 463, `runs/pre/xl0.txt`,
+  which then ran 302-303); polished lo2p (E 288, y 435) ran 307; vl1p with postbeam 45000 / angles 96: 298.
+Per-section comparison with Teero (vsteero-style, by his track): we lead after the line, lose ~1-3 ticks before block 2
+and ~1.5 between blocks 3 and 5, gain back late with more energy (E ~ 850 at the end).
+
+### How to reproduce (from tas-work/)
+```
+../ddnet/build-sim/pre AiP-Gores.map beam=30000 maxticks=150 threads=2 rank=cont ymin=455 out=runs/pre/vl top=20
+../ddnet/build-sim/pre AiP-Gores.map polish=runs/pre/vl1.txt out=runs/pre/vl1p.txt seconds=150 threads=1 ymin=455
+./runH.sh vl1p_h300 runs/pre/vl1p.txt trref=teero_track.txt hnow=300 threads=1     # 297 (runs/H_vl1p_h3000.txt)
+python3 lns.py runs/best297.txt 60 4                                              # 296 (runs/lns/best.txt)
+./srvcheck.sh c1_best.txt        # real server: start tick, race tick at x > 8800, freeze/double start
+```
+The crossing searches above ran with threads=2 before the beam sort got a deterministic tie-break, so a rerun can give
+a different vl1; the exact prefixes are kept in runs/pre/.
+
+### Next steps
+- Pre-start for the full run: the crossing is now `c1_best.txt`'s first 72 inputs (vl1p, low Teero-style). The energy beam
+  + time model should carry over to the pre-grenade segment, but `pre` measures progress (and T_rem) by x; segments that
+  go left or climb need progress as arc length along a reference line (Teero's track) and a gate at the segment end.
+- Teero's crossing is ~291; ours is 279: a better swing at the bottom of the shaft is worth ~1 tick.
+- Corridor: more lns.py time; a reference line built from our own best run instead of Teero's may calibrate T_rem better.
+
+## Full run < 50 s attempt (Oct 3; goal: < 2500 race ticks, Teero 2536)
+Tools added:
+- `seg` (ddnet/src/tas/seg.cpp): energy beam for any segment, progress = arc position on Teero's track (forward-only
+  tracking with a velocity-direction penalty), gate=K (Teero tick) | grenade | finish. Time models: `ghost=1 hnow=600
+  ghoste=0.02` (Teero's remaining time + current-speed term − energy credit) or energy table + `sinks=`. `commitk=K` also
+  writes OUTc.txt cut at Teero tick K. `fire=0` disables shots. Usage at the top of seg.cpp.
+- `rh.py START NAME [window=250 commit=100 nvar=4 sel=0.02]`: receding-horizon chain with seg (state runs/rh/NAME/,
+  resumable). Gate choice: rt − sel·energy.
+- `pf` (ddnet/src/tas/pf.cpp): brute-force pre-fired shot (0.05°) + point-blank follow-up (1°) on a fixed base,
+  scored by estimated time to the line dot(pos,dir)=xf. Uses NextExplosion (stage 1 needs no simulation).
+Findings:
+- Map is a serpentine with continuous walls: no route skip. Teero picks up the grenade at 983, then 1553 ticks.
+- seg corridor 1 is ~3-4 ticks worse than pre+lns (chain from vl1p: x>8800 at rt 300 vs c1_best 296).
+- Right U-turn + return leg (chain b): lead vs Teero -2.8 (k300) -> -4.5 (k340) -> -7.7 (k450); steady ~0.4 tick/10 on
+  the return leg at |v| 31-33 (Teero's track displacement 27 vs ours 26 px/t). Teero's track may be biased (its end
+  at 2536 is 44 px left of the finish tile).
+- Post-grenade: Teero arrives at the grenade at |v|~36 diagonally, brakes to ~0 at 984 and climbs at 13 px/t (hook
+  limit), exits the 3-wide gap (x 165-167, rows 60-61) at k1020-1023 with a double kick. Our old arrival (post_cut,
+  pickup rt 1095 with vx +10) wastes ~10 ticks reversing; hook-only climb reaches the gap at +46 (Teero +37).
+  pf on that climb: best exit vx 22 at +58 (Teero is ~10 ticks ahead); x00 (shot-boosted climb) is better (+5 ticks).
+- p20 (old pre-grenade, seg after pickup): -16 vs Teero at k1144 (shaft exit ~-8, then ~-0.08 tick/tick at 37-54 px/t).
+- **seg bug (fixed Oct 3):** the "can't pass the pickup without the grenade" rule used the LAST grenade entity on the
+  map, which is in the finish room (gren idx 2511), so it never fired: searches starting before the pickup could
+  skip the grenade (all hook-only climbs from pre1112 did, reaching k1036 "early" at rt 1122). Now the first grenade
+  near the reference line (idx 984). seg's start line prints `gren idx N has 0|1`.
+- **Post-grenade hairpin (k1144-1170, right end, 4-tile channel x 292-295 with freeze walls):** seg from x00 to gate
+  1310 died (NOGATE) with ghost=1, ghost=1+sinks, ghost=2: the beam fills with 55-60 px/t states (Ee ~2000-2300)
+  that can't brake. ghost=1's speed term divides by Teero's local speed, which is tiny where he brakes, so fast states
+  get huge credit; ghost=2 (our time over the next hnow px vs Teero's own time there) didn't help either.
+  ghost=3 (cap our lookahead speed at vcap x Teero's local speed, penalty brakepen x excess when |v| can't be braked
+  at `brake` px/t^2 in velocity space before his slow points) with hnow=1000 survives the hairpin.
+- ghost=2/3 on the pre-grenade right turn window (c2 -> 451): 459 = same as ghost=1 (458-460).
+- Diagnostics added to seg: `tp=x,y,vx,vy tpk=K [tpreload=N]` (teleport after the prefix, race clock = Teero tick K;
+  NOT for final runs), `SEG_DUMP=1` env (per-tick trajectory lines "D rt ... pos vel E in hook jumped gr reload proj").
+- **Post-grenade corridor k1033->1144 from Teero's own state** (pos/vel from his track): 1153-1155 with our reload
+  phase (5 ticks later than his), **1145-1146 with his reload phase (tpreload=13)** vs Teero 1144. So seg's local
+  corridor play is about at par; real runs lose through worse states: exit speed (ours ~23-24 px/t vs his ~31) and
+  reload timing (the shot clock decides whether a kick is ready at the block he kicks off).
+- Teero's line there skims the freeze floor (rows 57-59) and kicks off the bare block at x~185; seg without guidance
+  jumped into a high arc (rows 52-53). `latpen` keeps it near the line; `kcredit=2 kready=10` (kick potential as
+  energy credit, ported from tas) is worth ~2 ticks with our reload phase, 0 with his.
+- **Pre-grenade from Teero's k401 state** to k651: 659-660 vs 651 (seg ~3.5% slower than Teero here even from his
+  state). From our chain state: 672-686 for ghoste 0.02/0.05/0.08, ghost=4, tracking (track=1): no setting helps;
+  the beam saturates. Teero's energy profile shows jumps timed with ground touches (+130..+380 at k404, 492, 532, 616)
+  and near-lossless flight in 400-530.
+- Time-indexed tracking (`track=W`): follows Teero within ~10 px while physically possible, but can't keep up from a
+  weaker state; no gain on the windows tried. A tracking climb reproduced his exact exit stack (pre-fire ~261 deg +
+  point-blank off the L-arm) but late.
+- Chain c (rh.py vset=g3 from chain b's c4): lead vs Teero -22 (k651), -27 (k751), -31 (k851).
+- pf exit stack on line-hugging climbs (latpen): best score 1240.4 (est. tick at x=5900; Teero-equivalent ~1236).
+- From Teero's k401 state to k651 (his 651): baseline 659-660; beam 40000: 660; angles=128 (one aim per tile): 670;
+  **angles=128 hookdedup=0 (all aims, new option): 657**. Finer hook aiming helps a little.
+- Chain c reached k901 at -41 (commit c9.txt). gren.py from c9: climbs reach the gap on Teero's schedule (-47 at the
+  pickup, -46.6 at the gap), but the exit is ~23 px/t (Teero ~31) and the first corridor loses ~20 ticks:
+  best -67 at k1100 (runs/gren/c9/pf3_2_g_0.txt). pf finds "shoot straight up, explode at the apex" stacks, not
+  Teero's L-arm stack (our climb passes ~1 tile right of his line). Tracking climbs from c9: much slower (no good).
+- Post chain p1 from k1065: all variants NOGATE to k1315. Beams die after the hairpin in the V dive k1260-1300
+  (Teero brakes from ~64 to ~34 px/t at the bottom, k1285). rh.py now gives up after 4 failures in a row (it used
+  to loop forever when the stack had one element).
+- `prefire=1` (new): shots still in flight after `firelook` are judged as if not fired (the old held-input look
+  penalized every pre-fire), and the cell key includes the pending explosion (pos/24 px, ticks to go) so different
+  pre-fire aims stay apart. With `padaims=48 padtop=500 padrange=30` from c9 to k1100: 1165 vs 1167-1168 (small gain).
+- Post chain p2 (vset=g4: survevery=2 survive=30 beam 10000): -97 at k1315, -142 at k1415 (selected variant was 8
+  ticks slower at the gate than v0 because of the energy bonus sel=0.02; after the grenade energy is cheap, use a
+  lower sel). k1330-1375: our path went over the island (rows 57-58) and dived to row 77 while Teero stays at rows
+  63-68 (~25 ticks lost). Survives() rollouts never fire, so strict survival pruning can remove states that would
+  survive with a kick (Teero's hairpin/dive moves need kicks).
+- Status (Oct 3, 08:00): best complete run still 57.08 s (old). Pipeline pieces: pre-grenade chain c (-41 at k901),
+  gren.py transition (-67 at k1100), post chain p2 in progress (-142 at k1415). Projected total ~2750-2800.
+  < 2500 needs beating Teero by 36+; seg is ~3.5% slower than Teero pre-grenade even from his own states.
+- `shotref=teero/catalog/shots.tsv` (bonus for explosions near Teero's): worse (1583 vs 1545 on k1165->1415). Off.
+- p2 post chain: -173 at k1615, -183 at k1715 (seg loses ~20% after the grenade from our states). Stopped.
+- **Old tas to the finish** from our new grenade state (runs/gren/c9/best_cut.txt, k1065 at -62) with the old post4
+  settings (beam 1000 vref 25 energyshare 0.4 jumpenergy 200 survive 15 firelook 1 stencil16 3 repeat 1 kcredit 1
+  kready 10): **2860 ticks (57.20 s), server-checked** (runs/tpost/a.txt). Old best 57.08 still better: tas lost
+  ~45 ticks against its own estimate in the last third.
+- lnstas.py: LNS on a complete run with tas (random cut after cutmin, randomized settings, keep finish improvements).

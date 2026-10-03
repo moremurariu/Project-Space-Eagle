@@ -1,0 +1,1411 @@
+// seg: segment search after the start line, guided by a reference line (Teero's track).
+// Energy beam like `pre` (per-cell dedup + global dominance), but progress is the position along the reference
+// line, so it works on any part of the route. States are ranked by the estimated total race time
+//   race_tick + T_rem(s, E_eff) + H * (1/v_now - 1/v_E)
+// where T_rem(s, E) is the time from arc position s to the gate along the reference line at the speed the energy
+// gives there (v = sqrt(E + y_ref), displacement ramp applied), v_now the current speed along the line and H = hnow.
+//
+// usage: seg <map> prefix=FILE ref=teero_track.txt key=value...
+//   gate=K (Teero tick on the reference line) | gate=grenade (pickup) | gate=finish     out=PREFIX (writes PREFIX0.txt)
+//   beam=20000 threads=1 maxticks=600 angles=64 hnow=300 dirmode=all|tan (tan: only hold towards the line's x)
+//   pjc=130 pgc=160 (energy credit for an unused air / ground jump)  gcred=0 (credit for a loaded grenade)
+//   fire=1 fireangles=48 firelook=12 (grenade shots, judged after the explosion)  survive=20
+//   ghost=1|2 (2: the speed term compares our time over the next hnow px with the reference's own time there)
+//   ghost=3 vcap=1.25 vmin=8 brake=3 brakepen=3: like 2, but our speed over the next hnow px is capped at vcap x the
+//     reference's local speed, and states that can't brake to those caps in time are penalized
+//   track=W [trackoff=N trackcap=96 tracktie=0.05]: rank by W x accumulated squared distance (px^2/1000, capped) to
+//     Teero's position at race tick + trackoff (default: the start state's offset), + tracktie x the time model
+//   prefire=1: shots still in flight after firelook ticks are judged as if not fired (no held-input look), and
+//     states are told apart by their pending explosion (use with padaims=N for long pre-fire aims)
+//   shotref=teero/catalog/shots.tsv shotbonus=3 shotrad=64: a shot whose explosion lands within shotrad px of one of
+//     Teero's explosion points (later than the last one matched) earns shotbonus ticks
+//   kcredit=0 kready=4: energy credit (x kcredit) for the best point-blank kick along the line when reload <= kready
+//   ghost=4 [e4w=1]: Teero's remaining time + (time to the next sink at our energy - same at Teero's own energy
+//     there, from the energy table) + hnow x (1/v_now - 1/v_energy); needs sinks=
+//   latpen=0 latdz=8 latk0= latk1=: ticks of penalty per px of distance from the line beyond latdz (Teero ticks latk0..latk1)
+#define private public
+#define protected public
+#include <game/client/prediction/entities/character.h>
+#undef private
+#undef protected
+#include "sim.h"
+
+#include <game/mapitems.h>
+
+#include <algorithm>
+#include <atomic>
+#include <chrono>
+#include <cmath>
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
+#include <mutex>
+#include <string>
+#include <thread>
+#include <unordered_map>
+#include <unordered_set>
+#include <vector>
+
+static std::vector<STasInput> ReadInputs(const char *pPath)
+{
+	std::vector<STasInput> v;
+	FILE *f = std::fopen(pPath, "r");
+	if(!f)
+		return v;
+	int d, j, h, fi, tx, ty, w;
+	while(std::fscanf(f, "%d %d %d %d %d %d %d", &d, &j, &h, &fi, &tx, &ty, &w) == 7)
+	{
+		STasInput In;
+		In.m_Dir = d;
+		In.m_Jump = j;
+		In.m_Hook = h;
+		In.m_Fire = fi;
+		In.m_TX = tx;
+		In.m_TY = ty;
+		In.m_Weapon = w;
+		v.push_back(In);
+	}
+	std::fclose(f);
+	return v;
+}
+
+static void WriteInputs(const char *pPath, const std::vector<STasInput> &v)
+{
+	FILE *f = std::fopen(pPath, "w");
+	if(!f)
+		return;
+	for(const auto &In : v)
+		std::fprintf(f, "%d %d %d %d %d %d %d\n", In.m_Dir, In.m_Jump, In.m_Hook, In.m_Fire, In.m_TX, In.m_TY, In.m_Weapon);
+	std::fclose(f);
+}
+
+struct SParams
+{
+	int m_Beam = 20000;
+	int m_Angles = 64;
+	int m_MaxTicks = 600;
+	int m_Threads = 1;
+	float m_CPos = 16, m_CVel = 2;
+	int m_Dom = 1;
+	std::string m_Out = "runs/seg/s";
+	std::string m_Prefix;
+	std::string m_Ref = "teero_track.txt";
+	std::string m_Gate = "finish";
+	int m_GateK = -1;
+	float m_HNow = 300;
+	int m_DirTan = 0;
+	float m_PJC = 130, m_PGC = 160;
+	float m_GCred = 0;
+	int m_Fire = 1;
+	int m_FireAngles = 32;
+	float m_FireRange = 120; // only shots that hit a solid tile this close (point-blank kicks)
+	int m_FireAllDirs = 0; // shots with every direction input (default: only towards the line)
+	int m_PendLook = 1; // judge every state with a grenade in flight after its explosion (pre-fired shots)
+	int m_PadAims = 0; // coarse angle count for edge-refined (pre-fire) shot aims, 0 = off
+	int m_PadTop = 300; // only the best this many beam states get them
+	int m_PadRange = 30; // pre-fired shots may explode up to this many ticks later
+	int m_SurvEvery = 2; // every this many steps, beam states that can't survive `survive` ticks stop breeding (0 = off)
+	int m_FireLook = 12;
+	int m_Survive = 20;
+	float m_HookRange = 420;
+	int m_HookDedup = 1; // keep one hook aim per hit tile
+	int m_Prefire = 0; // judge shots still in flight neutrally, separate states by their explosion point
+	std::string m_ShotRef; // Teero's shot catalog (tsv)
+	float m_ShotBonus = 3, m_ShotRad = 64;
+	int m_GateWait = 2;
+	float m_TrackBack = 0, m_TrackFwd = 30;
+	int m_Horizon = 300; // the time model looks this many Teero ticks past the gate
+	std::string m_Sinks; // comma-separated Teero ticks of energy sinks
+	int m_CommitK = -1; // also write OUTc.txt: the result cut at the first input that reaches this Teero tick
+	int m_Ghost = 0; // time model: the reference's own remaining time (+ current speed over hnow px)
+	float m_GhostE = 0; // ghost model: ticks of credit per unit of energy
+	float m_GhostSink = 0; // ghost model: the energy credit fades over this many px before the next sink
+	int m_Quiet = 0;
+	float m_VCap = 1.25f, m_VMin = 8, m_Brake = 3, m_BrakePen = 3; // ghost=3
+	float m_GhostE4 = 1; // ghost=4: weight of the energy time difference
+	float m_LatPen = 0, m_LatDz = 8, m_LatK0 = -1e9f, m_LatK1 = 1e9f; // distance-from-line penalty
+	float m_TrackW = 0; // tracking mode: rank by accumulated squared distance to Teero's position at the same (offset) tick
+	int m_TrackOff = -100000; // Teero tick minus our race tick (default: from the start state)
+	float m_TrackCap = 96, m_TrackTie = 0.05f;
+	float m_KCredit = 0; // energy credit for the point-blank kick available when the grenade is (nearly) loaded
+	int m_KReady = 4;
+	int m_TpK = -1; // diagnostics: teleport after the prefix (tp=x,y,vx,vy tpk=K tpreload=N)
+	int m_TpReload = -1;
+	vec2 m_TpPos, m_TpVel;
+};
+static SParams gs_P;
+
+static int JumpsLeft(const CTasGame &G) { return G.Grounded() ? 2 : ((G.Jumped() & 2) ? 0 : 1); }
+
+// ---- reference line ----
+struct SRef
+{
+	std::vector<vec2> m_vP; // smoothed points
+	std::vector<float> m_vK; // Teero tick of each point
+	std::vector<float> m_vL; // cumulative arc length
+	int m_GateIdx = 0; // end of the segment (search gate)
+	int m_EndIdx = 0; // end of the time model (gate + horizon)
+	std::vector<int> m_vSinkIdx; // energy sinks (U-turns): energy only counts up to the next one
+	// time-to-gate table over (point, energy)
+	static constexpr float E0 = -2600, DE = 10;
+	static constexpr int NE = 700;
+	std::vector<float> m_vT;
+	float Disp(float v) const { return v > 11 ? v * std::pow(1.4f, -(50 * v - 550) / 2000.0f) : v; }
+	bool Load(const char *pPath)
+	{
+		std::vector<std::pair<int, vec2>> vRaw;
+		FILE *f = std::fopen(pPath, "r");
+		if(!f)
+			return false;
+		char aLine[256];
+		while(std::fgets(aLine, sizeof(aLine), f))
+		{
+			int t;
+			float x, y;
+			if(std::sscanf(aLine, "%d %f %f", &t, &x, &y) == 3 && t >= 0)
+				vRaw.push_back({t, vec2(x, y)});
+		}
+		std::fclose(f);
+		const int N = vRaw.size();
+		for(int i = 0; i < N; i++)
+		{
+			vec2 S(0, 0);
+			int n = 0;
+			for(int k = -3; k <= 3; k++)
+			{
+				int j = std::clamp(i + k, 0, N - 1);
+				S += vRaw[j].second;
+				n++;
+			}
+			m_vP.push_back(S / (float)n);
+			m_vK.push_back((float)vRaw[i].first);
+		}
+		m_vL.assign(N, 0);
+		for(int i = 1; i < N; i++)
+			m_vL[i] = m_vL[i - 1] + distance(m_vP[i - 1], m_vP[i]);
+		return N > 2;
+	}
+	void Build(int GateIdx, int EndIdx)
+	{
+		m_GateIdx = std::clamp(GateIdx, 1, (int)m_vP.size() - 1);
+		m_EndIdx = std::clamp(EndIdx, m_GateIdx, (int)m_vP.size() - 1);
+		const int N = m_vP.size();
+		const int TabEnd = N - 1;
+		m_vT.assign((size_t)N * NE, 0);
+		for(int e = 0; e < NE; e++)
+		{
+			float E = E0 + e * DE;
+			float Acc = 0;
+			for(int i = N - 1; i >= 0; i--)
+			{
+				if(i < TabEnd)
+				{
+					float Ds = m_vL[i + 1] - m_vL[i];
+					float Y = 0.5f * (m_vP[i].y + m_vP[i + 1].y);
+					Acc += Ds / Disp(std::sqrt(std::max(E + Y, 25.0f)));
+				}
+				m_vT[(size_t)i * NE + e] = Acc;
+			}
+		}
+	}
+	// closest point near Idx: returns the segment index and the fraction along it
+	// the velocity breaks ties where the line runs back along itself (narrow shafts): segments that point
+	// against the motion are penalized
+	int Track(int Idx, vec2 P, vec2 Vel, float &Frac) const
+	{
+		const float Sp = length(Vel);
+		const float W = 40.0f * std::min(Sp / 8.0f, 1.0f);
+		const int N = m_vP.size();
+		int Lo = std::max(0, Idx - (int)gs_P.m_TrackBack), Hi = std::min(N - 2, Idx + (int)gs_P.m_TrackFwd);
+		float Best = 1e30f;
+		int BestJ = Idx;
+		Frac = 0;
+		for(int j = Lo; j <= Hi; j++)
+		{
+			vec2 A = m_vP[j], B = m_vP[j + 1], AB = B - A;
+			float L2 = dot(AB, AB);
+			float t = L2 > 1e-6f ? std::clamp(dot(P - A, AB) / L2, 0.0f, 1.0f) : 0.0f;
+			float d = distance(A + AB * t, P);
+			if(W > 0 && L2 > 1e-6f)
+				d += W * (1.0f - dot(AB, Vel) / (std::sqrt(L2) * Sp));
+			if(d < Best - 1e-3f)
+			{
+				Best = d;
+				BestJ = j;
+				Frac = t;
+			}
+		}
+		return BestJ;
+	}
+	// first point where the energy part of the estimate stops: the next sink after I, or the evaluation end
+	int EnergyEnd(int I) const
+	{
+		for(int S : m_vSinkIdx)
+			if(S > I)
+				return std::min(S, m_EndIdx);
+		return m_EndIdx;
+	}
+	float TAt(int I, float E) const
+	{
+		I = std::clamp(I, 0, (int)m_vP.size() - 1);
+		float fe = std::clamp((E - E0) / DE, 0.0f, (float)NE - 1.001f);
+		int e = (int)fe;
+		float b = fe - e;
+		return (1 - b) * m_vT[(size_t)I * NE + e] + b * m_vT[(size_t)I * NE + e + 1];
+	}
+	float TRem(int I, float Frac, float E) const
+	{
+		const int N = m_vP.size();
+		I = std::clamp(I, 0, N - 2);
+		float fe = std::clamp((E - E0) / DE, 0.0f, (float)NE - 1.001f);
+		int e = (int)fe;
+		float b = fe - e;
+		auto At = [&](int ii) { return (1 - b) * m_vT[(size_t)ii * NE + e] + b * m_vT[(size_t)ii * NE + e + 1]; };
+		return (1 - Frac) * At(I) + Frac * At(I + 1);
+	}
+	std::vector<float> m_vET; // ghost=4: the reference's own energy per point (from its smoothed speed)
+	void PrepET()
+	{
+		const int N = m_vP.size();
+		std::vector<float> vRaw(N);
+		for(int j = 0; j < N; j++)
+		{
+			float v = InvDisp(VRef(j));
+			vRaw[j] = v * v - m_vP[j].y;
+		}
+		m_vET.resize(N);
+		for(int j = 0; j < N; j++)
+		{
+			float S = 0;
+			int n = 0;
+			for(int d = -5; d <= 5; d++)
+			{
+				int i = std::clamp(j + d, 0, N - 1);
+				S += vRaw[i];
+				n++;
+			}
+			m_vET[j] = S / n;
+		}
+	}
+	std::vector<float> m_vVc, m_vVcv; // ghost=3: displacement cap and the matching speed per point
+	void PrepCaps(float VCap, float VMin)
+	{
+		const int N = m_vP.size();
+		m_vVc.resize(N);
+		m_vVcv.resize(N);
+		for(int j = 0; j < N; j++)
+		{
+			m_vVc[j] = std::max(VCap * VRef(j), VMin);
+			m_vVcv[j] = InvDisp(m_vVc[j]);
+		}
+	}
+	// speed whose displacement per tick is D
+	float InvDisp(float D) const
+	{
+		float Lo = 0, Hi = 200;
+		for(int i = 0; i < 40; i++)
+		{
+			float M = 0.5f * (Lo + Hi);
+			if(Disp(M) < D)
+				Lo = M;
+			else
+				Hi = M;
+		}
+		return Lo;
+	}
+	// reference speed (px per tick) around point I, smoothed over +-2 points
+	float VRef(int I) const
+	{
+		const int N = m_vL.size();
+		int A = std::clamp(I - 2, 0, N - 1), B = std::clamp(I + 3, 0, N - 1);
+		return B > A ? (m_vL[B] - m_vL[A]) / (m_vK[B] - m_vK[A]) : 10.0f;
+	}
+	// reference tick at arc length L (clamped to the line)
+	float KAtL(float L) const
+	{
+		const int N = m_vL.size();
+		if(L >= m_vL[N - 1])
+			return m_vK[N - 1];
+		int J = std::upper_bound(m_vL.begin(), m_vL.end(), L) - m_vL.begin();
+		J = std::clamp(J, 1, N - 1);
+		float Seg = m_vL[J] - m_vL[J - 1];
+		float t = Seg > 1e-4f ? (L - m_vL[J - 1]) / Seg : 0.0f;
+		return m_vK[J - 1] + t * (m_vK[J] - m_vK[J - 1]);
+	}
+	vec2 Tangent(int I) const
+	{
+		I = std::clamp(I, 0, (int)m_vP.size() - 2);
+		vec2 D = m_vP[I + 1] - m_vP[I];
+		float l = length(D);
+		return l > 1e-3f ? D / l : vec2(1, 0);
+	}
+	float SpeedAt(int I, float E) const
+	{
+		I = std::clamp(I, 0, (int)m_vP.size() - 1);
+		return Disp(std::sqrt(std::max(E + m_vP[I].y, 25.0f)));
+	}
+};
+static SRef gs_Ref;
+static int gs_GrenIdx = 1 << 30; // reference point of the grenade pickup
+
+// energy a point-blank kick could add now (best of 32 aims whose shot hits a solid tile within ~90 px; kicks
+// against the line's direction don't count)
+static float KickPotential(const CTasGame &G)
+{
+	const SMapInfo &M = CTasGame::Map();
+	vec2 P = G.Pos(), V = G.Vel();
+	vec2 Tg = gs_Ref.Tangent(G.m_RefIdx);
+	float Sp = length(V);
+	float Ramp = Sp * 50 > 550 ? std::pow(1.4f, -(Sp * 50 - 550) / 2000.0f) : 1.0f;
+	vec2 Q = P + V * Ramp; // where the tee is when the explosion is applied
+	float Best = 0;
+	for(int a = 0; a < 32; a++)
+	{
+		float Ang = 2 * pi * a / 32;
+		vec2 D(std::cos(Ang), std::sin(Ang));
+		vec2 S0 = P + D * 21.0f;
+		vec2 E;
+		bool Hit = false;
+		for(float r = 0; r < 70.0f; r += 4.0f)
+		{
+			E = S0 + D * r;
+			int t = M.Tile((int)std::floor(E.x / 32), (int)std::floor(E.y / 32));
+			if(t == TILE_SOLID || t == TILE_NOHOOK)
+			{
+				Hit = true;
+				break;
+			}
+		}
+		if(!Hit)
+			continue;
+		vec2 Diff = Q - E;
+		float l = length(Diff);
+		if(l < 1e-3f)
+			continue;
+		float Str = 6.0f * (1.0f - std::clamp((l - 48.0f) / 87.0f, 0.0f, 1.0f));
+		if(Str < 1.0f)
+			continue;
+		vec2 K = Diff / l * Str * 2.0f;
+		if(dot(K, Tg) <= 0)
+			continue;
+		vec2 V2 = V + K;
+		Best = std::max(Best, dot(V2, V2) - Sp * Sp);
+	}
+	return Best;
+}
+
+static float EffEnergy(const CTasGame &G)
+{
+	vec2 V = G.Vel();
+	float E = dot(V, V) - G.Pos().y;
+	if(gs_P.m_KCredit > 0 && G.HasGrenade() && G.ReloadTimer() <= gs_P.m_KReady)
+		E += gs_P.m_KCredit * KickPotential(G) * (1.0f - (float)G.ReloadTimer() / (gs_P.m_KReady + 1));
+	int J = JumpsLeft(G);
+	if(J >= 1)
+		E += gs_P.m_PJC;
+	if(J == 2)
+		E += gs_P.m_PGC;
+	if(gs_P.m_GCred > 0 && G.HasGrenade())
+		E += gs_P.m_GCred * (1.0f - std::min(G.ReloadTimer(), 25) / 25.0f);
+	return E;
+}
+
+// optional penalty for the distance from the reference line (ticks per px beyond latdz, only between Teero ticks latk0..latk1)
+static float LatPen(const CTasGame &G, int I, float Frac)
+{
+	if(gs_P.m_LatPen <= 0)
+		return 0;
+	const int N = gs_Ref.m_vP.size();
+	if(gs_Ref.m_vK[I] < gs_P.m_LatK0 || gs_Ref.m_vK[I] > gs_P.m_LatK1)
+		return 0;
+	vec2 A = gs_Ref.m_vP[I], B = gs_Ref.m_vP[std::min(I + 1, N - 1)];
+	float d = distance(G.Pos(), A + (B - A) * Frac);
+	return gs_P.m_LatPen * std::max(0.0f, d - gs_P.m_LatDz);
+}
+
+// reference shots (Teero's catalog): a shot of ours that explodes near one of his explosion points gets a bonus
+static std::vector<vec2> gs_vShotRef;
+static void LoadShotRef(const char *pPath)
+{
+	FILE *f = std::fopen(pPath, "r");
+	if(!f)
+		return;
+	char aLine[1024];
+	while(std::fgets(aLine, sizeof(aLine), f))
+	{
+		int n;
+		float k, gap, x, y;
+		// n, race_tick, gap (may be empty), tile x, tile y
+		if(std::sscanf(aLine, "%d\t%f\t%f\t%f\t%f", &n, &k, &gap, &x, &y) == 5)
+			gs_vShotRef.push_back(vec2(x * 32, y * 32));
+		else if(std::sscanf(aLine, "%d\t%f\t\t%f\t%f", &n, &k, &x, &y) == 4)
+			gs_vShotRef.push_back(vec2(x * 32, y * 32));
+	}
+	std::fclose(f);
+}
+static void ShotBonus(const CTasGame &Parent, CTasGame &G, const STasInput &In)
+{
+	if(gs_vShotRef.empty() || !In.m_Fire || Parent.ReloadTimer() > 0 || G.ReloadTimer() == 0)
+		return;
+	vec2 E;
+	int Te;
+	if(!G.NextExplosion(E, Te))
+		return;
+	for(int i = std::max(G.m_LastShot + 1, 0); i < (int)gs_vShotRef.size(); i++)
+		if(distance(E, gs_vShotRef[i]) < gs_P.m_ShotRad)
+		{
+			G.m_Bonus += gs_P.m_ShotBonus;
+			G.m_LastShot = i;
+			return;
+		}
+}
+
+// tracking mode: squared distance (capped) to Teero's smoothed position at our race tick + trackoff
+static std::vector<int> gs_vTickIdx; // Teero tick -> reference point
+static float TrackInc(const CTasGame &G)
+{
+	if(gs_P.m_TrackW <= 0 || !G.m_Started)
+		return 0;
+	int K = G.m_Tick - G.m_StartTick + gs_P.m_TrackOff;
+	if(K < 0 || K >= (int)gs_vTickIdx.size() || gs_vTickIdx[K] < 0)
+		return 0;
+	float d = std::min(distance(G.Pos(), gs_Ref.m_vP[gs_vTickIdx[K]]), gs_P.m_TrackCap);
+	return gs_P.m_TrackW * d * d / 1000.0f;
+}
+
+// estimated total race time of a (started) state; lower is better
+static float EstTotal(const CTasGame &G, float *pEe = nullptr)
+{
+	float Frac;
+	int I = gs_Ref.Track(G.m_RefIdx, G.Pos(), G.Vel(), Frac);
+	float Ee = EffEnergy(G);
+	if(pEe)
+		*pEe = Ee;
+	if(gs_P.m_Ghost)
+	{
+		// race the reference: its remaining time from our point, the next H px at our own speed
+		const int N = gs_Ref.m_vK.size();
+		float K = gs_Ref.m_vK[I] + Frac * (gs_Ref.m_vK[std::min(I + 1, N - 1)] - gs_Ref.m_vK[I]);
+		float T = gs_Ref.m_vK[gs_Ref.m_EndIdx] - K;
+		vec2 V = G.Vel();
+		float Sp = length(V);
+		vec2 Tg = gs_Ref.Tangent(I);
+		float Along = Sp > 1e-3f ? dot(V, Tg) / Sp : 0.0f;
+		float Vn = std::max(gs_Ref.Disp(Sp) * Along, 3.0f);
+		if(gs_P.m_Ghost == 4)
+		{
+			// energy relative to the reference's own energy here, worth its time difference up to the next sink
+			int J = gs_Ref.EnergyEnd(I);
+			if(J > I)
+			{
+				float Et = gs_Ref.m_vET[I] + Frac * (gs_Ref.m_vET[std::min(I + 1, N - 1)] - gs_Ref.m_vET[I]);
+				float Tours = gs_Ref.TRem(I, Frac, Ee) - gs_Ref.TAt(J, Ee);
+				float Tref = gs_Ref.TRem(I, Frac, Et) - gs_Ref.TAt(J, Et);
+				T += gs_P.m_GhostE4 * (Tours - Tref);
+				float Ve = gs_Ref.SpeedAt(I, Ee);
+				float Rest = gs_Ref.m_vL[J] - (gs_Ref.m_vL[I] + Frac * (gs_Ref.m_vL[std::min(I + 1, N - 1)] - gs_Ref.m_vL[I]));
+				float H = std::min(gs_P.m_HNow, std::max(Rest, 0.0f));
+				T += H * (1.0f / Vn - 1.0f / std::max(Ve, 3.0f));
+			}
+			return (float)(G.m_Tick - G.m_StartTick) + T + LatPen(G, I, Frac);
+		}
+		if(gs_P.m_Ghost == 3)
+		{
+			// the next hnow px at our speed, but never faster than vcap x the reference's own speed there; states
+			// that can't brake (at `brake` px/t^2) to those caps in time pay `brakepen` ticks per px/t of excess
+			float L0 = gs_Ref.m_vL[I] + Frac * (gs_Ref.m_vL[std::min(I + 1, N - 1)] - gs_Ref.m_vL[I]);
+			const float Vb = gs_Ref.Disp(Sp);
+			float Tn = 0, Dist = 0, Vallow = 1e9f;
+			for(int j = I; j < N - 1 && Dist < gs_P.m_HNow; j++)
+			{
+				float A = std::max(gs_Ref.m_vL[j], L0), B = gs_Ref.m_vL[j + 1];
+				float Ds = std::min(B - A, gs_P.m_HNow - Dist);
+				if(Ds <= 0)
+					continue;
+				const float Vc = gs_Ref.m_vVc[j];
+				Tn += Ds / std::min(Vn, Vc);
+				// braking in velocity space: ticks to get from |v| down to the speed whose displacement is Vc,
+				// travelling about the mean displacement meanwhile
+				const float Vcv = gs_Ref.m_vVcv[j];
+				if(Sp > Vcv)
+				{
+					float Tb = (Sp - Vcv) / gs_P.m_Brake;
+					float Db = Tb * 0.5f * (Vb + Vc);
+					if(Db > Dist)
+						Vallow = std::min(Vallow, Vb - (Db - Dist) / std::max(Tb, 1.0f));
+				}
+				Dist += Ds;
+			}
+			T = gs_Ref.m_vK[gs_Ref.m_EndIdx] - gs_Ref.KAtL(L0 + Dist) + Tn;
+			if(Vallow < 1e8f)
+				T += gs_P.m_BrakePen * (Vb - Vallow);
+		}
+		else if(gs_P.m_Ghost == 2)
+		{
+			// the next hnow px at our speed instead of the reference's own time over the same stretch
+			float L = gs_Ref.m_vL[I] + Frac * (gs_Ref.m_vL[std::min(I + 1, N - 1)] - gs_Ref.m_vL[I]);
+			T += gs_P.m_HNow / Vn - (gs_Ref.KAtL(L + gs_P.m_HNow) - K);
+		}
+		else
+		{
+			float Vt = std::max(gs_Ref.m_vL[std::min(I + 1, N - 1)] - gs_Ref.m_vL[I], 3.0f); // reference px per tick here
+			T += gs_P.m_HNow * (1.0f / Vn - 1.0f / Vt);
+		}
+		float Ge = gs_P.m_GhostE;
+		if(gs_P.m_GhostSink > 0 && !gs_Ref.m_vSinkIdx.empty())
+		{
+			// energy is only worth something until the next sink (U-turn) takes it
+			int J = gs_Ref.EnergyEnd(I);
+			float Dist = gs_Ref.m_vL[J] - gs_Ref.m_vL[I];
+			Ge *= std::clamp(Dist / gs_P.m_GhostSink, 0.0f, 1.0f);
+		}
+		T -= Ge * Ee; // optional energy credit (ticks per unit)
+		return (float)(G.m_Tick - G.m_StartTick) + T + LatPen(G, I, Frac);
+	}
+	// energy part up to the next sink (or the evaluation end), Teero's own time after it
+	int J = gs_Ref.EnergyEnd(I);
+	float T;
+	if(J <= I)
+		T = gs_Ref.m_vK[gs_Ref.m_EndIdx] - (gs_Ref.m_vK[I] + Frac * (gs_Ref.m_vK[std::min(I + 1, (int)gs_Ref.m_vK.size() - 1)] - gs_Ref.m_vK[I]));
+	else
+		T = gs_Ref.TRem(I, Frac, Ee) - gs_Ref.TAt(J, Ee) + (gs_Ref.m_vK[gs_Ref.m_EndIdx] - gs_Ref.m_vK[J]);
+	if(gs_P.m_HNow > 0 && J > I)
+	{
+		vec2 V = G.Vel();
+		float Sp = length(V);
+		vec2 Tg = gs_Ref.Tangent(I);
+		float Along = Sp > 1e-3f ? dot(V, Tg) / Sp : 0.0f;
+		float Vn = std::max(gs_Ref.Disp(Sp) * Along, 5.0f);
+		float Ve = gs_Ref.SpeedAt(I, Ee);
+		float Rest = gs_Ref.m_vL[J] - (gs_Ref.m_vL[I] + Frac * (gs_Ref.m_vL[std::min(I + 1, (int)gs_Ref.m_vL.size() - 1)] - gs_Ref.m_vL[I]));
+		float H = std::min(gs_P.m_HNow, std::max(Rest, 0.0f));
+		T += H * (1.0f / Vn - 1.0f / Ve);
+	}
+	return (float)(G.m_Tick - G.m_StartTick) + T + LatPen(G, I, Frac);
+}
+
+static void UpdateTrack(CTasGame &G)
+{
+	if(!G.m_Started)
+		return;
+	float Frac;
+	G.m_RefIdx = gs_Ref.Track(G.m_RefIdx, G.Pos(), G.Vel(), Frac);
+}
+
+static int64_t CellKey(const CTasGame &G)
+{
+	vec2 P = G.Pos(), V = G.Vel();
+	int64_t k = (int64_t)std::floor(P.x / gs_P.m_CPos) + 64;
+	k = k * 1024 + ((int64_t)std::floor(P.y / gs_P.m_CPos) + 64);
+	k = k * 128 + ((int64_t)std::floor(V.x / gs_P.m_CVel) + 64);
+	k = k * 128 + ((int64_t)std::floor(V.y / gs_P.m_CVel) + 64);
+	int hs = G.HookState();
+	int h = hs == 0 || hs == -1 ? 0 : (hs == 5 ? 2 : 1);
+	k = k * 3 + h;
+	k = k * 3 + JumpsLeft(G);
+	k = k * 2 + (G.m_LastJump ? 1 : 0);
+	if(G.HasGrenade())
+		k = k * 8 + std::min(G.ReloadTimer(), 28) / 4 + (G.NumProjectiles() > 0 ? 64 : 0);
+	if(gs_P.m_Prefire && G.NumProjectiles() > 0)
+	{
+		// pre-fired shots with different targets are different states
+		vec2 E;
+		int Te;
+		if(G.NextExplosion(E, Te))
+		{
+			k = k * 1031 + ((int64_t)std::floor(E.x / 24) & 1023);
+			k = k * 1031 + ((int64_t)std::floor(E.y / 24) & 1023);
+			k = k * 67 + ((Te - G.m_Tick) & 63);
+		}
+	}
+	if(h)
+	{
+		vec2 A = G.HookPos();
+		k = k * 64 + ((int64_t)std::floor(A.x / 64) & 63);
+		k = k * 64 + ((int64_t)std::floor(A.y / 64) & 63);
+	}
+	return k;
+}
+
+static void HookTargets(const CTasGame &G, std::vector<std::pair<int16_t, int16_t>> &vOut)
+{
+	vOut.clear();
+	const SMapInfo &M = CTasGame::Map();
+	vec2 P = G.Pos();
+	const float Range = gs_P.m_HookRange + 4.0f * length(G.Vel());
+	std::vector<int> vSeen;
+	for(int a = 0; a < gs_P.m_Angles; a++)
+	{
+		float Ang = 2 * pi * a / gs_P.m_Angles;
+		vec2 D(std::cos(Ang), std::sin(Ang));
+		int Hit = -1;
+		for(float r = 42.0f; r < Range; r += 4.0f)
+		{
+			vec2 Q = P + D * r;
+			int tx = (int)std::floor(Q.x / 32), ty = (int)std::floor(Q.y / 32);
+			int T = M.Tile(tx, ty);
+			if(T == TILE_SOLID)
+			{
+				Hit = ty * M.m_W + tx;
+				break;
+			}
+			if(T == TILE_NOHOOK)
+				break;
+		}
+		if(Hit < 0 || (gs_P.m_HookDedup && std::find(vSeen.begin(), vSeen.end(), Hit) != vSeen.end()))
+			continue;
+		vSeen.push_back(Hit);
+		int16_t TX = (int16_t)std::lround(D.x * 1000), TY = (int16_t)std::lround(D.y * 1000);
+		if(!TX && !TY)
+			TY = -1;
+		vOut.push_back({TX, TY});
+	}
+}
+
+// shot directions whose ray meets a solid tile within range (explosions far away don't matter)
+static void FireTargets(const CTasGame &G, std::vector<std::pair<int16_t, int16_t>> &vOut)
+{
+	vOut.clear();
+	const SMapInfo &M = CTasGame::Map();
+	vec2 P = G.Pos();
+	for(int a = 0; a < gs_P.m_FireAngles; a++)
+	{
+		float Ang = 2 * pi * a / gs_P.m_FireAngles;
+		vec2 D(std::cos(Ang), std::sin(Ang));
+		bool Hit = false;
+		for(float r = 8.0f; r < gs_P.m_FireRange; r += 6.0f)
+		{
+			vec2 Q = P + D * r;
+			if(M.Tile((int)std::floor(Q.x / 32), (int)std::floor(Q.y / 32)) == TILE_SOLID)
+			{
+				Hit = true;
+				break;
+			}
+		}
+		if(!Hit)
+			continue;
+		int16_t TX = (int16_t)std::lround(D.x * 1000), TY = (int16_t)std::lround(D.y * 1000);
+		if(!TX && !TY)
+			TY = -1;
+		vOut.push_back({TX, TY});
+	}
+}
+
+// edge-refined shot aims: scan coarse angles, bisect where the explosion point or time jumps (side faces and
+// corners of blocks), keep aims whose explosion comes 4..padrange ticks later near where the tee is heading
+static void PadAims(const CTasGame &G, std::vector<std::pair<int16_t, int16_t>> &vOut)
+{
+	vOut.clear();
+	static thread_local CTasGame s_T;
+	const int N = gs_P.m_PadAims;
+	struct SShot
+	{
+		bool m_Ok;
+		vec2 m_E;
+		int m_T;
+	};
+	auto Shoot = [&](float Ang) {
+		SShot R{false, vec2(0, 0), 0};
+		s_T.CopyFrom(G);
+		STasInput In;
+		In.m_Dir = 0;
+		In.m_Hook = G.m_LastHook;
+		In.m_Jump = G.m_LastJump;
+		In.m_Fire = 1;
+		In.m_Weapon = 3;
+		In.m_TX = (int16_t)std::lround(std::cos(Ang) * 1000);
+		In.m_TY = (int16_t)std::lround(std::sin(Ang) * 1000);
+		if(!In.m_TX && !In.m_TY)
+			In.m_TY = -1;
+		s_T.Step(In);
+		R.m_Ok = s_T.NextExplosion(R.m_E, R.m_T);
+		R.m_T -= G.m_Tick;
+		return R;
+	};
+	const vec2 P = G.Pos(), V = G.Vel();
+	auto Useful = [&](const SShot &S) {
+		if(!S.m_Ok || S.m_T < 4 || S.m_T > gs_P.m_PadRange)
+			return false;
+		vec2 Pred = P + V * (S.m_T * 0.85f);
+		return distance(Pred, S.m_E) < 140.0f;
+	};
+	auto Emit = [&](float Ang) {
+		int16_t TX = (int16_t)std::lround(std::cos(Ang) * 1000), TY = (int16_t)std::lround(std::sin(Ang) * 1000);
+		if(!TX && !TY)
+			TY = -1;
+		for(auto &q : vOut)
+			if(q.first == TX && q.second == TY)
+				return;
+		vOut.push_back({TX, TY});
+	};
+	std::vector<SShot> vS(N);
+	for(int a = 0; a < N; a++)
+		vS[a] = Shoot(2 * pi * a / N);
+	for(int a = 0; a < N; a++)
+	{
+		const SShot &A = vS[a], &B = vS[(a + 1) % N];
+		bool Jump = A.m_Ok != B.m_Ok || distance(A.m_E, B.m_E) > 40.0f || std::abs(A.m_T - B.m_T) > 2;
+		if(!Jump)
+		{
+			if(Useful(A))
+				Emit(2 * pi * a / N);
+			continue;
+		}
+		if(!Useful(A) && !Useful(B))
+			continue;
+		float Lo = 2 * pi * a / N, Hi = 2 * pi * (a + 1) / N;
+		SShot SL = A;
+		for(int k = 0; k < 8; k++)
+		{
+			float Mid = 0.5f * (Lo + Hi);
+			SShot M = Shoot(Mid);
+			if(M.m_Ok == SL.m_Ok && distance(M.m_E, SL.m_E) <= 40.0f && std::abs(M.m_T - SL.m_T) <= 2)
+			{
+				Lo = Mid;
+				SL = M;
+			}
+			else
+				Hi = Mid;
+		}
+		SShot SH = Shoot(Hi);
+		if(Useful(SL))
+			Emit(Lo);
+		if(Useful(SH))
+			Emit(Hi);
+	}
+}
+
+static void GenActions(const CTasGame &G, const STasInput &Prev, std::vector<STasInput> &vOut, bool Pad = false)
+{
+	vOut.clear();
+	static thread_local std::vector<std::pair<int16_t, int16_t>> s_vHooks, s_vFire;
+	const bool Hooking = G.m_LastHook;
+	if(!Hooking)
+		HookTargets(G, s_vHooks);
+	const bool CanJump = !G.m_LastJump && (G.Grounded() || !(G.Jumped() & 2));
+	const int Weapon = G.HasGrenade() ? 3 : -1;
+	const bool CanFire = gs_P.m_Fire && G.HasGrenade() && G.ActiveWeapon() == 3 && G.ReloadTimer() == 0 && !Prev.m_Fire;
+	if(CanFire)
+	{
+		FireTargets(G, s_vFire);
+		if(Pad && gs_P.m_PadAims > 0)
+		{
+			static thread_local std::vector<std::pair<int16_t, int16_t>> s_vPad;
+			PadAims(G, s_vPad);
+			if(getenv("SEG_PADDBG") && !s_vPad.empty())
+				std::printf("pad: tick %d pos %.0f %.0f %zu aims\n", G.m_Tick, G.Pos().x, G.Pos().y, s_vPad.size());
+			for(auto &q : s_vPad)
+				if(std::find(s_vFire.begin(), s_vFire.end(), q) == s_vFire.end())
+					s_vFire.push_back(q);
+		}
+	}
+	int DirLo = -1, DirHi = 1;
+	if(gs_P.m_DirTan)
+	{
+		vec2 Tg = gs_Ref.Tangent(G.m_RefIdx);
+		if(Tg.x > 0.3f)
+			DirLo = DirHi = 1;
+		else if(Tg.x < -0.3f)
+			DirLo = DirHi = -1;
+	}
+	for(int Dir = DirLo; Dir <= DirHi; Dir++)
+		for(int Jump = 0; Jump <= (CanJump ? 1 : 0); Jump++)
+		{
+			STasInput In;
+			In.m_Dir = Dir;
+			In.m_Jump = Jump;
+			In.m_Weapon = Weapon;
+			In.m_TX = Prev.m_TX;
+			In.m_TY = Prev.m_TY;
+			In.m_Hook = Hooking;
+			vOut.push_back(In);
+			if(Hooking)
+			{
+				STasInput R = In;
+				R.m_Hook = 0;
+				vOut.push_back(R);
+			}
+			else
+				for(auto [TX, TY] : s_vHooks)
+				{
+					STasInput H = In;
+					H.m_Hook = 1;
+					H.m_TX = TX;
+					H.m_TY = TY;
+					vOut.push_back(H);
+				}
+			// shots keep the hook as it is (the hook's direction is fixed at launch)
+			int FireDir = 1;
+			{
+				vec2 Tg = gs_Ref.Tangent(G.m_RefIdx);
+				FireDir = Tg.x >= 0 ? 1 : -1;
+			}
+			if(CanFire && Jump == 0 && (gs_P.m_FireAllDirs || Dir == FireDir))
+				for(auto [TX, TY] : s_vFire)
+				{
+					STasInput F = In;
+					F.m_Fire = 1;
+					F.m_TX = TX;
+					F.m_TY = TY;
+					vOut.push_back(F);
+				}
+		}
+}
+
+static bool Survives(const CTasGame &G, int N)
+{
+	if(G.Frozen() || G.EnteredFreeze())
+		return false;
+	vec2 aPos[128];
+	N = std::min(N, 128);
+	for(int d = 1; d >= -1; d--)
+	{
+		if(G.Rollout(N, d, true, aPos) == N)
+			return true;
+		if(G.m_LastHook && G.Rollout(N, d, false, aPos) == N)
+			return true;
+	}
+	static thread_local std::vector<std::pair<int16_t, int16_t>> s_vHooks;
+	HookTargets(G, s_vHooks);
+	for(auto [TX, TY] : s_vHooks)
+		for(int d = 1; d >= -1; d--)
+			if(G.RolloutHook(N, d, TX, TY, aPos) == N)
+				return true;
+	return false;
+}
+
+struct SCand
+{
+	float m_S; // estimated total (lower better)
+	int m_Parent;
+	STasInput m_In;
+	int64_t m_Key;
+	uint64_t m_Hash;
+	float m_Ee;
+	int m_Rt;
+	int m_Ref;
+};
+
+struct SGate
+{
+	float m_V = 1e30f; // lower better
+	int m_Step = -1, m_Parent = -1;
+	STasInput m_In;
+	int m_Rt = 0;
+	float m_Ee = 0;
+	vec2 m_Pos, m_Vel;
+};
+
+static bool AtGate(const CTasGame &G)
+{
+	if(gs_P.m_Gate == "finish")
+		return G.m_FinishTick >= 0;
+	if(gs_P.m_Gate == "grenade")
+		return G.HasGrenade();
+	return G.m_RefIdx >= gs_Ref.m_GateIdx;
+}
+
+int main(int argc, const char **argv)
+{
+	if(argc < 2 || !CTasGame::LoadMap(argv[1]))
+	{
+		std::printf("usage: seg <map> prefix=FILE ref=TRACK gate=K|grenade|finish key=value...\n");
+		return 1;
+	}
+	for(int i = 2; i < argc; i++)
+	{
+		std::string A = argv[i];
+		size_t Eq = A.find('=');
+		if(Eq == std::string::npos)
+		{
+			std::printf("bad arg %s\n", argv[i]);
+			return 1;
+		}
+		std::string K = A.substr(0, Eq), V = A.substr(Eq + 1);
+		if(K == "beam") gs_P.m_Beam = std::stoi(V);
+		else if(K == "angles") gs_P.m_Angles = std::stoi(V);
+		else if(K == "maxticks") gs_P.m_MaxTicks = std::stoi(V);
+		else if(K == "threads") gs_P.m_Threads = std::stoi(V);
+		else if(K == "cpos") gs_P.m_CPos = std::stof(V);
+		else if(K == "cvel") gs_P.m_CVel = std::stof(V);
+		else if(K == "dom") gs_P.m_Dom = std::stoi(V);
+		else if(K == "out") gs_P.m_Out = V;
+		else if(K == "prefix") gs_P.m_Prefix = V;
+		else if(K == "ref") gs_P.m_Ref = V;
+		else if(K == "gate") gs_P.m_Gate = V;
+		else if(K == "hnow") gs_P.m_HNow = std::stof(V);
+		else if(K == "dirmode") gs_P.m_DirTan = V == "tan";
+		else if(K == "pjc") gs_P.m_PJC = std::stof(V);
+		else if(K == "pgc") gs_P.m_PGC = std::stof(V);
+		else if(K == "gcred") gs_P.m_GCred = std::stof(V);
+		else if(K == "fire") gs_P.m_Fire = std::stoi(V);
+		else if(K == "fireangles") gs_P.m_FireAngles = std::stoi(V);
+		else if(K == "firerange") gs_P.m_FireRange = std::stof(V);
+		else if(K == "firealldirs") gs_P.m_FireAllDirs = std::stoi(V);
+		else if(K == "pendlook") gs_P.m_PendLook = std::stoi(V);
+		else if(K == "survevery") gs_P.m_SurvEvery = std::stoi(V);
+		else if(K == "padaims") gs_P.m_PadAims = std::stoi(V);
+		else if(K == "padtop") gs_P.m_PadTop = std::stoi(V);
+		else if(K == "padrange") gs_P.m_PadRange = std::stoi(V);
+		else if(K == "firelook") gs_P.m_FireLook = std::stoi(V);
+		else if(K == "survive") gs_P.m_Survive = std::stoi(V);
+		else if(K == "hookrange") gs_P.m_HookRange = std::stof(V);
+		else if(K == "hookdedup") gs_P.m_HookDedup = std::stoi(V);
+		else if(K == "prefire") gs_P.m_Prefire = std::stoi(V);
+		else if(K == "shotref") gs_P.m_ShotRef = V;
+		else if(K == "shotbonus") gs_P.m_ShotBonus = std::stof(V);
+		else if(K == "shotrad") gs_P.m_ShotRad = std::stof(V);
+		else if(K == "gatewait") gs_P.m_GateWait = std::stoi(V);
+		else if(K == "quiet") gs_P.m_Quiet = std::stoi(V);
+		else if(K == "horizon") gs_P.m_Horizon = std::stoi(V);
+		else if(K == "sinks") gs_P.m_Sinks = V;
+		else if(K == "commitk") gs_P.m_CommitK = std::stoi(V);
+		else if(K == "ghost") gs_P.m_Ghost = std::stoi(V);
+		else if(K == "ghoste") gs_P.m_GhostE = std::stof(V);
+		else if(K == "vcap") gs_P.m_VCap = std::stof(V);
+		else if(K == "e4w") gs_P.m_GhostE4 = std::stof(V);
+		else if(K == "latpen") gs_P.m_LatPen = std::stof(V);
+		else if(K == "tpk") gs_P.m_TpK = std::stoi(V);
+		else if(K == "tpreload") gs_P.m_TpReload = std::stoi(V);
+		else if(K == "kcredit") gs_P.m_KCredit = std::stof(V);
+		else if(K == "track") gs_P.m_TrackW = std::stof(V);
+		else if(K == "trackoff") gs_P.m_TrackOff = std::stoi(V);
+		else if(K == "trackcap") gs_P.m_TrackCap = std::stof(V);
+		else if(K == "tracktie") gs_P.m_TrackTie = std::stof(V);
+		else if(K == "kready") gs_P.m_KReady = std::stoi(V);
+		else if(K == "tp") std::sscanf(V.c_str(), "%f,%f,%f,%f", &gs_P.m_TpPos.x, &gs_P.m_TpPos.y, &gs_P.m_TpVel.x, &gs_P.m_TpVel.y);
+		else if(K == "latdz") gs_P.m_LatDz = std::stof(V);
+		else if(K == "latk0") gs_P.m_LatK0 = std::stof(V);
+		else if(K == "latk1") gs_P.m_LatK1 = std::stof(V);
+		else if(K == "vmin") gs_P.m_VMin = std::stof(V);
+		else if(K == "brake") gs_P.m_Brake = std::stof(V);
+		else if(K == "brakepen") gs_P.m_BrakePen = std::stof(V);
+		else if(K == "ghostsink") gs_P.m_GhostSink = std::stof(V);
+		else
+		{
+			std::printf("unknown option %s\n", K.c_str());
+			return 1;
+		}
+	}
+	if(!gs_Ref.Load(gs_P.m_Ref.c_str()))
+	{
+		std::printf("cannot read %s\n", gs_P.m_Ref.c_str());
+		return 1;
+	}
+	// gate on the reference line: a Teero tick, or the end for grenade/finish gates
+	int GateIdx = (int)gs_Ref.m_vP.size() - 1;
+	{
+		const SMapInfo &M = CTasGame::Map();
+		// the route's grenade is the first one on the reference line (the finish room has more pickups)
+		float Best = 1e30f;
+		for(int y = 0; y < M.m_H; y++)
+			for(int x = 0; x < M.m_W; x++)
+				if(M.Tile(x, y) == ENTITY_OFFSET + ENTITY_WEAPON_GRENADE)
+				{
+					vec2 Gp(x * 32 + 16, y * 32 + 16);
+					int BestI = -1;
+					float BestD = 1e30f;
+					for(int i = 0; i < (int)gs_Ref.m_vP.size(); i++)
+						if(distance(gs_Ref.m_vP[i], Gp) < BestD)
+						{
+							BestD = distance(gs_Ref.m_vP[i], Gp);
+							BestI = i;
+						}
+					if(BestD < 200 && BestI >= 0 && BestI < Best)
+					{
+						Best = BestI;
+						gs_GrenIdx = BestI;
+					}
+				}
+	}
+	if(gs_P.m_Gate != "finish" && gs_P.m_Gate != "grenade")
+	{
+		int K = std::stoi(gs_P.m_Gate);
+		for(int i = 0; i < (int)gs_Ref.m_vK.size(); i++)
+			if(gs_Ref.m_vK[i] >= K)
+			{
+				GateIdx = i;
+				break;
+			}
+	}
+	else if(gs_P.m_Gate == "grenade")
+	{
+		// the reference point closest to the grenade pickup
+		const SMapInfo &M = CTasGame::Map();
+		vec2 Gp(0, 0);
+		for(int y = 0; y < M.m_H; y++)
+			for(int x = 0; x < M.m_W; x++)
+				if(M.Tile(x, y) == ENTITY_OFFSET + ENTITY_WEAPON_GRENADE)
+					Gp = vec2(x * 32 + 16, y * 32 + 16);
+		float Best = 1e30f;
+		for(int i = 0; i < (int)gs_Ref.m_vP.size(); i++)
+			if(distance(gs_Ref.m_vP[i], Gp) < Best)
+			{
+				Best = distance(gs_Ref.m_vP[i], Gp);
+				GateIdx = i;
+			}
+	}
+	int EndIdx = GateIdx;
+	while(EndIdx + 1 < (int)gs_Ref.m_vK.size() && gs_Ref.m_vK[EndIdx + 1] <= gs_Ref.m_vK[GateIdx] + gs_P.m_Horizon)
+		EndIdx++;
+	gs_Ref.Build(GateIdx, EndIdx);
+	gs_Ref.PrepCaps(gs_P.m_VCap, gs_P.m_VMin);
+	gs_Ref.PrepET();
+	if(!gs_P.m_ShotRef.empty())
+	{
+		LoadShotRef(gs_P.m_ShotRef.c_str());
+		std::printf("shotref: %zu reference explosions\n", gs_vShotRef.size());
+	}
+	{
+		size_t p = 0;
+		while(p < gs_P.m_Sinks.size())
+		{
+			size_t q = gs_P.m_Sinks.find(',', p);
+			if(q == std::string::npos)
+				q = gs_P.m_Sinks.size();
+			int K = std::stoi(gs_P.m_Sinks.substr(p, q - p));
+			for(int i = 0; i < (int)gs_Ref.m_vK.size(); i++)
+				if(gs_Ref.m_vK[i] >= K)
+				{
+					gs_Ref.m_vSinkIdx.push_back(i);
+					break;
+				}
+			p = q + 1;
+		}
+		std::sort(gs_Ref.m_vSinkIdx.begin(), gs_Ref.m_vSinkIdx.end());
+	}
+
+	auto t0 = std::chrono::steady_clock::now();
+	std::vector<STasInput> vPrefix = ReadInputs(gs_P.m_Prefix.c_str());
+	std::vector<std::unique_ptr<CTasGame>> vBeam;
+	std::vector<STasInput> vPrev;
+	std::vector<char> vDoomed;
+	{
+		auto G = std::make_unique<CTasGame>();
+		G->Spawn(CTasGame::Map().m_vSpawns[0]);
+		for(const auto &In : vPrefix)
+		{
+			G->Step(In);
+			UpdateTrack(*G);
+		}
+		if(!G->m_Started)
+		{
+			std::printf("the prefix must end after the start line\n");
+			return 1;
+		}
+		if(gs_P.m_TpK >= 0)
+		{
+			// diagnostics only: teleport after the prefix and set the race clock to Teero tick tpk
+			G->SetState(gs_P.m_TpPos, gs_P.m_TpVel);
+			G->Chr()->m_Core.m_HookState = HOOK_IDLE;
+			G->Chr()->m_Core.m_HookTick = 0;
+			G->m_LastHook = 0;
+			G->m_StartTick = G->m_Tick - gs_P.m_TpK;
+			if(gs_P.m_TpReload >= 0)
+				G->Chr()->m_ReloadTimer = gs_P.m_TpReload;
+			for(int i = 0; i < (int)gs_Ref.m_vK.size(); i++)
+				if(gs_Ref.m_vK[i] >= gs_P.m_TpK - 3)
+				{
+					G->m_RefIdx = i;
+					break;
+				}
+			UpdateTrack(*G);
+		}
+		float Ee;
+		float S = EstTotal(*G, &Ee);
+		std::printf("start: rt %d pos %.0f %.0f ref idx %d (teero tick %.0f) gate idx %d (tick %.0f) est total %.1f Ee %.0f gren idx %d has %d\n", G->m_Tick - G->m_StartTick, G->Pos().x, G->Pos().y,
+			G->m_RefIdx, gs_Ref.m_vK[G->m_RefIdx], gs_Ref.m_GateIdx, gs_Ref.m_vK[gs_Ref.m_GateIdx], S, Ee, gs_GrenIdx, (int)G->HasGrenade());
+		gs_vTickIdx.assign(4000, -1);
+		for(int i = 0; i < (int)gs_Ref.m_vK.size(); i++)
+		{
+			int K = (int)gs_Ref.m_vK[i];
+			if(K >= 0 && K < 4000 && gs_vTickIdx[K] < 0)
+				gs_vTickIdx[K] = i;
+		}
+		if(gs_P.m_TrackOff == -100000)
+			gs_P.m_TrackOff = (int)std::lround(gs_Ref.m_vK[G->m_RefIdx]) - (G->m_Tick - G->m_StartTick);
+		if(gs_P.m_TrackW > 0)
+			std::printf("tracking: offset %d (teero tick = race tick + offset)\n", gs_P.m_TrackOff);
+		vPrev.push_back(vPrefix.empty() ? STasInput{} : vPrefix.back());
+		vBeam.push_back(std::move(G));
+	}
+	std::vector<std::vector<std::pair<int, STasInput>>> vHist;
+	std::unordered_map<int64_t, float> Dom;
+	SGate BestGate;
+	std::mutex GateMx;
+	int FirstGateStep = -1;
+	const int NT = std::max(1, gs_P.m_Threads);
+
+	for(int Step = 0; Step < gs_P.m_MaxTicks && !vBeam.empty(); Step++)
+	{
+		if(FirstGateStep >= 0 && Step > FirstGateStep + gs_P.m_GateWait)
+			break;
+		std::vector<std::vector<SCand>> vTC(NT);
+		std::atomic<int> Next{0};
+		auto Worker = [&](int T) {
+			CTasGame Tmp, Look;
+			std::vector<STasInput> vActs;
+			while(true)
+			{
+				int i = Next.fetch_add(1);
+				if(i >= (int)vBeam.size())
+					break;
+				if(!vDoomed.empty() && vDoomed[i])
+					continue;
+				const CTasGame &G = *vBeam[i];
+				GenActions(G, vPrev[i], vActs, i < gs_P.m_PadTop);
+				for(const auto &In : vActs)
+				{
+					Tmp.CopyFrom(G);
+					Tmp.Step(In);
+					if(Tmp.Frozen() || Tmp.EnteredFreeze() || Tmp.m_StartTick == -2)
+					{
+						if(getenv("SEG_DBG") && Step < 30)
+							std::printf("drop step %d frz %d entered %d start %d pos %.0f %.0f\n", Step, Tmp.Frozen(), Tmp.EnteredFreeze(), Tmp.m_StartTick, Tmp.Pos().x, Tmp.Pos().y);
+						continue;
+					}
+					UpdateTrack(Tmp);
+					Tmp.m_TrackCost += TrackInc(Tmp);
+					ShotBonus(G, Tmp, In);
+					if(!Tmp.HasGrenade() && Tmp.m_RefIdx > gs_GrenIdx + 3)
+						continue; // passed the pickup without the grenade
+					const int Rt = Tmp.m_Tick - Tmp.m_StartTick;
+					if(AtGate(Tmp))
+					{
+						float Ee;
+						float V = gs_P.m_Gate == "finish" ? (float)(Tmp.m_FinishTick - Tmp.m_StartTick) : EstTotal(Tmp, &Ee);
+						// (EstTotal includes the time model's horizon beyond the gate, so energy at the gate counts)
+						if(gs_P.m_Gate == "finish")
+							Ee = EffEnergy(Tmp);
+						std::lock_guard<std::mutex> L(GateMx);
+						if(V < BestGate.m_V - 1e-4f && (gs_P.m_Gate == "finish" || Survives(Tmp, gs_P.m_Survive)))
+						{
+							BestGate.m_V = V;
+							BestGate.m_Step = Step;
+							BestGate.m_Parent = i;
+							BestGate.m_In = In;
+							BestGate.m_Rt = gs_P.m_Gate == "finish" ? Tmp.m_FinishTick - Tmp.m_StartTick : Rt;
+							BestGate.m_Ee = Ee;
+							BestGate.m_Pos = Tmp.Pos();
+							BestGate.m_Vel = Tmp.Vel();
+						}
+						continue;
+					}
+					const CTasGame *pEval = &Tmp;
+					if(gs_P.m_TrackW <= 0 && (In.m_Fire || (gs_P.m_PendLook && !gs_P.m_Prefire)) && Tmp.NumProjectiles() > 0)
+					{
+						// judge a shot after its explosion
+						Look.CopyFrom(Tmp);
+						STasInput L = In;
+						L.m_Fire = 0;
+						bool Dead = false;
+						for(int k = 0; k < gs_P.m_FireLook && Look.NumProjectiles() > 0; k++)
+						{
+							Look.Step(L);
+							UpdateTrack(Look);
+							if(Look.Frozen() || Look.EnteredFreeze() || Look.m_StartTick == -2)
+							{
+								Dead = true;
+								break;
+							}
+						}
+						if(Dead)
+							continue;
+						// prefire: a shot still in flight after the look is judged as if not fired yet
+						pEval = gs_P.m_Prefire && Look.NumProjectiles() > 0 ? &Tmp : &Look;
+					}
+					float Ee;
+					float S = EstTotal(*pEval, &Ee);
+					if(gs_P.m_TrackW > 0)
+						S = Tmp.m_TrackCost + gs_P.m_TrackTie * S;
+					S -= Tmp.m_Bonus;
+					vTC[T].push_back({S, i, In, CellKey(Tmp), Tmp.Hash(), Ee, Rt, Tmp.m_RefIdx});
+				}
+			}
+		};
+		std::vector<std::thread> vTh;
+		for(int T = 1; T < NT; T++)
+			vTh.emplace_back(Worker, T);
+		Worker(0);
+		for(auto &Th : vTh)
+			Th.join();
+		if(BestGate.m_Step >= 0 && FirstGateStep < 0)
+			FirstGateStep = Step;
+
+		std::vector<SCand> vAll;
+		for(auto &v : vTC)
+			vAll.insert(vAll.end(), v.begin(), v.end());
+		std::sort(vAll.begin(), vAll.end(), [](const SCand &a, const SCand &b) { return a.m_S != b.m_S ? a.m_S < b.m_S : a.m_Hash < b.m_Hash; });
+		std::unordered_set<uint64_t> Seen;
+		std::unordered_set<int64_t> Cells;
+		std::vector<SCand> vSel;
+		for(const auto &C : vAll)
+		{
+			if((int)vSel.size() >= gs_P.m_Beam)
+				break;
+			if(!Seen.insert(C.m_Hash).second || !Cells.insert(C.m_Key).second)
+				continue;
+			if(gs_P.m_Dom)
+			{
+				auto it = Dom.find(C.m_Key);
+				if(it != Dom.end() && it->second <= C.m_S + 0.5f)
+					continue;
+			}
+			vSel.push_back(C);
+		}
+		for(const auto &C : vSel)
+		{
+			float &D = Dom.try_emplace(C.m_Key, 1e30f).first->second;
+			D = std::min(D, C.m_S);
+		}
+		std::vector<std::unique_ptr<CTasGame>> vNew(vSel.size());
+		std::vector<STasInput> vNewPrev(vSel.size());
+		std::atomic<int> Next2{0};
+		auto Mat = [&]() {
+			while(true)
+			{
+				int k = Next2.fetch_add(1);
+				if(k >= (int)vSel.size())
+					break;
+				vNew[k] = std::make_unique<CTasGame>();
+				vNew[k]->CopyFrom(*vBeam[vSel[k].m_Parent]);
+				vNew[k]->Step(vSel[k].m_In);
+				UpdateTrack(*vNew[k]);
+				vNew[k]->m_TrackCost += TrackInc(*vNew[k]);
+				ShotBonus(*vBeam[vSel[k].m_Parent], *vNew[k], vSel[k].m_In);
+				vNewPrev[k] = vSel[k].m_In;
+			}
+		};
+		std::vector<std::thread> vTh2;
+		for(int T = 1; T < NT; T++)
+			vTh2.emplace_back(Mat);
+		Mat();
+		for(auto &Th : vTh2)
+			Th.join();
+		std::vector<std::pair<int, STasInput>> H(vSel.size());
+		for(size_t k = 0; k < vSel.size(); k++)
+			H[k] = {vSel[k].m_Parent, vSel[k].m_In};
+		vHist.push_back(std::move(H));
+		vBeam = std::move(vNew);
+		vPrev = std::move(vNewPrev);
+		vDoomed.assign(vBeam.size(), 0);
+		if(gs_P.m_SurvEvery > 0 && Step % gs_P.m_SurvEvery == 0)
+		{
+			std::atomic<int> Next3{0}, NDoomed{0};
+			auto Chk = [&]() {
+				while(true)
+				{
+					int k = Next3.fetch_add(1);
+					if(k >= (int)vBeam.size())
+						break;
+					if(!Survives(*vBeam[k], gs_P.m_Survive))
+					{
+						vDoomed[k] = 1;
+						NDoomed++;
+					}
+				}
+			};
+			std::vector<std::thread> vTh3;
+			for(int T = 1; T < NT; T++)
+				vTh3.emplace_back(Chk);
+			Chk();
+			for(auto &Th : vTh3)
+				Th.join();
+			if(NDoomed.load() == (int)vBeam.size())
+				vDoomed.assign(vBeam.size(), 0); // all doomed: keep searching anyway
+		}
+		if(!gs_P.m_Quiet && (Step % 10 == 0 || getenv("SEG_DBG")) && !vSel.empty())
+		{
+			const SCand &B = vSel[0];
+			double Sec = std::chrono::duration<double>(std::chrono::steady_clock::now() - t0).count();
+			std::printf("step %d beam %zu cands %zu best est %.1f rt %d ref %d (teero %.0f) Ee %.0f (%.0fs)\n", Step, vBeam.size(), vAll.size(), B.m_S, B.m_Rt, B.m_Ref,
+				gs_Ref.m_vK[std::clamp(B.m_Ref, 0, (int)gs_Ref.m_vK.size() - 1)], B.m_Ee, Sec);
+			std::fflush(stdout);
+		}
+	}
+	if(BestGate.m_Step < 0)
+	{
+		std::printf("NOGATE\n");
+		return 0;
+	}
+	std::vector<STasInput> vRun;
+	vRun.push_back(BestGate.m_In);
+	int Idx = BestGate.m_Parent;
+	for(int s = BestGate.m_Step - 1; s >= 0; s--)
+	{
+		vRun.push_back(vHist[s][Idx].second);
+		Idx = vHist[s][Idx].first;
+	}
+	std::reverse(vRun.begin(), vRun.end());
+	std::vector<STasInput> vAllIn = vPrefix;
+	vAllIn.insert(vAllIn.end(), vRun.begin(), vRun.end());
+	std::string Out = gs_P.m_Out + "0.txt";
+	WriteInputs(Out.c_str(), vAllIn);
+	std::printf("GATE rt %d value %.2f Ee %.0f pos %.0f %.0f vel %.2f %.2f -> %s (%zu inputs)\n", BestGate.m_Rt, BestGate.m_V, BestGate.m_Ee, BestGate.m_Pos.x, BestGate.m_Pos.y,
+		BestGate.m_Vel.x, BestGate.m_Vel.y, Out.c_str(), vAllIn.size());
+	if(getenv("SEG_DUMP"))
+	{
+		// per-tick trajectory of the result (after the prefix; teleport applied like the search)
+		CTasGame G;
+		G.Spawn(CTasGame::Map().m_vSpawns[0]);
+		for(const auto &In : vPrefix)
+		{
+			G.Step(In);
+			UpdateTrack(G);
+		}
+		if(gs_P.m_TpK >= 0)
+		{
+			G.SetState(gs_P.m_TpPos, gs_P.m_TpVel);
+			G.Chr()->m_Core.m_HookState = HOOK_IDLE;
+			G.Chr()->m_Core.m_HookTick = 0;
+			G.m_LastHook = 0;
+			G.m_StartTick = G.m_Tick - gs_P.m_TpK;
+			if(gs_P.m_TpReload >= 0)
+				G.Chr()->m_ReloadTimer = gs_P.m_TpReload;
+			for(int i = 0; i < (int)gs_Ref.m_vK.size(); i++)
+				if(gs_Ref.m_vK[i] >= gs_P.m_TpK - 3)
+				{
+					G.m_RefIdx = i;
+					break;
+				}
+			UpdateTrack(G);
+		}
+		for(const auto &In : vRun)
+		{
+			G.Step(In);
+			UpdateTrack(G);
+			vec2 P = G.Pos(), V = G.Vel();
+			std::printf("D rt %d ref %.0f pos %.0f %.0f vel %.2f %.2f |v| %.2f E %.0f in %d %d %d %d %d %d hook %d jumped %d gr %d reload %d proj %d\n", G.m_Tick - G.m_StartTick,
+				gs_Ref.m_vK[G.m_RefIdx], P.x, P.y, V.x, V.y, length(V), dot(V, V) - P.y, In.m_Dir, In.m_Jump, In.m_Hook, In.m_Fire, In.m_TX, In.m_TY, G.HookState(), G.Jumped(),
+				(int)G.Grounded(), G.ReloadTimer(), G.NumProjectiles());
+		}
+	}
+	if(gs_P.m_CommitK >= 0)
+	{
+		int CIdx = (int)gs_Ref.m_vK.size() - 1;
+		for(int i = 0; i < (int)gs_Ref.m_vK.size(); i++)
+			if(gs_Ref.m_vK[i] >= gs_P.m_CommitK)
+			{
+				CIdx = i;
+				break;
+			}
+		CTasGame G;
+		G.Spawn(CTasGame::Map().m_vSpawns[0]);
+		size_t n = 0;
+		for(; n < vAllIn.size(); n++)
+		{
+			G.Step(vAllIn[n]);
+			UpdateTrack(G);
+			if(n + 1 > vPrefix.size() && G.m_RefIdx >= CIdx)
+			{
+				n++;
+				break;
+			}
+		}
+		std::vector<STasInput> vC(vAllIn.begin(), vAllIn.begin() + std::min(n, vAllIn.size()));
+		std::string OutC = gs_P.m_Out + "c.txt";
+		WriteInputs(OutC.c_str(), vC);
+		std::printf("COMMIT %zu inputs rt %d ref %d (teero %.0f) -> %s\n", vC.size(), G.m_Tick - G.m_StartTick, G.m_RefIdx, gs_Ref.m_vK[G.m_RefIdx], OutC.c_str());
+	}
+	return 0;
+}
