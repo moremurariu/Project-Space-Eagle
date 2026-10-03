@@ -264,3 +264,12 @@ Findings:
   kready 10): **2860 ticks (57.20 s), server-checked** (runs/tpost/a.txt). Old best 57.08 still better: tas lost
   ~45 ticks against its own estimate in the last third.
 - lnstas.py: LNS on a complete run with tas (random cut after cutmin, randomized settings, keep finish improvements).
+- **LNS (lnstas.py t1) on the 2860 run:** 2853 (cut 2542), 2834 (cut 1676), 2827 (cut 2114), **2808 (cut 1612, beam 2000
+  kcredit 1.5 kready 12 energyshare 0.4 jumpenergy 150 vref 30; 56.16 s, server-checked, tas-work/best_56.16.txt)**.
+  Long re-searches from early cuts vary by +-50 ticks, so they're worth drawing.
+- **Teero's exit stack reproduced:** pfperturb.py nudges the hook-only climb (dir held for 1-6 ticks between pickup+10
+  and +36) and runs pf on each. Nudging left at +28..+34 lets pf find his stack: pre-fire at pickup+16..17 aimed
+  258.9-260 deg + point-blank off the L-arm at +42 (aim ~187 deg). pf now also requires the result to survive 15 ticks
+  under simple rollouts (`survive=15`); without it the best stacks (28.5 px/t) exit into the row-60 freeze.
+  With survival: exit 25-28 px/t, est. 1170.3 vs 1172.1; seg from it reaches k1100 at **1163** (was 1165-1168).
+- The work is saved in the GitHub repo (branch claude/fervent-cray-0pser4, folder aip-tas-work/) via sync_repo.sh.
