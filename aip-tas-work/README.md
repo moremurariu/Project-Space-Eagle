@@ -38,7 +38,7 @@ uncommitted work included. TAS sources are in `ddnet/src/tas/`.
   test beds, and the log. The newest section ("Corridor 1 beaten") explains this session's results.
 
 ## Full-run attempt (Oct 3): goal < 50 s (< 2500 race ticks), no double start
-**Not reached.** Best complete run: **2805 ticks (56.10 s)**, `tas-work/best_56.10.txt`, from the tas LNS on the new pipeline
+**Not reached.** Best complete run: **2804 ticks (56.08 s)**, `tas-work/best_56.08.txt` (LNS + polish), from the tas LNS on the new pipeline
 (`tas-work/runs/lnstas/t1/best.txt`, server-check with `TasReplay`; the LNS keeps improving it while it runs).
 Pipeline: pre-start + corridors with `seg` chains (`rh.py`), grenade pickup + shaft exit with `gren.py` (`seg` climbs
 + `pf` stack brute force), post-grenade with the old `tas` search to the finish, then `lnstas.py` (re-search from random
