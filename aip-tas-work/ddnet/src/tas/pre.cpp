@@ -109,6 +109,8 @@ struct SPreParams
 	int m_PostDir1 = 0; // after the start only hold right (all our corridor runs do)
 	float m_GhostShare = 0; // part of the post beam ranked with a penalty for leaving the reference height
 	float m_GhostMu = 1; // ticks per tile of height difference
+	int m_RotHook = 0; // add 'rotation pulse' hooks: the angle that turns the velocity most towards +x without
+	                   // raising |v|, if a solid tile is within the first-tick hook reach (grab + pull same tick)
 };
 static std::atomic<float> s_BestCont{-1e30f};
 static std::atomic<float> s_BestGate{-1e30f};
@@ -187,6 +189,96 @@ static void HookTargets(const CTasGame &G, std::vector<std::pair<int16_t, int16_
 	}
 }
 
+// Rotation pulse: a hook fired at a solid tile 46..122 px away grabs and pulls in the same tick, exactly along the
+// aim. Above 15 px/t the pull only applies if it does not raise |v|, so the best pulse is the one on that boundary
+// that adds the most vx: a near-lossless turn of the velocity towards +x (damps a rise with the floor below, or
+// turns a fall with the ceiling above). Returns up to 3 aims (boundary, and 1 / 3 degrees inside it).
+static void RotHookAims(const CTasGame &G, int Dir, int Jump, std::vector<std::pair<int16_t, int16_t>> &vOut)
+{
+	vOut.clear();
+	const SMapInfo &M = CTasGame::Map();
+	vec2 P = G.Pos(), V = G.Vel();
+	V.y += 0.5f;
+	if(Jump)
+	{
+		if(G.Grounded())
+			V.y = -13.2f;
+		else if(!(G.Jumped() & 2))
+			V.y = -12.0f;
+	}
+	const bool Gr = G.Grounded();
+	const float Acc = Gr ? 2.0f : 1.5f, Max = Gr ? 10.0f : 5.0f;
+	if(Dir == 0)
+		V.x *= Gr ? 0.5f : 0.95f;
+	else if(Dir > 0 && V.x <= Max)
+		V.x = std::min(V.x + Acc, Max);
+	else if(Dir < 0 && V.x >= -Max)
+		V.x = std::max(V.x - Acc, -Max);
+	const float L0 = length(V);
+	float BestVx = V.x + 0.02f;
+	int BestI = -100000;
+	auto Reach = [&](float Ang) {
+		vec2 D(std::cos(Ang), std::sin(Ang));
+		for(float r = 42.0f; r <= 122.0f; r += 1.0f)
+		{
+			vec2 Q = P + D * r;
+			int T = M.Tile((int)std::floor(Q.x / 32), (int)std::floor(Q.y / 32));
+			if(T == TILE_SOLID)
+				return r > 47.0f;
+			if(T == TILE_NOHOOK)
+				return false;
+		}
+		return false;
+	};
+	auto NewV = [&](int i) {
+		float Ang = i * pi / 720.0f;
+		vec2 H(std::cos(Ang) * 3.0f, std::sin(Ang) * 3.0f);
+		if(H.y > 0)
+			H.y *= 0.3f;
+		H.x *= ((H.x < 0 && Dir < 0) || (H.x > 0 && Dir > 0)) ? 0.95f : 0.75f;
+		return V + H;
+	};
+	for(int i = -720; i < 720; i++)
+	{
+		vec2 N = NewV(i);
+		float Ln = length(N);
+		if(!(Ln < 15.0f - 0.01f || Ln < L0 - 0.004f))
+			continue;
+		if(N.x * (Dir ? Dir : 1) <= BestVx * (Dir ? Dir : 1))
+			continue;
+		if(!Reach(i * pi / 720.0f))
+			continue;
+		BestVx = N.x;
+		BestI = i;
+	}
+	if(BestI == -100000)
+		return;
+	// inside the boundary = further from the velocity's own direction
+	for(int k = 0; k < 3; k++)
+	{
+		int i = BestI;
+		if(k)
+		{
+			int Off = k == 1 ? 4 : 12; // 1 and 3 degrees
+			int i1 = BestI + Off, i2 = BestI - Off;
+			vec2 N1 = NewV(i1), N2 = NewV(i2);
+			bool Ok1 = length(N1) < L0 - 0.004f && Reach(i1 * pi / 720.0f);
+			bool Ok2 = length(N2) < L0 - 0.004f && Reach(i2 * pi / 720.0f);
+			if(Ok1 && (!Ok2 || N1.x * Dir > N2.x * Dir))
+				i = i1;
+			else if(Ok2)
+				i = i2;
+			else
+				continue;
+		}
+		float Ang = i * pi / 720.0f;
+		int16_t TX = (int16_t)std::lround(std::cos(Ang) * 1000), TY = (int16_t)std::lround(std::sin(Ang) * 1000);
+		if(!TX && !TY)
+			continue;
+		vOut.push_back({TX, TY});
+	}
+}
+
 static void GenActions(const CTasGame &G, const STasInput &Prev, std::vector<STasInput> &vOut)
 {
 	vOut.clear();
@@ -213,6 +305,7 @@ static void GenActions(const CTasGame &G, const STasInput &Prev, std::vector<STa
 				vOut.push_back(In);
 			}
 			else
+			{
 				for(auto [TX, TY] : s_vHooks)
 				{
 					STasInput H = In;
@@ -221,6 +314,20 @@ static void GenActions(const CTasGame &G, const STasInput &Prev, std::vector<STa
 					H.m_TY = TY;
 					vOut.push_back(H);
 				}
+				if(gs_P.m_RotHook)
+				{
+					static thread_local std::vector<std::pair<int16_t, int16_t>> s_vRot;
+					RotHookAims(G, Dir, Jump, s_vRot);
+					for(auto [TX, TY] : s_vRot)
+					{
+						STasInput H = In;
+						H.m_Hook = 1;
+						H.m_TX = TX;
+						H.m_TY = TY;
+						vOut.push_back(H);
+					}
+				}
+			}
 		}
 }
 
@@ -673,6 +780,7 @@ int main(int argc, const char **argv)
 		else if(K == "ghostshare") gs_P.m_GhostShare = std::stof(V);
 		else if(K == "ghostmu") gs_P.m_GhostMu = std::stof(V);
 		else if(K == "postymax") gs_P.m_PostYMax = std::stof(V);
+		else if(K == "rothook") gs_P.m_RotHook = std::stoi(V);
 		else if(K == "polish") PolishIn = V;
 		else if(K == "seconds") PolishSec = std::stod(V);
 		else if(K == "jv") gs_JV = std::stof(V);

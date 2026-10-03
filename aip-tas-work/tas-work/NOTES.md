@@ -273,3 +273,21 @@ Findings:
   under simple rollouts (`survive=15`); without it the best stacks (28.5 px/t) exit into the row-60 freeze.
   With survival: exit 25-28 px/t, est. 1170.3 vs 1172.1; seg from it reaches k1100 at **1163** (was 1165-1168).
 - The work is saved in the GitHub repo (branch claude/fervent-cray-0pser4, folder aip-tas-work/) via sync_repo.sh.
+
+## Corridor 1 vs Teero, measured (session of Oct 3)
+User's video measurement (teero/hpos_first7s.csv, hspeed_first7s.csv; compare with `teerox.py RUN`): Teero leads
+c1_best by -17 px at race tick 20, -77 at 60 (flat to 120), -120 at 200+; his x > 8800 is ~293 in our clock.
+### Two facts that explain it
+- **Positions are rounded to whole pixels every tick** (CCharacterCore::Write / Quantize), and the velocity ramp only
+  scales x. So free-flight progress is exactly round(vx * ramp(|v|)) px per tick: 22 for vx 24.55 (our arc after
+  the line), 23 needs vx*ramp >= 22.5 (vx >= 25.4 at vy 0), 24 needs >= 23.5 (vx ~26.65), 25 covers vx ~28.3-30.1.
+  Teero's data is exactly this staircase: 22.1 (rt 0-5), 23.0 (rt 5-30), 23.9 (rt 30-55), 25.00 (rt 55-95, same as
+  ours: our extra vx 29.46 vs his ~28.5 buys nothing inside the 25 band).
+- **Rotation pulses.** A hook fired at a solid tile within the first-tick reach (42..122 px along the aim) grabs and
+  pulls in the same tick, exactly along the aim; release next tick, fire again the tick after. Above 15 px/t the
+  pull only applies if |v| does not grow, so the best aim is on that boundary: a near-lossless turn of v towards +x.
+  After the line (rising at -11.5) pulses at the floor below (aim ~82-89 deg down) damp the rise and add vx:
+  vx 24.55 -> 25.76 in 10 ticks, peak y 394 instead of 330, 23 px/tick from rt 5 (x at rt 20: 1446; Teero 1447,
+  c1_best 1430). `rotpulse.py PREFIX N [down|up|any]` does this by hand; `pre ... rothook=1` adds these aims
+  (boundary aim and 1 / 3 deg inside it) to the search's hook set (the per-tile dedup of the normal hook targets
+  can't express them: they need sub-tile precision).
