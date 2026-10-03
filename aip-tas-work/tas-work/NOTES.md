@@ -334,3 +334,11 @@ c1_best by -17 px at race tick 20, -77 at 60 (flat to 120), -120 at 200+; his x 
 - `imit=teero/teero_inputs_pre_grenade.csv` (seg: dir / jump / hook aims restricted to Teero's within +-imitw ticks,
   race tick = s_since_start*50 - 3.2): 964-981 (much worse); with the normal hook targets too: 957. Not useful.
 - `lnsseg.py BEST DIR minutes= workers= cutmin= rt=`: LNS to the pickup (gate=grenade), random seg variants.
+- Energy vs Teero (by nearest point): equal within +-90 up to k700; the far-left U-turn (k700-740) costs -112 and the
+  deficit grows to -179 by k900 (lag +1 -> +12). Cause: we land on the corner of the bare block (x 256-288, top y 1728)
+  at vy 16.8 (rt 734, v^2 -280); Teero turns the fall earlier with a long held hook (aim -59 deg, k720-733) and passes
+  ~5 px over the corner at vy ~8, then skims ~26 px above the freeze floor (y 1856).
+  Window rt 690 -> k790: base 797 (lands), pjc=pgc=40 797 (lands), ghost=3 796 (lands), **dirmode=tan cpos=8 cvel=1: 797
+  without landing, Ee -695 vs -865**. Pickup searches from that state (cut rt 760): 996 (tan+cpos8), 997, 1001, 1002.
+  **pregren_996.txt: pickup at race tick 996.**
+- LNS (lnsseg.py, 4 workers, 70 min): 998 -> 997 (cut 957); early cuts (595-761) gave 1001-1009.
