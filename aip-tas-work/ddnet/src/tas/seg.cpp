@@ -109,6 +109,12 @@ struct SParams
 	int m_Survive = 20;
 	float m_HookRange = 420;
 	int m_Quant = 0; // speed terms use the whole-pixel displacement per tick (positions are rounded every tick)
+	std::string m_Imit; // Teero's per-frame inputs (csv: s_since_start, dir, jump_arrow, aim_tx, aim_ty): restrict
+	                    // dir / jump / hook aims to his within +-ImitW ticks (hook press timing stays free)
+	float m_ImitOff = -3.2f; // race tick = s_since_start * 50 + ImitOff
+	int m_ImitW = 2;
+	int m_ImitHooks = 0; // also keep the normal hook targets
+	int m_ImitDir = 1; // restrict dir (0: all dirs)
 	int m_RotHook = 0; // add rotation-pulse hook aims (first-tick grab, boundary of |v| growth, turn towards the reference tangent)
 	int m_HookLA = 0; // score a flying / held hook by its predicted first applied pull within this many ticks
 	float m_HookIdle = 0.02f; // ... a hook predicted to never pull costs this (ticks)
@@ -793,6 +799,59 @@ static void PadAims(const CTasGame &G, std::vector<std::pair<int16_t, int16_t>> 
 	}
 }
 
+struct SImitTick
+{
+	int m_Dir = 0, m_Jump = 0, m_Known = 0;
+	int16_t m_TX = 1000, m_TY = 0;
+};
+static std::vector<SImitTick> gs_vImit; // index = race tick + 100
+static void LoadImit(const char *pPath)
+{
+	FILE *f = std::fopen(pPath, "r");
+	if(!f)
+	{
+		std::printf("cannot read %s\n", pPath);
+		std::exit(1);
+	}
+	char aLine[512];
+	std::fgets(aLine, sizeof(aLine), f); // header: frame,video_s,s_since_start,A_left,D_right,dir,jump_arrow,aim_angle_deg,aim_tx,aim_ty,...
+	gs_vImit.assign(1400, SImitTick());
+	std::vector<float> vBest(1400, 1e9f);
+	while(std::fgets(aLine, sizeof(aLine), f))
+	{
+		int Frame, A, D, Dir, J, TX, TY;
+		float Vs, S, Ang;
+		if(std::sscanf(aLine, "%d,%f,%f,%d,%d,%d,%d,%f,%d,%d", &Frame, &Vs, &S, &A, &D, &Dir, &J, &Ang, &TX, &TY) != 10)
+			continue;
+		float Rt = S * 50.0f + gs_P.m_ImitOff;
+		int R = (int)std::lround(Rt);
+		for(int r = R - 1; r <= R + 1; r++)
+		{
+			int i = r + 100;
+			if(i < 0 || i >= (int)gs_vImit.size())
+				continue;
+			float d = std::fabs(Rt - r);
+			if(d < vBest[i])
+			{
+				vBest[i] = d;
+				gs_vImit[i].m_Dir = Dir;
+				gs_vImit[i].m_Jump = J;
+				gs_vImit[i].m_TX = (int16_t)TX;
+				gs_vImit[i].m_TY = (int16_t)TY;
+				gs_vImit[i].m_Known = 1;
+			}
+		}
+	}
+	std::fclose(f);
+}
+static const SImitTick *ImitAt(int Rt)
+{
+	int i = Rt + 100;
+	if(i < 0 || i >= (int)gs_vImit.size() || !gs_vImit[i].m_Known)
+		return nullptr;
+	return &gs_vImit[i];
+}
+
 // velocity right after this tick's gravity / jump / direction input (before the hook)
 static vec2 PreHookVel(const CTasGame &G, int Dir, int Jump)
 {
@@ -968,6 +1027,38 @@ static void GenActions(const CTasGame &G, const STasInput &Prev, std::vector<STa
 					s_vFire.push_back(q);
 		}
 	}
+	// imitation: Teero's dirs / jumps / aims around this race tick
+	bool Imit = !gs_vImit.empty() && G.m_Started;
+	bool ImitDir[3] = {false, false, false};
+	bool ImitJump = false;
+	static thread_local std::vector<std::pair<int16_t, int16_t>> s_vImitAims;
+	if(Imit)
+	{
+		const int Rt = G.m_Tick - G.m_StartTick + 1;
+		s_vImitAims.clear();
+		int Known = 0;
+		for(int d = -gs_P.m_ImitW; d <= gs_P.m_ImitW; d++)
+		{
+			const SImitTick *p = ImitAt(Rt + d);
+			if(!p)
+				continue;
+			Known++;
+			ImitDir[p->m_Dir + 1] = true;
+			if(p->m_Jump)
+				ImitJump = true;
+			std::pair<int16_t, int16_t> A{p->m_TX, p->m_TY};
+			if(std::find(s_vImitAims.begin(), s_vImitAims.end(), A) == s_vImitAims.end())
+				s_vImitAims.push_back(A);
+		}
+		if(!Known)
+			Imit = false;
+		else if(!gs_P.m_ImitHooks)
+			s_vHooks.clear();
+		if(Imit && !Hooking)
+			for(auto &A : s_vImitAims)
+				if(std::find(s_vHooks.begin(), s_vHooks.end(), A) == s_vHooks.end())
+					s_vHooks.push_back(A);
+	}
 	int DirLo = -1, DirHi = 1;
 	if(gs_P.m_DirTan)
 	{
@@ -980,6 +1071,10 @@ static void GenActions(const CTasGame &G, const STasInput &Prev, std::vector<STa
 	for(int Dir = DirLo; Dir <= DirHi; Dir++)
 		for(int Jump = 0; Jump <= (CanJump ? 1 : 0); Jump++)
 		{
+			if(Imit && gs_P.m_ImitDir && !ImitDir[Dir + 1])
+				continue;
+			if(Imit && Jump && !ImitJump)
+				continue;
 			STasInput In;
 			In.m_Dir = Dir;
 			In.m_Jump = Jump;
@@ -1136,6 +1231,11 @@ int main(int argc, const char **argv)
 		else if(K == "hookrange") gs_P.m_HookRange = std::stof(V);
 		else if(K == "hookdedup") gs_P.m_HookDedup = std::stoi(V);
 		else if(K == "rothook") gs_P.m_RotHook = std::stoi(V);
+		else if(K == "imit") gs_P.m_Imit = V;
+		else if(K == "imitoff") gs_P.m_ImitOff = std::stof(V);
+		else if(K == "imitw") gs_P.m_ImitW = std::stoi(V);
+		else if(K == "imithooks") gs_P.m_ImitHooks = std::stoi(V);
+		else if(K == "imitdir") gs_P.m_ImitDir = std::stoi(V);
 		else if(K == "quant") gs_P.m_Quant = std::stoi(V);
 		else if(K == "hookla") gs_P.m_HookLA = std::stoi(V);
 		else if(K == "hookidle") gs_P.m_HookIdle = std::stof(V);
@@ -1239,6 +1339,8 @@ int main(int argc, const char **argv)
 	gs_Ref.Build(GateIdx, EndIdx);
 	gs_Ref.PrepCaps(gs_P.m_VCap, gs_P.m_VMin);
 	gs_Ref.PrepET();
+	if(!gs_P.m_Imit.empty())
+		LoadImit(gs_P.m_Imit.c_str());
 	if(!gs_P.m_ShotRef.empty())
 	{
 		LoadShotRef(gs_P.m_ShotRef.c_str());

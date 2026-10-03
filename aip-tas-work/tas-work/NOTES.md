@@ -323,3 +323,14 @@ c1_best by -17 px at race tick 20, -77 at 60 (flat to 120), -120 at 200+; his x 
   Losses: ~1% up to k802, ~6% in k802-952 (lagtrack: +4 at rt 780 -> +14 at 960).
 - Clock check: the user's input csv has s_since_start = video - 1.383; the race clock that matches our c29 replay
   is video - 1.4467 (teerox T0), i.e. 3.2 ticks less: Teero's pickup (data end, s 19.667) ~ rt 980.
+- **Pickup from chain r1's c6 (k802)**, gate=grenade, 4 variants: 998 (ghost=1 hnow=600 angles=128 hookdedup=0 and
+  hnow=300 ghoste=0.01), 1001, 1003. **pregren_998.txt: grenade pickup at race tick 998, server-identical replay**
+  (start 73, same final position, no freeze). Teero ~980 -> 18 behind (old pipeline ~47).
+- k800->950 benchmark from Teero's state (tp=1642,1393,23.15,-0.16 tpk=800, Teero 950): 955 base; beam 40000 /
+  angles 256 / hnow 300 / hnow 1000 / survive=8: 955-956; cpos=8 cvel=1: 954; dirmode=tan: 955; tan+cpos8: 954.
+  Loss is at the loop k896-928: we brake at the top (dir 0/-1, vx 23.7 -> 15.8), Teero keeps dir 1 and dives along
+  the slanted freeze face with ~4-5 px margin (tee centre), ~25 px closer than us; both then turn the fall with
+  up-right pulses (his aims -34 -> -90 deg).
+- `imit=teero/teero_inputs_pre_grenade.csv` (seg: dir / jump / hook aims restricted to Teero's within +-imitw ticks,
+  race tick = s_since_start*50 - 3.2): 964-981 (much worse); with the normal hook targets too: 957. Not useful.
+- `lnsseg.py BEST DIR minutes= workers= cutmin= rt=`: LNS to the pickup (gate=grenade), random seg variants.
