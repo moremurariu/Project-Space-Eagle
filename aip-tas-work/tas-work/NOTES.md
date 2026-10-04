@@ -409,3 +409,10 @@ Teero played the **KoG** version of AiP-Gores (user, from Teero). Our runs so fa
   grounding (5 px), convex-corner full stop, rotation 2.5x faster while falling. Teleport jump-state bug in
   tas/polish/nest/tas2/lab (not seg; final runs unaffected).
 - Chain k2 (from turn357, sel 0.005): k612 at rt 604 (+8 track = ~+5 true), commit rt 456 at k462.
+- Chain k2 steps: k612 604 (+8 track), k712 702 (+10), k812 807 (+5), k912 908 (+4); commits c1 (rt 456 k462), c2 (554
+  k562), c3 (653 k662), c4 (754 k762). Stopped before a window crosses the pickup. Pickup searches: runs/kpick2.
+- **KoG pickup searches from chain k2: 979 (from c4, ghost=1 hnow=300 ghoste=0.01), 980 x3, 981, 988, 2 NOGATE.**
+  **kog_pregren_979.txt: grenade pickup at race tick 979 on the KoG map** - server-identical over all 1047 ticks
+  (spawn 144,208, start tick 68), no freeze / double start. Teero ~980-981 (user input csv ends at s_since_start 19.667
+  "as the pickup is about to happen" = rt ~980.2 on the clock that matched our replays). Post-pickup check: reaches
+  Teero's k1005 point at rt 1024 without freeze (server-checked, runs/post/kog979_0.txt).
