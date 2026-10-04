@@ -391,3 +391,9 @@ Teero played the **KoG** version of AiP-Gores (user, from Teero). Our runs so fa
   t=29 (sim/server divergence). They are now moved to spectators (no respawn). KoG c_vl1p0: server start 68, x>7200 at
   rt 237 = sim. (DDNet-era checks were unaffected: identical to the sim.)
 - Chain k1 (rh.py vset=r3 from runs/kog/k200.txt = vl1p corridor cut at rt 200), stopk 790.
+- KoG chain k1 (vset=r3 from runs/kog/k200.txt), leads in Teero-track ticks (true = track - 3): k455 453 (+2),
+  k555 553 (+2), k655 651 (+4), k755 756 (-1), k855 864 (-9; fastest variant 859, energy selection again), k955 969.
+  Commits c1..c6 (c6: rt 813 at k805). Loss at rt 750-810 (climb out of the U-turn).
+- KoG pickup searches (gate=grenade, no energy weight) from c4 (k605) / c5 (k705): **992** (c4, base settings), 994, 997,
+  997, 999, 1000, 1001, 1009. **kog_pregren_992.txt: KoG pickup at race tick 992, server-identical** (start 68).
+- LNS on KoG (lnsseg.py kog_pregren_992.txt runs/lnsK cutmin=250).
