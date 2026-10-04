@@ -365,3 +365,4 @@ c1_best by -17 px at race tick 20, -77 at 60 (flat to 120), -120 at 200+; his x 
   sooner (down-right hook until ~k719, then up-right -59 deg) and clears the block corner; we touch it at rt 740
   (vy 7.9). No single big mistake left - the remaining gap is spread out.
 - LNS R on pregren_994 (cutmin 250, 6 h, 4 workers, variants incl. latpen 35%).
+- LNS R: 994 -> **992** (job 8, cut 891). pregren_992.txt, server-identical.

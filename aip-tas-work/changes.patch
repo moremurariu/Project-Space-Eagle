@@ -254,7 +254,7 @@
  }
 --- a/tas-work/NOTES.md
 +++ b/tas-work/NOTES.md
-@@ -84,3 +84,284 @@
+@@ -84,3 +84,285 @@
  - Corridor 1 from a Teero-like crossing (900,465,25,-13 spent): 294-296 (Teero 298). Our pre-start crossing gives ~306.
  - TileExists lookup cache in CCollision (opt-in flag, TAS only): step 1.54 -> 1.20 us, identical replays.
  - chain.py: segment chain over distance gates with several configs (gains ~1-2 ticks/gate; slow).
@@ -539,3 +539,4 @@
 +  sooner (down-right hook until ~k719, then up-right -59 deg) and clears the block corner; we touch it at rt 740
 +  (vy 7.9). No single big mistake left - the remaining gap is spread out.
 +- LNS R on pregren_994 (cutmin 250, 6 h, 4 workers, variants incl. latpen 35%).
++- LNS R: 994 -> **992** (job 8, cut 891). pregren_992.txt, server-identical.
