@@ -356,3 +356,7 @@ c1_best by -17 px at race tick 20, -77 at 60 (flat to 120), -120 at 200+; his x 
   from-Teero benchmarks are only good to ~+-3 ticks.
 - LNS Q (cutmin 690, 13 jobs): no gain over 996. Chain r3 (vset=r3: 8 variants incl. latpen / cpos8 / tan, sel 0.02)
   from r1's c1 (k302), stopk 790.
+- **Chain r3** (vset=r3, sel 0.02, from r1's c1): k552 550 (+2; r1 553), k652 647 (+5; r1 655), k752 753 (-1; r1 755),
+  k852 855 (-3), k952 963 (-11; r1 967); commits c1..c5 (c5: rt 807 at k802 - same as the 996 run there).
+  Pickup searches (gate=grenade) from c5 / c4: 994 (from c4, dirmode=tan cpos=8 cvel=1), 995 x3, 996, 997, 1000.
+  **pregren_994.txt: pickup at race tick 994, server-identical (start 73, no freeze).** Teero ~980.
