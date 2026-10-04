@@ -397,3 +397,15 @@ Teero played the **KoG** version of AiP-Gores (user, from Teero). Our runs so fa
 - KoG pickup searches (gate=grenade, no energy weight) from c4 (k605) / c5 (k705): **992** (c4, base settings), 994, 997,
   997, 999, 1000, 1001, 1009. **kog_pregren_992.txt: KoG pickup at race tick 992, server-identical** (start 68).
 - LNS on KoG (lnsseg.py kog_pregren_992.txt runs/lnsK cutmin=250).
+- KoG LNS (lnsK, 39 jobs): no gain over 992. Lag profile of kog_pregren_992 (track frame): corridor -6, **turn over the
+  pillar rt 300-325 loses 4** (we brake at the top: dir -1/0, |v| 24 -> 12 at x ~9186; Teero keeps dir 1 and ~19 px/t
+  to x ~9230, aim 37 deg held k298-320), k550-600 -3, U-turn -2, k775-925 -7 (energy deficit up to -150).
+- Turn window (cut rt 280, gate k362): ghost=1 base **357** (current run 359), ghost=3 358, ghost=3 brake=2 359,
+  beam 40000 + latpen 362. Chain k2 from that (runs/kog/turn357.txt), sel 0.005.
+- **Physics agent report: physlab/FINDINGS.md.** turn357 is within ~1 tick of the physical limit (vertical
+  deceleration cap 1.4/tick while rising; the pillar-face anchor can't pull before x~8960); remaining turn gap comes
+  from the corridor -> left-shaft entry (rt 276-296). rt 730-930 loss = horizontal speed (21 vs 20 px/t steps),
+  the rt 736 landing (-292 E), ceiling bumps rt 816 / 898, vx turned into climb at rt 773/775. New mechanics: hover
+  grounding (5 px), convex-corner full stop, rotation 2.5x faster while falling. Teleport jump-state bug in
+  tas/polish/nest/tas2/lab (not seg; final runs unaffected).
+- Chain k2 (from turn357, sel 0.005): k612 at rt 604 (+8 track = ~+5 true), commit rt 456 at k462.
