@@ -43,6 +43,7 @@ public:
 		int m_FreezeTime = 0;
 		vec2 m_PrevPos;
 		bool m_EnteredFreeze = false; // the last move touched freeze
+		vec2 m_EnteredFrom = vec2(-1e9f, -1e9f), m_EnteredTo = vec2(-1e9f, -1e9f); // the move m_EnteredFreeze is for (the next Step checks that move again, unless it changed)
 		bool m_Dead = false; // a kill tile got it (checked like CCharacter::HandleSkippableTiles)
 		CNetObj_PlayerInput m_PrevInput = {};
 		int m_Reload = 0;
@@ -86,12 +87,18 @@ public:
 	float Dist(vec2 Pos) const; // interpolated; large if unreachable
 	// of the tiles reachable in this field, the one closest to the goal of By (tiles)
 	vec2 BestReachable(const CHookBotGoalField &By) const;
+	const void *DistData() const { return m_pDist.get(); }
 	vec2 m_GoalTile = vec2(0, 0);
 
 private:
 	int m_W = 0, m_H = 0;
-	std::vector<float> m_vDist;
+	// shared with every field built from the same goal tile, costs and line (they're cached: a full-map search each)
+	std::shared_ptr<const std::vector<float>> m_pDist;
 };
+
+// the map-wide caches (goal fields, tile kinds, open-air regions) are per map: drops them when the map changed (by
+// its tiles), e.g. a server's map change with the same CCollision
+void HookBotMapCheck(const CCollision *pCollision);
 
 class CHookBotBrain
 {
@@ -115,6 +122,7 @@ public:
 	{
 		m_pCollision = pCollision;
 		m_pTeams = pTeams;
+		HookBotMapCheck(pCollision);
 	}
 	void Start(int Mode);
 	// the input for the coming tick, from both tees at the end of the previous one (GameTick: the coming tick)
@@ -414,6 +422,10 @@ public:
 	static bool TestCanRescue(const CHookBotSim &S, vec2 Free, vec2 Stuck);
 	// Effort 1: a wider beam and all four passes (when the plain one found nothing: a restart costs far more)
 	static STeamPlan PlanJoint(const CHookBotSim &Base, const CHookBotGoalField &Field, int MaxSteps, int Effort = 0);
+	// a team search (TEAM_CALL), shared between the two brains: both plan the same one at the same tick
+	template<typename F>
+	STeamPlan TeamCall(const CHookBotSim &S, int Line, F &&Search);
+	std::string TeamCallKey(const CHookBotSim &S, int Line) const;
 	static STeamPlan PlanJointPass(const CHookBotSim &Base, const CHookBotGoalField &Field, int MaxSteps, int K, int MaxDepth, int Width);
 	// its beam: kept nodes per level, ticks per step, steps deep, nodes per level whose rest is simulated (tests tune these)
 	struct SJointParams
@@ -654,6 +666,8 @@ private:
 // tests: the planners' deadlines go by the ticks they simulate (StepNs each, 0: the wall clock) instead of the wall
 // clock, so runs repeat exactly (needs m_AsyncPlanning off)
 void HookBotDeterministic(int StepNs);
+// prints the wall time, simulated ticks and calls spent in each planner so far
+void HookBotProfDump();
 
 // the hook input rule shared by the live bot and its lookahead: holding the hook re-fires it once it is
 // neither flying nor grabbed (needs one released tick)

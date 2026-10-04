@@ -45,6 +45,7 @@ public:
 	bool CheckPoint(vec2 Pos) const { return CheckPoint(Pos.x, Pos.y); }
 	int GetCollisionAt(float x, float y) const { return GetTile(round_to_int(x), round_to_int(y)); }
 	int GetWidth() const { return m_Width; }
+	bool HasDeathTiles() const { return m_HasDeath; }
 	int GetHeight() const { return m_Height; }
 	int IntersectLine(vec2 Pos0, vec2 Pos1, vec2 *pOutCollision, vec2 *pOutBeforeCollision) const;
 	int IntersectLineTeleWeapon(vec2 Pos0, vec2 Pos1, vec2 *pOutCollision, vec2 *pOutBeforeCollision, int *pTeleNr = nullptr) const;
@@ -173,6 +174,8 @@ private:
 	// TILE_TELEINEVIL, TILE_TELECHECK, TILE_TELECHECKIN, TILE_TELECHECKINEVIL, TILE_TELEINHOOK
 	std::map<int, std::vector<vec2>> m_TeleOthers;
 	bool m_HasHookTeleIns;
+	bool m_HasStoppers = false; // any stopper in the game or front layer (else only doors can restrict a move)
+	bool m_HasDeath = false; // any kill tile in the game or front layer
 };
 
 void ThroughOffset(vec2 Pos0, vec2 Pos1, int *pOffsetX, int *pOffsetY);

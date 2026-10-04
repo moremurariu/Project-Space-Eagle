@@ -4104,6 +4104,8 @@ TEST_F(SimMapBots, Hammerhit)
 		const auto &St = m_aBrain[t].m_RescueStats;
 		printf("brain %d: plans %d (found %d), hammers %d, last plan %d us\n", t, St.m_Plans, St.m_Found, St.m_Fired, m_aBrain[t].m_LastPlanUs);
 	}
+	if(getenv("HH_PROF"))
+		HookBotProfDump();
 	if(aFinishAt[0] >= 0 && aFinishAt[1] >= 0)
 		printf("hammerhit: both finished, %.2f s\n", std::max(aFinishAt[0], aFinishAt[1]) / 50.0);
 	else

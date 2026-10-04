@@ -21,6 +21,7 @@ The goal is two live hookbot brains (`CHookBotBrain`, one per tee) beating Stron
   - `corr.sh`: from the corridor after the shaft (waypoint 144).
   - `swbatch3.sh`: the swing course from 8 start positions.
   - `render.sh <demo name>`: a recorded run to video (headless, Xvfb).
+  - `seeds.sh <tag> <seed>...`: full runs at several timing seeds, one after another, with each one's result.
 
 `docs/HOOKBOT.md` (in the patch and in `files/docs/`) covers the bot's behaviour, the reasons for it, its failure cases, and every test and env var.
 
@@ -35,23 +36,39 @@ cd build-sim && ninja -j2 testrunner
 ```
 
 ## Where Stronghold stands
-**Beaten.** Both live brains take both tees from the spawn to the finish in **429.06 s with no restart**. All runs are deterministic (`HH_DET=2000`).
+Both live brains take both tees from the spawn to the finish in **429.06 s with no restart**, at timing seed `HH_DET=2000`. The server marks both races finished.
 
-- `runs/fulld.sh f7 2400 2000` with the code in this patch: tee 1 finishes its race at 426.80 s and tee 0 at 429.06 s. The server marks both races finished (`race tee 0: finished`, `race tee 1: finished`).
-- A run before the last fix (the sim's freeze check along the path) finished the same way, in the same time.
-
-Section by section, from separate starts:
-
-| Section | Waypoints | State |
-|---|---|---|
-| Start, the pit and the pool | 0-53 | Passes in full runs. |
-| On to the swing course | 54-122 | Passes in full runs. |
-| Swing course | 122-148 | Passes in full runs. From 8 separate start positions, 5 get through. |
-| Corridor, column drop, long shaft, drag, catch | 144-186 | Passes. |
-| On to the last block | 186-245 | Passes. |
-| Finish drop | 245-255 | Both tees finish. |
+- **Not robust yet:** with seeds 1800, 2200 and 2600 (`runs/seeds.sh`), no run finished in 15 min of game.
+  - The first attempts fail at waypoints 127 (the swing course), 63 and 98.
+  - Later attempts fail in the swing course, at the pool (52-54), just after it (63-64), and at the start.
+  - So the finish at seed 2000 is one deterministic path, not a bot that gets through reliably.
+- **Section by section,** from separate starts at seed 2000: everything passes. The swing course from 8 separate start positions gets through 5 times.
 
 The video (`runs/render.sh stronghold_f7`) is rendered from the recorded demo (`HH_DEMO`, `SIM_DEMO_DIR`). `docs/HOOKBOT.md` has a section on making one.
+
+## Compute
+**114 s of brain time for the 429 s run, down from 1068 s.** The game is exactly the same as before: same plans, same messages, tick for tick.
+
+- **Each brain searching for itself:** 215 s.
+- **Sharing:** the two brains share their team searches, which only works with both bots in one process.
+- **Profile:** `HH_PROF=1` prints where the time goes, and `HH_TEAMCALLS=1` prints every team search.
+
+The main changes (details in `docs/HOOKBOT.md`, section Compute):
+- **DDNet core, performance only:** the results are bit-identical, and DDNet's own tests pass.
+  - `CCharacterCore` loops only over the players in use, when the world keeps that list (the bot's sim does; the game doesn't).
+  - `Move` picks its collision partners once per move.
+  - `MoveBox` skips its box tests where nothing solid is in reach, and otherwise reuses the last test while the corners stay in the same tiles.
+  - `IntersectLine` checks each tile once.
+  - Maps without stoppers or kill tiles skip those checks.
+  - The build uses `-fno-semantic-interposition`, so GCC can inline again.
+- **The bot:**
+  - goal fields are cached and built with a bucket queue;
+  - open-air reachability is answered from regions labelled once;
+  - the reachability checks read a per-map tile table;
+  - the joint search's nodes no longer copy their history;
+  - the sim reuses the last step's freeze check.
+
+About 70% of the team searches' ticks still go into searches that find nothing. Cutting them changes some plan, and with the bot this fragile the run then takes another path that usually fails, as other seeds do. Robustness comes first.
 
 ## This session's main changes
 All in `src/game/hookbot.cpp` and documented in `docs/HOOKBOT.md`.

@@ -85,6 +85,15 @@ void CCollision::Init(class CLayers *pLayers)
 		m_pFront = static_cast<CTile *>(m_pLayers->Map()->GetData(m_pLayers->FrontLayer()->m_Front));
 	}
 
+	m_HasStoppers = m_HasDeath = false;
+	for(int i = 0; i < m_Width * m_Height; i++)
+		for(const CTile *pLayer : {m_pTiles, m_pFront})
+			if(pLayer)
+			{
+				m_HasStoppers |= pLayer[i].m_Index == TILE_STOP || pLayer[i].m_Index == TILE_STOPS || pLayer[i].m_Index == TILE_STOPA;
+				m_HasDeath |= pLayer[i].m_Index == TILE_DEATH;
+			}
+
 	if(m_pSwitch)
 	{
 		for(int i = 0; i < m_Width * m_Height; i++)
@@ -153,6 +162,7 @@ void CCollision::Unload()
 	m_pLayers = nullptr;
 
 	m_HighestSwitchNumber = 0;
+	m_HasStoppers = m_HasDeath = false;
 
 	m_TeleIns.clear();
 	m_TeleOuts.clear();
@@ -269,6 +279,9 @@ int CCollision::GetMoveRestrictions(CALLBACK_SWITCHACTIVE pfnSwitchActive, void 
 			vec2(-1, 0),
 			vec2(0, -1)};
 	dbg_assert(0.0f <= Distance && Distance <= 32.0f, "Invalid Distance: %f", Distance);
+	// no stoppers in the map and no doors: nothing restricts any move (a door tile that isn't there restricts nothing)
+	if(!m_HasStoppers && !m_pDoor)
+		return 0;
 	int Restrictions = 0;
 	for(int d = 0; d < NUM_MR_DIRS; d++)
 	{
@@ -278,7 +291,7 @@ int CCollision::GetMoveRestrictions(CALLBACK_SWITCHACTIVE pfnSwitchActive, void 
 		{
 			ModMapIndex = OverrideCenterTileIndex;
 		}
-		for(int Front = 0; Front < 2; Front++)
+		for(int Front = 0; Front < 2 && m_HasStoppers; Front++)
 		{
 			int Tile;
 			int Flags;
@@ -328,6 +341,8 @@ int CCollision::IntersectLine(vec2 Pos0, vec2 Pos1, vec2 *pOutCollision, vec2 *p
 	float Distance = distance(Pos0, Pos1);
 	int End(Distance + 1);
 	vec2 Last = Pos0;
+	// a point is solid by its tile alone: the points along the line stay in a tile for many steps
+	int LastTile = -1;
 	for(int i = 0; i <= End; i++)
 	{
 		float a = i / (float)End;
@@ -336,13 +351,18 @@ int CCollision::IntersectLine(vec2 Pos0, vec2 Pos1, vec2 *pOutCollision, vec2 *p
 		int ix = round_to_int(Pos.x);
 		int iy = round_to_int(Pos.y);
 
-		if(CheckPoint(ix, iy))
+		const int Tile = m_pTiles ? std::clamp(iy / 32, 0, m_Height - 1) * m_Width + std::clamp(ix / 32, 0, m_Width - 1) : -2;
+		if(Tile != LastTile || Tile < 0)
 		{
-			if(pOutCollision)
-				*pOutCollision = Pos;
-			if(pOutBeforeCollision)
-				*pOutBeforeCollision = Last;
-			return GetCollisionAt(ix, iy);
+			if(CheckPoint(ix, iy))
+			{
+				if(pOutCollision)
+					*pOutCollision = Pos;
+				if(pOutBeforeCollision)
+					*pOutBeforeCollision = Last;
+				return GetCollisionAt(ix, iy);
+			}
+			LastTile = Tile;
 		}
 
 		Last = Pos;
@@ -540,6 +560,45 @@ void CCollision::MoveBox(vec2 *pInoutPos, vec2 *pInoutVel, vec2 Size, vec2 Elast
 		float ElasticityX = std::clamp(Elasticity.x, -1.0f, 1.0f);
 		float ElasticityY = std::clamp(Elasticity.y, -1.0f, 1.0f);
 
+		// nothing solid anywhere the box gets to on this move (with a pixel to spare): no test below can hit, so the
+		// same steps are taken without them
+		bool Clear = m_pTiles != nullptr;
+		if(Clear)
+		{
+			const vec2 Half = Size * 0.5f;
+			const int x0 = std::clamp(round_to_int(std::min(Pos.x, Pos.x + Vel.x) - Half.x - 1) / 32, 0, m_Width - 1);
+			const int x1 = std::clamp(round_to_int(std::max(Pos.x, Pos.x + Vel.x) + Half.x + 1) / 32, 0, m_Width - 1);
+			const int y0 = std::clamp(round_to_int(std::min(Pos.y, Pos.y + Vel.y) - Half.y - 1) / 32, 0, m_Height - 1);
+			const int y1 = std::clamp(round_to_int(std::max(Pos.y, Pos.y + Vel.y) + Half.y + 1) / 32, 0, m_Height - 1);
+			for(int y = y0; y <= y1 && Clear; y++)
+				for(int x = x0; x <= x1 && Clear; x++)
+				{
+					const int Index = m_pTiles[y * m_Width + x].m_Index;
+					Clear = Index != TILE_SOLID && Index != TILE_NOHOOK;
+				}
+		}
+
+		// a box test looks at the tiles of its four corners only: the same four tiles, the same answer (they change every
+		// few dozen steps)
+		const vec2 HalfSize = Size * 0.5f;
+		int aLastCorners[4] = {-1, -1, -1, -1};
+		bool LastHit = false;
+		auto Test = [&](vec2 TestPos) {
+			if(!m_pTiles)
+				return TestBox(TestPos, Size);
+			const int aCorners[4] = {
+				std::clamp(round_to_int(TestPos.x - HalfSize.x) / 32, 0, m_Width - 1),
+				std::clamp(round_to_int(TestPos.x + HalfSize.x) / 32, 0, m_Width - 1),
+				std::clamp(round_to_int(TestPos.y - HalfSize.y) / 32, 0, m_Height - 1),
+				std::clamp(round_to_int(TestPos.y + HalfSize.y) / 32, 0, m_Height - 1)};
+			if(aCorners[0] == aLastCorners[0] && aCorners[1] == aLastCorners[1] && aCorners[2] == aLastCorners[2] && aCorners[3] == aLastCorners[3])
+				return LastHit;
+			LastHit = TestBox(TestPos, Size);
+			for(int c = 0; c < 4; c++)
+				aLastCorners[c] = aCorners[c];
+			return LastHit;
+		};
+
 		for(int i = 0; i <= Max; i++)
 		{
 			// Early break as optimization to stop checking for collisions for
@@ -559,11 +618,11 @@ void CCollision::MoveBox(vec2 *pInoutPos, vec2 *pInoutVel, vec2 Size, vec2 Elast
 				break;
 			}
 
-			if(TestBox(vec2(NewPos.x, NewPos.y), Size))
+			if(!Clear && Test(vec2(NewPos.x, NewPos.y)))
 			{
 				int Hits = 0;
 
-				if(TestBox(vec2(Pos.x, NewPos.y), Size))
+				if(Test(vec2(Pos.x, NewPos.y)))
 				{
 					if(pGrounded && ElasticityY > 0 && Vel.y > 0)
 						*pGrounded = true;
@@ -572,7 +631,7 @@ void CCollision::MoveBox(vec2 *pInoutPos, vec2 *pInoutVel, vec2 Size, vec2 Elast
 					Hits++;
 				}
 
-				if(TestBox(vec2(NewPos.x, Pos.y), Size))
+				if(Test(vec2(NewPos.x, Pos.y)))
 				{
 					NewPos.x = Pos.x;
 					Vel.x *= -ElasticityX;

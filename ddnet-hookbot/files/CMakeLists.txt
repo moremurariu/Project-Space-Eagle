@@ -342,6 +342,11 @@ if(NOT MSVC AND NOT HAIKU)
   # Disable exceptions as DDNet does not use them.
   add_cxx_compiler_flag_if_supported(OUR_FLAGS -fno-exceptions)
 
+  # -fPIC (for the PIE executables) makes GCC assume any function could be swapped out at load time, so it inlines none
+  # of them, not even within a file. Nothing is swapped out of an executable: let it inline (the collision lookups
+  # below CCharacterCore::Move are called millions of times a second by the hookbot's lookahead)
+  add_cxx_compiler_flag_if_supported(OUR_FLAGS -fno-semantic-interposition)
+
   # Inaccurate floating point numbers cause problems on mingw-w64-gcc when
   # compiling for x86, might cause problems elsewhere. So don't store floats
   # in registers but keep them at higher accuracy.

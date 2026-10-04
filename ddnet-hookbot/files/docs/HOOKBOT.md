@@ -186,6 +186,39 @@ With `cl_hookbot_hotreload 1`, the client loads the bot's brain (`src/game/hookb
 - A climb's end in the air (its hand-off to our solo swings) needs us 40 px apart at least: two of us a tee apart pushed each other off every plan at once, after the climb into Stronghold's swing course.
 - Between two brains, the partner's hammer swings aren't gestures (a rescue hammer aimed up read as "let's fly" one tick later, when the tees were 70 px apart, and one brain started a fly the other knew nothing about, over the big room's freeze floor). Standing on the partner's head counts as standing still for team moves.
 
+## Compute
+Measured on the whole of Stronghold with `HH_DET=2000` (the run that finishes; `runs/fulld.sh`), one core, both brains in one process, 429 s of game:
+
+| | Brain time | Per simulated tick |
+|---|---|---|
+| Before (2026-10-04 morning) | 1068 s (2.5x slower than the game) | 3.9 us |
+| Now, each brain searching for itself (`HH_NOSHARE=1`) | 215 s | 0.79 us |
+| Now | **114 s** (0.27x the game's time) | 0.80 us |
+
+Every change below leaves the game exactly as it was: the same plans, the same route messages, tick for tick (checked by diffing the full run's log).
+
+Where it went:
+- **Team searches: 90%.** About 70% of their ticks were searches that found nothing and ran out their whole budget, e.g. fall-catch tries every 10 ticks in the opening pit (26 in a row, then one found).
+- **Goal fields: 7%,** 5240 full-map searches for 254 waypoints.
+- **Reachability checks:** CanReach and CanRescue.
+- **The rest:** rescues, solo swings and finish searches, under 5% together.
+
+What changed:
+- **The team searches are shared between the two brains** (`TEAM_CALL`, `TeamCall`). Both plan the same team move from the same state at the same tick, and every planner is a static function of the state, the goal fields and the budget. So the first brain to get there searches and the other takes the result, keyed by the state dump, the call site, the fields and the route. `HH_NOSHARE=1` makes each search for itself. This only works with both bots in one process (a server).
+- **Player slots:** `CWorldCore::m_aActive` / `m_NumActive` optionally list the slots in use, and `CCharacterCore`'s loops over the players use the list when it's kept. The bot's sim keeps it (2 of 128 slots); the game doesn't, and loops over all 128 as before. Also, `Move` picks the players it can collide with once per move, not once per pixel of it. Those loops were 55% of all instructions.
+- **Sim freeze check:** `CHookBotSim::Step` reuses the previous step's freeze check of the same move. `PathTouchesFreeze` returns at once when no freeze tile is in the move's box.
+- **`CCollision::MoveBox`** skips its box tests when nothing solid is anywhere the box gets to on the move. Otherwise it reuses the last test while the box's four corners stay in the same tiles. `IntersectLine` checks each tile once, not each pixel. `GetMoveRestrictions` returns at once on a map with no stoppers and no doors. `HasDeathTiles` lets the sim skip its kill-tile check on maps without any.
+- **Build flag:** `-fno-semantic-interposition` (`CMakeLists.txt`). With `-fPIC`, GCC inlined none of the collision lookups.
+- **Goal fields are cached** by what they're built from: tile, freeze cost and line. That covers both brains, and every re-pick. They're built with a bucket queue: every step costs 32 or more, so 32-wide buckets give the same distances as a heap, about 2x faster. "Can open air get from here to there" is answered from the map's open-air regions, labelled once (`CHookBotAirReach`), not from a full field per question. `HookBotMapCheck` (called by `CHookBotBrain::Init`) drops these caches when the map's tiles change.
+- **The reachability checks** read a per-map table of tile kinds (`TileInfo`), not 81x81 tiles of the map per call.
+- **The joint search's nodes** hold their own step and a link to their parent, not their whole history: up to 576 children per node copied it. They're sorted by index, not moved about.
+
+Still the biggest costs: the joint search (41 s), fall-catch (29 s, 17 s of it in the tries from a frozen fall), climb, leap, and route upkeep (10 s).
+
+`HH_PROF=1` prints the time, simulated ticks and calls per planner at the end of `SimMapBots.Hammerhit` (inclusive). `HH_TEAMCALLS=1` prints every team search: the line it's called from, found or not, ticks and ms ("shared" when the other brain's result was taken). `HH_FIELDDBG=1` prints every goal field built (cache misses).
+
+**Robustness, the reason the searches that find nothing aren't cut yet:** the full run finishes with `HH_DET=2000` only. With 1800, 2200 and 2600 (`runs/seeds.sh`), no run finished in 15 min. The first attempts failed at waypoints 127 (the swing course), 63 and 98; later attempts failed in the swing course, at the pool (52-54), after it (63-64) and at the start. Cutting a search budget changes some plan, the run takes another path from there, and that path fails about as often as another seed does. In one test, the leap and the fall-catch try from the air at a third of their budgets changed the leap at 157 s and failed in the swing course at 264 s. The ticks those searches spend finding nothing (about 70% of the team searches' ticks) can only be cut, and checked, once runs survive other seeds.
+
 ## Tests (`src/test/zz_physics_sim_test.cpp`, `SimBot.*`, `SimPseudo.*`, `SimMapBots.*`)
 The bot is tee 0 (it is the first debug dummy). Tee 1 is a scripted hookflyer with a reaction delay (`SHuman`).
 - `SimBot.Hookfly`: plain hookfly with 10 competent partners. It keeps going with delays up to 2-3 ticks.
@@ -227,4 +260,4 @@ The bot is tee 0 (it is the first debug dummy). Tee 1 is a scripted hookflyer wi
 - `SimMapBots.HammerProbe` (`HP_A`, `HP_B` = "x,y,vx,vy,frozen" in px, `HP_JUMP`, `HP_FIRE` ticks, `HP_AIM`): the game's own hammer on a scripted jump and hit.
 - `SimMapBots.JointBench` planners: `JB_FALL`, `JB_DROP`, `JB_DASH`, `JB_HOP`, `JB_CATCH`, `JB_CLIMB` (a number above 1: the climb's ticks), `JB_DRAG`, `JB_FLING`, `JB_LAUNCH`, `JB_COLUMN`, `JB_FINISHDROP` (the finish drop to the map's finish tiles; else `PlanJoint`); `JB_DUMP=1` prints the plan found tick by tick.
 - Stronghold sections, 2026-10-03 (deterministic, `HH_DET=2000`, one at a time): the zig-zag below the bottom room from its top (`HH_ROUTE_AT=75 HH_X0=454.2 HH_Y=165 HH_X1=464.2 HH_Y1=168 HH_FRZ1=1`) to the bottom area at x 401-416 in 42 s, no restart; the corridor from x 423 (`HH_ROUTE_AT=95 HH_X0=423 HH_X1=425 HH_Y=252`): dash, out of the room, along to the tunnel at x 338 in 12 s; the tunnel (`HH_ROUTE_AT=104 HH_X0=337.5 HH_X1=339.5 HH_Y=228`): hop, then on to the gap at x 236-238 (waypoint 123) in 32 s. Next: the hookable blocks after the gap, both of us across (they get to the foot of the unhookable shaft at x 179-187 together in about 10 s, each on its own swings), then up the shaft together (not yet).
-- Stronghold, the whole map, 2026-10-04 (`HH_ROUTE=data/hookbot/routes/Stronghold.txt HH_X0=33 HH_X1=30 HH_Y=60 HH_DET=2000 HH_SECONDS=2400`, the runs' `fulld.sh`): both tees from the spawn to the finish in 429.06 s with no restart, in two runs: one before the freeze-along-the-path fix and one after it. The two runs' searches differ, the outcome is the same. Tee 1 finishes its race at 426.80 s. Tee 0 falls into the finish at 429.06 s, and the server finishes its race the next tick (recorded: `HH_DEMO=stronghold_f7`). The test stops once both have touched a finish tile (`FINISH both`), steps up to 10 more ticks, and prints the server's verdict for each tee (`race tee N: finished`). The game sees a touched tile one tick after the test does.
+- Stronghold, the whole map, 2026-10-04 (`HH_ROUTE=data/hookbot/routes/Stronghold.txt HH_X0=33 HH_X1=30 HH_Y=60 HH_DET=2000 HH_SECONDS=2400`, the runs' `fulld.sh`): both tees from the spawn to the finish in 429.06 s with no restart (with `HH_DET=2000`; at 1800, 2200 and 2600 no run finishes, see Compute), in two runs: one before the freeze-along-the-path fix and one after it. The two runs' searches differ, the outcome is the same. Tee 1 finishes its race at 426.80 s. Tee 0 falls into the finish at 429.06 s, and the server finishes its race the next tick (recorded: `HH_DEMO=stronghold_f7`). The test stops once both have touched a finish tile (`FINISH both`), steps up to 10 more ticks, and prints the server's verdict for each tee (`race tee N: finished`). The game sees a touched tile one tick after the test does.
