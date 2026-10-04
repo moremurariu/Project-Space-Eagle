@@ -54,6 +54,16 @@ def variant(rng):
         v['latpen'] = rng.choice([0.03, 0.05, 0.05]); v['latdz'] = rng.choice([24, 32])
     return v
 
+def viable(path, k):
+    """post-pickup check (user rule: only a few ticks past the pickup): movement only, the tee must get into the
+    climb without freeze, i.e. reach Teero's k1005 point (22 ticks after his pickup) within 80 ticks"""
+    res = subprocess.run([SEG, MAP, f'prefix={path}', 'gate=1005', 'fire=0', 'horizon=150', 'beam=10000', 'threads=1',
+                          'maxticks=80', 'quiet=1', 'survevery=2', 'rothook=1', 'quant=1', 'ghost=1', 'hnow=300',
+                          'ghoste=0.02', 'angles=128', 'hookdedup=0', f'out={D}/v{k}_'], capture_output=True, text=True).stdout
+    for f in (f'{D}/v{k}_0.txt', f'{D}/v{k}_c.txt'):
+        if os.path.exists(f): os.remove(f)
+    return seg_gate_rt(res) is not None
+
 cnt = [0]
 def job(seed):
     rng = random.Random(seed)
@@ -77,6 +87,11 @@ def job(seed):
     if rt is None or not os.path.exists(out):
         log(msg + f'no gate ({time.time() - t0:.0f}s)'); return
     msg += f'pickup {rt} ({time.time() - t0:.0f}s)'
+    with lock:
+        cur = int(open(f'{D}/best_rt').read())
+    if rt < cur:
+        # informational only (user: unviable pickups are rare)
+        msg += '  [post-pickup climb check: ' + ('ok' if viable(out, k) else 'not reached in 80 ticks') + ']'
     with lock:
         cur = int(open(f'{D}/best_rt').read())
         if rt < cur:

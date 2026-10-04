@@ -366,3 +366,28 @@ c1_best by -17 px at race tick 20, -77 at 60 (flat to 120), -120 at 200+; his x 
   (vy 7.9). No single big mistake left - the remaining gap is spread out.
 - LNS R on pregren_994 (cutmin 250, 6 h, 4 workers, variants incl. latpen 35%).
 - LNS R: 994 -> **992** (job 8, cut 891). pregren_992.txt, server-identical.
+
+## Map switch: KoG version (Oct 4)
+Teero played the **KoG** version of AiP-Gores (user, from Teero). Our runs so far were on the DDNet version.
+- `tas-work/AiP-Gores.map` is now the KoG file (sha256 353b27cf...); DDNet version kept as maps/AiP-Gores_ddnet.map
+  (map.txt likewise; maps/kog.txt, maps/ddnet.txt, maps/diffmap.txt: + solid only in KoG, - solid only in DDNet).
+- Differences (game layer): KoG has 9355 extra solid tiles (mostly sealed fills: above ceilings, inside blocks /
+  pillars), 21 DDNet-only solids removed, spawns at (4,6),(8,6),(16,6),(4,18),(8,18),(16,18) instead of rows 10/24
+  (Teero's start x 144 = spawn (4,6)), start line also at (29,5) and (29,15) (freeze removed at (28,5),(28,15)), finish
+  2 columns, no front layer, map setting `sv_kog_map_quests Q_NO_HAMMER,Q_NO_PLATFORM,Q_TEAM_15`. No tuning commands.
+- Hook rays from Teero's path differ in k348-428, k546-576, k632-662, k896-960; small blocks moved in the k896-960 loop
+  (DDNet-only solids at (132,54),(133,55) under the dive exit).
+- The DDNet best (pregren_992) would replay identically on KoG up to rt ~400 (first different hook anchor at rt 401),
+  but the spawn differs: `match` tool (beam search for an exact target state, here the ceiling contact at t=23:
+  200,78 v 11.8359375,0) found no exact match -> pipeline redone on KoG.
+- **KoG start line: you can touch the solid floor at (28-29, row 16) right at the line** (freeze removed at (28,15),
+  (29,15) is a start tile): land there, ground jump (-13.2) and keep the air jump. Crossing search (pre rank=cont
+  ymin=455): vl0 E 274.9 jumps 1; polished vl0p E 299.5 (24.68,-13.20), vl1p E 288.2 (24.45,-12.70), both with the air
+  jump left (DDNet best: E 279, jumps spent). Teero's track y ~496 at the line = standing on that floor.
+- Corridor (pre gatex=7200 trref hnow=300 postdir1=1 rothook=1 hookla=10) from vl1p: **ahead of Teero** (user data):
+  +6 px rt 100, +16 rt 140, +36 rt 180, +44 rt 200, +51 rt 220 (kog_c1_gate7200.txt); from vl0p -1..-20.
+- **Server-check harness bug (fixed):** TasReplay killed the two extra debug tees, but killed players respawn at a free
+  spawn point; on the KoG map that is (8,6)/(16,6), in the spawn room's flight path, and our hook caught a dummy at
+  t=29 (sim/server divergence). They are now moved to spectators (no respawn). KoG c_vl1p0: server start 68, x>7200 at
+  rt 237 = sim. (DDNet-era checks were unaffected: identical to the sim.)
+- Chain k1 (rh.py vset=r3 from runs/kog/k200.txt = vl1p corridor cut at rt 200), stopk 790.
