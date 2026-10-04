@@ -360,3 +360,8 @@ c1_best by -17 px at race tick 20, -77 at 60 (flat to 120), -120 at 200+; his x 
   k852 855 (-3), k952 963 (-11; r1 967); commits c1..c5 (c5: rt 807 at k802 - same as the 996 run there).
   Pickup searches (gate=grenade) from c5 / c4: 994 (from c4, dirmode=tan cpos=8 cvel=1), 995 x3, 996, 997, 1000.
   **pregren_994.txt: pickup at race tick 994, server-identical (start 73, no freeze).** Teero ~980.
+- pregren_994 vs Teero (true lag = track lag + 3): corridor+turn ~+1, k302-690 +3 (total +4), far-left U-turn +5 (+9 at
+  k775), k775-pickup +5 (+14). In the U-turn we follow his exact path ~4 ticks late; he starts turning right ~1-2 ticks
+  sooner (down-right hook until ~k719, then up-right -59 deg) and clears the block corner; we touch it at rt 740
+  (vy 7.9). No single big mistake left - the remaining gap is spread out.
+- LNS R on pregren_994 (cutmin 250, 6 h, 4 workers, variants incl. latpen 35%).
