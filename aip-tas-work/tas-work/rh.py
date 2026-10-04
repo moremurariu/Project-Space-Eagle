@@ -102,6 +102,37 @@ if args.get('vset') == 'r':
         f'ghost=3 hnow=1000 ghoste=0.02 sinks={SINKS} ghostsink=1500 angles=128 hookdedup=0 {RQ}',
         f'ghost=1 hnow=600 ghoste=0.02 angles=128 hookdedup=0 pjc=250 pgc=250 {RQ}',
     ]
+if args.get('vset') == 'r2':
+    # 8 variants: what works is section dependent (k401 benchmark: base 653, tan+cpos8 657; U-turn k690-790: tan+cpos8
+    # keeps 170 more energy)
+    RQ = 'rothook=1 quant=1'
+    A = 'angles=128 hookdedup=0'
+    VARIANTS = [
+        f'ghost=1 hnow=600 ghoste=0.02 {A} {RQ}',
+        f'ghost=1 hnow=600 ghoste=0.02 {A} dirmode=tan cpos=8 cvel=1 {RQ}',
+        f'ghost=1 hnow=600 ghoste=0.02 {RQ}',
+        f'ghost=3 hnow=1000 ghoste=0.02 sinks={SINKS} ghostsink=1500 {A} {RQ}',
+        f'ghost=1 hnow=600 ghoste=0.02 {A} pjc=250 pgc=250 {RQ}',
+        f'ghost=1 hnow=300 ghoste=0.01 {A} {RQ}',
+        f'ghost=1 hnow=600 ghoste=0.02 {A} hookla=10 {RQ}',
+        f'ghost=1 hnow=600 ghoste=0.02 cpos=8 cvel=1 dirmode=tan pjc=250 pgc=250 {RQ}',
+    ]
+    NVAR = int(args.get('nvar', 8))
+if args.get('vset') == 'r3':
+    RQ = 'rothook=1 quant=1'
+    A = 'angles=128 hookdedup=0'
+    LP = 'latpen=0.05 latdz=24'
+    VARIANTS = [
+        f'ghost=1 hnow=600 ghoste=0.02 {A} {RQ}',
+        f'ghost=1 hnow=600 ghoste=0.02 {A} dirmode=tan cpos=8 cvel=1 {RQ}',
+        f'ghost=1 hnow=600 ghoste=0.02 {A} cpos=8 cvel=1 {LP} {RQ}',
+        f'ghost=1 hnow=600 ghoste=0.02 {A} {LP} {RQ}',
+        f'ghost=3 hnow=1000 ghoste=0.02 sinks={SINKS} ghostsink=1500 {A} {RQ}',
+        f'ghost=1 hnow=600 ghoste=0.02 {A} pjc=250 pgc=250 {RQ}',
+        f'ghost=1 hnow=300 ghoste=0.01 {A} {RQ}',
+        f'ghost=1 hnow=600 ghoste=0.02 {A} pjc=250 pgc=250 cpos=8 cvel=1 {LP} {RQ}',
+    ]
+    NVAR = int(args.get('nvar', 8))
 STOP_K = int(args.get('stopk', 99999))
 GREN_K = 990
 WIDE_R = [
@@ -170,7 +201,7 @@ def main():
         gate = 'finish' if final else str(k0 + WINDOW)
         commitk = None if final else k0 + COMMIT
         maxticks = (FINISH_K - k0 if final else WINDOW) * 2 + 60
-        variants = (WIDE_R if args.get('vset') == 'r' else WIDE) if wide else (POST if k0 >= GREN_K else VARIANTS)
+        variants = (WIDE_R if args.get('vset') in ('r', 'r2', 'r3') else WIDE) if wide else (POST if k0 >= GREN_K else VARIANTS)
         variants = variants[:NVAR]
         step += 1
         with ThreadPoolExecutor(len(variants)) as ex:

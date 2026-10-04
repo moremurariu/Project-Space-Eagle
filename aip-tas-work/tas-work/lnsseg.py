@@ -49,6 +49,9 @@ def variant(rng):
         v['cpos'] = 8; v['cvel'] = 1
     if rng.random() < 0.3:
         v['pjc'] = 250; v['pgc'] = 250
+    if rng.random() < 0.35:
+        # stay near Teero's line (k800 benchmark: 953 with cpos=8 vs 954-955)
+        v['latpen'] = rng.choice([0.03, 0.05, 0.05]); v['latdz'] = rng.choice([24, 32])
     return v
 
 cnt = [0]

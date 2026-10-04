@@ -342,3 +342,17 @@ c1_best by -17 px at race tick 20, -77 at 60 (flat to 120), -120 at 200+; his x 
   without landing, Ee -695 vs -865**. Pickup searches from that state (cut rt 760): 996 (tan+cpos8), 997, 1001, 1002.
   **pregren_996.txt: pickup at race tick 996.**
 - LNS (lnsseg.py, 4 workers, 70 min): 998 -> 997 (cut 957); early cuts (595-761) gave 1001-1009.
+- Settings are section dependent: k401 benchmark with dirmode=tan cpos=8 cvel=1: 657, cpos=8 only: 659 (base 653).
+- Chain r2 (vset=r2: 8 variants incl. tan+cpos8 and hookla, sel=0.01, from r1's c1 at k302): k552 553 (same as r1),
+  k652 653 (r1 655), but k752 759 (r1 755): the lower-energy commit at k502 cost 4 ticks later. Stopped.
+- LNS Q on pregren_996 (cutmin 690, 4 workers). dirmode=tan dies inside the left U-turn (cut rt 723: NOGATE).
+- True lag vs Teero ~ track-frame lag + 3 (track labels are ~3 ticks late near the corridor end / pickup).
+- k800 benchmark with latpen: latpen=0.02 latdz=16: 956; **latpen=0.05 latdz=24 cpos=8 cvel=1: 953** (best). Added to
+  lnsseg.py variants (35%).
+- ecmp.py RUN [k0 k1 step]: energy / speed vs Teero by nearest point. pregren_996: energy within +-60 of Teero after
+  the U-turn fix, yet lag +6 (k760) -> +12 (k960): the rest is path length (Teero's tighter lines), not energy.
+- k800 benchmark: survevery off 953, beam 60000 953 (identical path) -> beam is not the limit. track=1: 958-975
+  (can't follow Teero from the estimated state) -> his k800 state is probably faster than the estimate; these
+  from-Teero benchmarks are only good to ~+-3 ticks.
+- LNS Q (cutmin 690, 13 jobs): no gain over 996. Chain r3 (vset=r3: 8 variants incl. latpen / cpos8 / tan, sel 0.02)
+  from r1's c1 (k302), stopk 790.
