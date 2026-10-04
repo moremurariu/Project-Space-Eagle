@@ -416,3 +416,4 @@ Teero played the **KoG** version of AiP-Gores (user, from Teero). Our runs so fa
   (spawn 144,208, start tick 68), no freeze / double start. Teero ~980-981 (user input csv ends at s_since_start 19.667
   "as the pickup is about to happen" = rt ~980.2 on the clock that matched our replays). Post-pickup check: reaches
   Teero's k1005 point at rt 1024 without freeze (server-checked, runs/post/kog979_0.txt).
+- LNS K2 on 979: **978** (job 10, cut 851, post-pickup climb check ok). kog_pregren_978.txt, server-identical.

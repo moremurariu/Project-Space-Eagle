@@ -254,7 +254,7 @@
  }
 --- a/tas-work/NOTES.md
 +++ b/tas-work/NOTES.md
-@@ -84,3 +84,335 @@
+@@ -84,3 +84,336 @@
  - Corridor 1 from a Teero-like crossing (900,465,25,-13 spent): 294-296 (Teero 298). Our pre-start crossing gives ~306.
  - TileExists lookup cache in CCollision (opt-in flag, TAS only): step 1.54 -> 1.20 us, identical replays.
  - chain.py: segment chain over distance gates with several configs (gains ~1-2 ticks/gate; slow).
@@ -590,3 +590,4 @@
 +  (spawn 144,208, start tick 68), no freeze / double start. Teero ~980-981 (user input csv ends at s_since_start 19.667
 +  "as the pickup is about to happen" = rt ~980.2 on the clock that matched our replays). Post-pickup check: reaches
 +  Teero's k1005 point at rt 1024 without freeze (server-checked, runs/post/kog979_0.txt).
++- LNS K2 on 979: **978** (job 10, cut 851, post-pickup climb check ok). kog_pregren_978.txt, server-identical.
