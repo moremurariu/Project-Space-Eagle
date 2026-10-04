@@ -191,7 +191,8 @@ public:
 	int m_Restarts = 0;
 
 	int m_Mode = MODE_IDLE;
-	int m_CoastDir = 0; // in the air between swing plans on my own: the way I keep steering (0: not between swing plans)
+	int m_CoastDir = 0; // in the air between swing plans on my own: the way I keep steering
+	bool m_Coasting = false; // in the air between swing plans on my own
 
 	// hookfly timing (tuned in SimBot.TuneHookfly against scripted partners)
 	struct SFlyParams
@@ -320,6 +321,7 @@ public:
 		TEAM_DRAG,
 		TEAM_COLUMN,
 		TEAM_FLING,
+		TEAM_FINISH,
 	};
 	struct STeamPlan
 	{
@@ -396,6 +398,14 @@ public:
 	static STeamPlan PlanColumnDrop(const CHookBotSim &Base, const CHookBotGoalField &Field, int MaxSteps);
 	static STeamPlan PlanLaunch(const CHookBotSim &Base, const CHookBotGoalField &Field, const CHookBotGoalField &Air, int MaxSteps, const SPseudoParams &Pseudo);
 	static STeamPlan PlanFling(const CHookBotSim &Base, const CHookBotGoalField &Field, int MaxSteps);
+	// the finish drop, both of us standing near the finish: one of us (the diver) walks into the freeze beside the floor
+	// the other stands on (or above it, and falls past), the other (the holder) hooks it below that freeze and holds it
+	// there out of the freeze until it thaws, then walks in after it; the diver, free in the air, hooks it and steers to
+	// a column a straight fall down goes to the finish from, dragging the holder along (Stronghold's last freeze layers,
+	// a 3-wide gap under the block: frozen beside the block, nobody gets under it by itself; rank 1 so, 208-215 s).
+	// Judged by the finish: each of us crosses a finish tile, or rests outside the freeze where a way of its own (the
+	// finish search's first stage) goes there. Thread-safe, deterministic
+	static STeamPlan PlanFinishDrop(const CHookBotSim &Base, const std::vector<vec2> &vFinish, int MaxSteps);
 	static STeamPlan PlanClimb(const CHookBotSim &Base, const CHookBotGoalField &Field, const CHookBotGoalField &Air, int MaxSteps, const SPseudoParams &Pseudo, int MaxTicks = 300);
 	int m_NoFlyUntil = 0;
 	int m_ClimbAgainAt = -1; // a climb ended in the air: plan the next one from here at once // a climb just handed over to swinging: no fly again yet
@@ -546,6 +556,9 @@ private:
 	// the rest of the last swing plan that was cut short: followed when the search from its cut finds nothing (from right
 	// under a freeze band every move came near the freeze at once, and I coasted into it)
 	SSoloPlan m_SoloRest;
+	// a swing plan I left in the air (a few px off its path): its inputs from there on, played while the next search runs
+	std::vector<CNetObj_PlayerInput> m_vDropRest;
+	int m_DropRestAt = 0; // the tick its first input is for
 	int m_SoloStart = 0;
 	// the solo search runs on a thread (on the client's main thread it made the game stutter before each jump)
 	struct SSoloJob
@@ -555,6 +568,7 @@ private:
 		CHookBotSim m_Base;
 		vec2 m_From;
 		std::shared_ptr<const CHookBotGoalField> m_pField;
+		std::shared_ptr<const CHookBotGoalField> m_pAltField; // searched by when m_pField finds nothing
 		bool m_AllowFrozen = false;
 		bool m_Air = false; // planned from where the current swing plan ends, in the air (only swings from there)
 		bool m_Settle = false; // land at the first safe place that gets me somewhere (the partner is far behind)
@@ -586,6 +600,20 @@ private:
 	// (1: right away, 2: once I'm falling) or not (0)
 	int SafeFallDir(int *pJump = nullptr) const;
 	bool PartnerFarBehind() const; // free, and 10 tiles further from the goal than me
+	// the finish (FinishMove): falls by myself that cross a finish tile, in up to 3 stages (each to rest outside the freeze,
+	// thawing there, then on); the first stage is played, and searched again from where it ends
+	bool FinishMove(CNetObj_PlayerInput &In);
+	void ScanFinish();
+	bool m_Finished = false, m_PartnerFinished = false; // crossed a finish tile
+	// the route's goal 14 waypoints on is at the finish (both of us see the same route)
+	bool NearFinish();
+	static bool TestFinishSearch(const CHookBotSim &S, const std::vector<vec2> &vFinish, int MaxSteps, std::vector<vec2> *pvPath, int *pStages, int *pSteps);
+	std::vector<vec2> m_vFinishTiles;
+	bool m_FinishScanned = false;
+	std::vector<CNetObj_PlayerInput> m_vFinishPlan;
+	std::vector<vec2> m_vFinishPath;
+	int m_FinishPlanAt = -1, m_FinishTriedTick = -1000;
+	vec2 m_FinishTriedAt = vec2(-1e9f, -1e9f);
 	bool AirWayClimbs(vec2 P, int Tiles, const CHookBotGoalField *pField = nullptr) const; // the way from P to the air goal (or down
 		// pField) goes this many tiles above it
 	vec2 m_RescueTryPos = vec2(-1e9f, -1e9f);
@@ -597,6 +625,7 @@ private:
 	vec2 m_PartnerFieldAt = vec2(-1e9f, -1e9f);
 	// where I wait for the partner's fall through freeze to hook it out (FindCatchSpot), for the partner standing at m_CatchFor
 	bool FindCatchSpot();
+	bool SwingReach(const CHookBotSim &S, vec2 From, vec2 To) const; // a catch spot I get to swinging
 	vec2 m_CatchSpot = vec2(-1e9f, -1e9f), m_CatchFor = vec2(-1e9f, -1e9f);
 	int m_CatchCheckAt = -1;
 	bool m_CatchGo = false; // on my way there (the solo moves go to it)

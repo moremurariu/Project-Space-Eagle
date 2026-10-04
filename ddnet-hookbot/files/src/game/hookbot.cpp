@@ -124,13 +124,28 @@ bool CHookBotSim::TouchesDeath(vec2 Pos) const
 
 bool CHookBotSim::PathTouchesFreeze(vec2 From, vec2 To) const
 {
-	// like CCollision::GetMapIndices (the center, every pixel), without the allocation
-	float Len = distance(From, To);
-	int Steps = (int)Len + 1;
-	for(int i = 0; i <= Steps; i++)
-		if(InFreeze(mix(From, To, i / (float)Steps)))
+	// exactly as the server does it (CCharacter::DDRacePostCoreTick with CCollision::GetMapIndices), without the
+	// allocation: a sample every pixel from From (To itself isn't one unless the distance is whole), truncated to its
+	// tile, not rounded as InFreeze does. Half a pixel decides a graze of a freeze tile's corner: a team plan through the
+	// swing course grazed one, the server froze the tee the plan didn't, and the plan was dropped mid-air. To's own tile
+	// counts only when no sample landed on a tile that exists
+	const int W = m_pCollision->GetWidth(), H = m_pCollision->GetHeight();
+	auto IndexAt = [&](vec2 P) { return std::clamp((int)P.x / 32, 0, W - 1) + std::clamp((int)P.y / 32, 0, H - 1) * W; };
+	auto FreezeTile = [&](int Index) {
+		const int T = m_pCollision->GetTileIndex(Index), F = m_pCollision->GetFrontTileIndex(Index);
+		return T == TILE_FREEZE || T == TILE_DFREEZE || F == TILE_FREEZE || F == TILE_DFREEZE;
+	};
+	const float d = distance(From, To);
+	const int End = d > 0 ? (int)(d + 1) : 0;
+	for(int i = 0; i < End; i++)
+		if(FreezeTile(IndexAt(mix(From, To, i / d))))
 			return true;
-	return false;
+	if(!FreezeTile(IndexAt(To)))
+		return false;
+	for(int i = 0; i < End; i++)
+		if(m_pCollision->TileExists(IndexAt(mix(From, To, i / d))))
+			return false;
+	return true;
 }
 
 // same order as CGameWorld::Tick: every character runs Tick() (freeze input, core tick, tile checks for the
@@ -385,6 +400,7 @@ void CHookBotBrain::Start(int Mode)
 {
 	m_Mode = Mode;
 	m_Phase = 0;
+	m_Finished = m_PartnerFinished = false;
 	m_Plan = {};
 	m_HoldBlocked = false;
 	m_PfFree = false;
@@ -453,6 +469,7 @@ CNetObj_PlayerInput CHookBotBrain::Tick(int GameTick, const SHookBotTee &Bot, co
 				m_Team = {};
 				m_TeamEndKind = TEAM_NONE;
 				m_CoastDir = 0;
+				m_Coasting = false;
 				m_Kill();
 				m_pB = nullptr;
 				m_pU = nullptr;
@@ -1063,13 +1080,41 @@ void CHookBotBrain::ReadGestures()
 // towards m_pGoal with whatever works: when one of us is frozen, the hammerhit rescue (aleds included); when we're
 // both free in the air and climbing gets us closer, a pseudofly (the upper one drives and steers along the goal
 // field, the lower one hammers it up as long as that helps; so it hovers at the goal); else walk or fall
+static bool InFinishAt(const CCollision *pCol, vec2 P);
+
 void CHookBotBrain::Play(CNetObj_PlayerInput &In)
 {
 	const SHookBotTee *pB = m_pB, *pU = m_pU;
 	const vec2 B = pB->m_Core.m_Pos, U = pU->m_Core.m_Pos;
 	const bool Free = pB->m_FreezeTime == 0 && pU->m_FreezeTime == 0;
+	// over the finish: whoever of us has crossed a finish tile is done (it does nothing more), the other one goes on by
+	// itself (no team moves: the one done lies in the freeze past the finish, or fell on out of the map)
+	ScanFinish();
+	auto Crossed = [&](const SHookBotTee *pT) {
+		for(int k = 0; k <= 8; k++)
+			if(InFinishAt(m_pCollision, mix(pT->m_PrevPos, pT->m_Core.m_Pos, k / 8.0f)))
+				return true;
+		return false;
+	};
+	if(!m_vFinishTiles.empty())
+	{
+		m_Finished |= Crossed(pB);
+		m_PartnerFinished |= Crossed(pU);
+	}
+	if(m_Finished)
+	{
+		m_pWhy = "finished";
+		In.m_Direction = 0;
+		In.m_Jump = 0;
+		In.m_Hook = 0;
+		In.m_Fire = 0;
+		return;
+	}
 	// a team move (a throw, a catch) goes first: the partner is playing its half of it
-	if(TeamMove(In))
+	if(!m_PartnerFinished && TeamMove(In))
+		return;
+	// then the finish, where I get to it by myself
+	if(FinishMove(In))
 		return;
 	// fly only where the goal is reachable through open air (a freeze wall in the way takes an aled, not a fly)
 	auto ClimbHelps = [&](vec2 P) { return m_pGoalAir && m_pGoalAir->Dist(P - vec2(0, 96)) < m_pGoalAir->Dist(P) - 40; };
@@ -1088,8 +1133,13 @@ void CHookBotBrain::Play(CNetObj_PlayerInput &In)
 	// both of us swinging on our own, close together, and climbing gets us closer: the swings give way to a fly (one of
 	// us hovered on its swings beside the foot of Stronghold's unhookable shaft after the hookable blocks, where only a
 	// fly gets up, until the other one came; with the swings going on, they never flew)
-	const bool FlyNow = m_PartnerIsBot && m_Now >= m_NoFlyUntil && m_pGoalAir && Free && !pB->m_Grounded && !pU->m_Grounded && distance(B, U) < 250 && m_pGoalAir->Dist(Mid) < 1e5f && ClimbHelps(Mid);
-	if(FlyNow && (m_Solo.m_Valid || m_pSoloJob || m_CoastDir))
+	// (only where nothing hookable is above us, or swinging on there goes as well: in Stronghold's swing course, both of us
+	// swinging up round the end of the freeze band under the blocks, a fly took over and drove us into the band)
+	CHookBotSim FlyProbe;
+	FlyProbe.m_pCollision = m_pCollision;
+	const bool FlyNow = m_PartnerIsBot && m_Now >= m_NoFlyUntil && m_pGoalAir && Free && !pB->m_Grounded && !pU->m_Grounded && distance(B, U) < 250 && m_pGoalAir->Dist(Mid) < 1e5f && ClimbHelps(Mid) &&
+			    !HookableNear(FlyProbe, Mid, 300, 32);
+	if(FlyNow && (m_Solo.m_Valid || m_pSoloJob || m_Coasting))
 	{
 		if(m_pSoloJob && m_pSoloJob->m_Thread.joinable())
 			m_pSoloJob->m_Thread.join();
@@ -1097,10 +1147,11 @@ void CHookBotBrain::Play(CNetObj_PlayerInput &In)
 		m_Solo = {};
 		m_SoloRest = {};
 		m_CoastDir = 0;
+		m_Coasting = false;
 	}
 	// in the middle of a swing plan on my own (or about to go on with the next one): see it through, whatever the
 	// partner does meanwhile
-	if(!FlyNow && pB->m_FreezeTime == 0 && m_pGoal && ((m_Solo.m_Valid && m_Solo.m_Swing) || (m_pSoloJob && m_pSoloJob->m_Air) || (m_CoastDir && !pB->m_Grounded)) &&
+	if(!FlyNow && pB->m_FreezeTime == 0 && m_pGoal && ((m_Solo.m_Valid && m_Solo.m_Swing) || (m_pSoloJob && m_pSoloJob->m_Air) || (m_Coasting && !pB->m_Grounded)) &&
 		SoloMove(In, PartnerStuckForGood()))
 	{
 		m_pWhy = "solo: swing";
@@ -1482,6 +1533,12 @@ CHookBotBrain::SSoloPlan CHookBotBrain::SwingSearch(const CHookBotSim &Base, con
 		return vAims;
 	};
 	const CNetObj_PlayerInput None = {};
+	// the partner flying: where it'll be (its speed and gravity, nothing else; it stays where it is in the sim), for the
+	// first 12 ticks: I keep 40 px from it and fire no hook whose line passes within 36 px of it (both of us swinging on
+	// our own a few tiles apart in Stronghold's swing course, its hook caught me and pulled me off my plan, and I fell)
+	const vec2 PartnerP0 = Base.m_aTee[1].m_Core.m_Pos, PartnerV0 = Base.m_aTee[1].m_Core.m_Vel;
+	const bool PartnerFlies = !OnGround(PartnerP0);
+	auto PartnerAt = [&](int t) { return PartnerP0 + PartnerV0 * (float)t + vec2(0, 0.25f * t * t); };
 	// Ticks of steering Dir (jumping on the first one); Hook: 0 none, 1 a new one at AimAt, 2 keep the one I'm on
 	// (steering another way on it: into a swing holding one way, out of it the other); false if it touches freeze or a
 	// kill tile
@@ -1499,10 +1556,26 @@ CHookBotBrain::SSoloPlan CHookBotBrain::SwingSearch(const CHookBotSim &Base, con
 			if(Hook != 2)
 				Aim(I, Hook ? AimAt - Pos : vec2(Dir ? Dir : 1, 0));
 			I.m_Hook = Hook == 2 || (Hook == 1 && !(t == 0 && From.m_Hooking));
+			const int Ta = (int)To.m_vInputs.size();
+			if(PartnerFlies && Hook == 1 && t == 0 && Ta < 12)
+			{
+				const vec2 Dir = normalize(AimAt - Pos);
+				for(int k = 0; k <= 5; k++)
+				{
+					vec2 Closest;
+					const vec2 Q = PartnerAt(Ta + k);
+					if(!closest_point_on_line(Pos, Pos + Dir * 380.0f, Q, Closest))
+						Closest = distance(Pos, Q) < distance(Pos + Dir * 380.0f, Q) ? Pos : Pos + Dir * 380.0f;
+					if(distance(Closest, Q) < 36)
+						return false;
+				}
+			}
 			To.m_vPath.push_back(Pos);
 			To.m_vInputs.push_back(I);
 			To.m_Sim.Step(I, None, 0);
 			if(Me.m_Dead || BumpsPartner(To.m_Sim, PartnerKeep))
+				return false;
+			if(PartnerFlies && Ta < 12 && distance(Me.m_Core.m_Pos, PartnerAt(Ta + 1)) < 40)
 				return false;
 			if(Me.m_EnteredFreeze)
 			{
@@ -1593,6 +1666,10 @@ CHookBotBrain::SSoloPlan CHookBotBrain::SwingSearch(const CHookBotSim &Base, con
 				Tail.Step(Brake, None, 0);
 				Bad = Tail.m_aTee[0].m_EnteredFreeze || Tail.m_aTee[0].m_Dead || NearFreeze(Tail, Pos, Tail.m_aTee[0].m_Core.m_Pos);
 			}
+			// (and still on that floor once stopped: landing at 16 px/tick near the end of a block after Stronghold's pool,
+			// braking slid me off its edge, and I fell into the freeze strip beyond)
+			if(Landed && !Bad && !OnGround(Tail.m_aTee[0].m_Core.m_Pos))
+				Bad = true;
 			if(!Bad && Landed && pvTail && pvTail->empty())
 			{
 				*pvTail = vTail;
@@ -1798,6 +1875,14 @@ CHookBotBrain::SSoloPlan CHookBotBrain::SwingSearch(const CHookBotSim &Base, con
 	Plan.m_Score = -pBest->m_Value;
 	Plan.m_TargetX = pBest->m_Sim.m_aTee[0].m_Core.m_Pos.x;
 	Plan.m_EndsGrounded = OnGround(pBest->m_Sim.m_aTee[0].m_Core.m_Pos) && pBest->m_Sim.m_aTee[0].m_Core.m_Vel.y >= 0;
+	// a safe one that ends in the air: its safe way down from there (the coast that made it safe, maybe with the air
+	// jump), for when the search from its end finds nothing; coasting on without the air jump, I fell short of the
+	// ledge after Stronghold's pit into the freeze band below it
+	if(!Settle && !Plan.m_EndsGrounded && pBest->m_Safe && !pBest->m_Thawed)
+	{
+		float Reach;
+		Coast(*pBest, &Reach, &Plan.m_vRestInputs, &Plan.m_vRestPath);
+	}
 	if(Settle && !Plan.m_EndsGrounded)
 	{
 		// on to where I land, and no further
@@ -1820,6 +1905,251 @@ int64_t CHookBotBrain::TestDeadline(int Ms) { return PlanClock() + time_freq() *
 bool CHookBotBrain::PartnerFarBehind() const
 {
 	return m_pGoal && m_pU->m_FreezeTime == 0 && m_pGoal->Dist(m_pU->m_Core.m_Pos) > m_pGoal->Dist(m_pB->m_Core.m_Pos) + 320;
+}
+
+static bool OnGroundAt(const CCollision *pCol, vec2 P);
+static bool AtRest(const CHookBotSim &S, int i);
+
+static bool InFinishAt(const CCollision *pCol, vec2 P)
+{
+	const int Idx = pCol->GetPureMapIndex(P);
+	return pCol->GetTileIndex(Idx) == TILE_FINISH || pCol->GetFrontTileIndex(Idx) == TILE_FINISH;
+}
+
+// one stage of a way to the finish by myself (tee 0 of S; the partner stays where it is): walk Dir for Walk ticks (jumping at
+// the start, at the floor's end, or not), off the ground keep Dir for AirAfter ticks, then AirDir, maybe air-jumping once
+// falling; 1 if I cross a finish tile, 0 if I come to rest (S holds that), -1 if not (dead, or 300 ticks)
+struct SFinishParams
+{
+	int m_Dir, m_Walk, m_Jump, m_AirDir, m_AirAfter, m_AirJump;
+};
+static int FinishStage(CHookBotSim &S, const SFinishParams &P, std::vector<CNetObj_PlayerInput> *pvIn, std::vector<vec2> *pvPath)
+{
+	const CNetObj_PlayerInput None = {};
+	bool Left = false;
+	int LeftAt = -1, Rest = 0;
+	for(int t = 0; t < 300; t++)
+	{
+		auto &T = S.m_aTee[0];
+		CNetObj_PlayerInput In = {};
+		In.m_TargetX = 1;
+		const bool Ground = OnGroundAt(S.m_pCollision, T.m_Core.m_Pos);
+		if(!Ground && !Left)
+		{
+			Left = true;
+			LeftAt = t;
+		}
+		if(T.m_FreezeTime == 0)
+		{
+			if(!Left)
+			{
+				In.m_Direction = t < P.m_Walk ? P.m_Dir : 0;
+				const bool Edge = Ground && P.m_Dir && !S.m_pCollision->CheckPoint(T.m_Core.m_Pos + vec2(P.m_Dir * 24.0f, 24));
+				In.m_Jump = (P.m_Jump == 1 && t == 0) || (P.m_Jump == 2 && Edge && t < P.m_Walk);
+			}
+			else
+			{
+				In.m_Direction = t - LeftAt < P.m_AirAfter ? P.m_Dir : P.m_AirDir;
+				In.m_Jump = P.m_AirJump && !(T.m_Core.m_Jumped & 2) && T.m_Core.m_Vel.y > 0;
+			}
+		}
+		const vec2 Before = T.m_Core.m_Pos;
+		if(pvIn)
+		{
+			pvIn->push_back(In);
+			pvPath->push_back(Before);
+		}
+		S.Step(In, None, 0);
+		const vec2 After = S.m_aTee[0].m_Core.m_Pos;
+		if(S.m_aTee[0].m_Dead)
+			return -1;
+		for(int k = 0; k <= 4; k++)
+			if(InFinishAt(S.m_pCollision, mix(Before, After, k / 4.0f)))
+				return 1;
+		// (at rest once off the ground, or where the walk ends without a jump)
+		Rest = (Left || t >= P.m_Walk) && AtRest(S, 0) ? Rest + 1 : 0;
+		if(Rest >= 3)
+			return 0;
+	}
+	return -1;
+}
+
+// the stages: a way to the finish in exactly Stages stages from Base; the first stage's inputs into pvIn, pvPath (the
+// shortest by the total ticks there; Any: the first found). With more stages to go, on only from the 6 resting places
+// (outside the freeze, distinct) nearest a finish tile
+static bool FinishSearch(const CHookBotSim &Base, int Stages, int &Steps, int MaxSteps, const std::vector<vec2> &vFinish, std::vector<CNetObj_PlayerInput> *pvIn, std::vector<vec2> *pvPath, int *pLen,
+	bool Any = false)
+{
+	static const int s_aWalk[] = {0, 6, 15, 30, 45}, s_aAfter[] = {0, 8, 16};
+	bool Found = false;
+	const vec2 Start = Base.m_aTee[0].m_Core.m_Pos;
+	struct SRest
+	{
+		CHookBotSim m_S;
+		std::vector<CNetObj_PlayerInput> m_vIn;
+		std::vector<vec2> m_vPath;
+		float m_D;
+	};
+	std::vector<SRest> vRest;
+	auto FinishDist = [&](vec2 P) {
+		float D = 1e9f;
+		for(const vec2 &F : vFinish)
+			D = std::min(D, distance(F, P));
+		return D;
+	};
+	for(int Dir = -1; Dir <= 1; Dir++)
+		for(int Walk : s_aWalk)
+			for(int Jump = 0; Jump < 3; Jump++)
+				for(int AirDir = -1; AirDir <= 1; AirDir++)
+					for(int After : s_aAfter)
+						for(int AirJump = 0; AirJump < 2; AirJump++)
+						{
+							if(Steps >= MaxSteps)
+								return Found;
+							if((Dir == 0 && (Walk || Jump == 2)) || (Dir != 0 && Walk == 0 && Jump != 1))
+								continue;
+							const SFinishParams P = {Dir, Walk, Jump, AirDir, After, AirJump};
+							CHookBotSim S = Base;
+							std::vector<CNetObj_PlayerInput> vIn;
+							std::vector<vec2> vPath;
+							const int r = FinishStage(S, P, &vIn, &vPath);
+							Steps += (int)vIn.size();
+							if(getenv("HH_FINISHDBG") && pvIn)
+								printf("finishdbg stages %d dir %d walk %d jump %d airdir %d after %d airjump %d: %d at %.1f %.1f%s%s\n", Stages, Dir, Walk, Jump, AirDir, After, AirJump, r,
+									S.m_aTee[0].m_Core.m_Pos.x / 32, S.m_aTee[0].m_Core.m_Pos.y / 32, S.m_aTee[0].m_FreezeTime ? " frz" : "", S.InFreeze(S.m_aTee[0].m_Core.m_Pos) ? " in freeze" : "");
+							if(r == 1 && Stages == 1 && (!Found || (int)vIn.size() < *pLen))
+							{
+								Found = true;
+								*pLen = (int)vIn.size();
+								if(pvIn)
+								{
+									*pvIn = vIn;
+									*pvPath = vPath;
+								}
+								if(Any)
+									return true;
+							}
+							if(r != 0 || Stages == 1)
+								continue;
+							const vec2 E = S.m_aTee[0].m_Core.m_Pos;
+							if(S.InFreeze(E) || distance(E, Start) < 48)
+								continue;
+							bool Seen = false;
+							for(const SRest &O : vRest)
+								Seen |= distance(O.m_S.m_aTee[0].m_Core.m_Pos, E) < 24;
+							if(!Seen)
+								vRest.push_back({S, vIn, vPath, FinishDist(E)});
+						}
+	std::stable_sort(vRest.begin(), vRest.end(), [](const SRest &a, const SRest &b) { return a.m_D < b.m_D; });
+	for(int k = 0; k < (int)vRest.size() && k < 6 && Steps < MaxSteps; k++)
+	{
+		CHookBotSim S = vRest[k].m_S;
+		int Len = (int)vRest[k].m_vIn.size() + S.m_aTee[0].m_FreezeTime, Rest = 0;
+		S.m_aTee[0].m_FreezeTime = 0;
+		if(!FinishSearch(S, Stages - 1, Steps, MaxSteps, vFinish, nullptr, nullptr, &Rest))
+			continue;
+		Len += Rest;
+		if(!Found || Len < *pLen)
+		{
+			Found = true;
+			*pLen = Len;
+			if(pvIn)
+			{
+				*pvIn = vRest[k].m_vIn;
+				*pvPath = vRest[k].m_vPath;
+			}
+		}
+	}
+	return Found;
+}
+
+bool CHookBotBrain::TestFinishSearch(const CHookBotSim &S, const std::vector<vec2> &vFinish, int MaxSteps, std::vector<vec2> *pvPath, int *pStages, int *pSteps)
+{
+	int Steps = 0, Len = 0;
+	std::vector<CNetObj_PlayerInput> vIn;
+	bool Found = false;
+	int Stages = 1;
+	for(; Stages <= 3 && !Found; Stages++)
+		Found = FinishSearch(S, Stages, Steps, MaxSteps, vFinish, &vIn, pvPath, &Len);
+	*pStages = Found ? Stages - 1 : 0;
+	*pSteps = Steps;
+	return Found;
+}
+
+void CHookBotBrain::ScanFinish()
+{
+	if(m_FinishScanned)
+		return;
+	m_FinishScanned = true;
+	for(int y = 0; y < m_pCollision->GetHeight(); y++)
+		for(int x = 0; x < m_pCollision->GetWidth(); x++)
+			if(InFinishAt(m_pCollision, vec2(x * 32 + 16, y * 32 + 16)))
+				m_vFinishTiles.push_back(vec2(x * 32 + 16, y * 32 + 16));
+}
+
+bool CHookBotBrain::NearFinish()
+{
+	ScanFinish();
+	if(!m_pGoalFar)
+		return false;
+	const vec2 G = m_pGoalFar->m_GoalTile * 32.0f;
+	for(const vec2 &F : m_vFinishTiles)
+		if(distance(F, G) < 16 * 32)
+			return true;
+	return false;
+}
+
+bool CHookBotBrain::FinishMove(CNetObj_PlayerInput &In)
+{
+	const SHookBotTee *pB = m_pB;
+	const vec2 B = pB->m_Core.m_Pos;
+	if(getenv("HH_NOFINISH"))
+		return false;
+	ScanFinish();
+	bool Near = false;
+	for(const vec2 &F : m_vFinishTiles)
+		Near |= distance(F, B) < 64 * 32;
+	if(!Near)
+		return false;
+	// the plan in hand, while I'm where it has me
+	if(!m_vFinishPlan.empty())
+	{
+		const int k = m_Now - m_FinishPlanAt;
+		if(k >= 0 && k < (int)m_vFinishPlan.size() && distance(B, m_vFinishPath[k]) < 2.0f)
+		{
+			const CNetObj_PlayerInput &P = m_vFinishPlan[k];
+			In.m_Direction = P.m_Direction;
+			In.m_Jump = P.m_Jump;
+			In.m_Hook = 0;
+			In.m_Fire = 0;
+			m_pWhy = "finish";
+			return true;
+		}
+		m_vFinishPlan.clear();
+		m_vFinishPath.clear();
+	}
+	// a new search: standing free somewhere new (or a while since the last one here)
+	// (standing still: walking along it searched at every step, 3M ticks each)
+	if(pB->m_FreezeTime > 0 || !pB->m_Grounded || length(pB->m_Core.m_Vel) > 0.5f || (distance(B, m_FinishTriedAt) < 16 && m_Now - m_FinishTriedTick < 5 * SERVER_TICK_SPEED))
+		return false;
+	m_FinishTriedAt = B;
+	m_FinishTriedTick = m_Now;
+	CHookBotSim S;
+	InitSim(S);
+	int Steps = 0, Len = 0;
+	std::vector<CNetObj_PlayerInput> vIn;
+	std::vector<vec2> vPath;
+	bool Found = false;
+	for(int Stages = 1; Stages <= 3 && !Found; Stages++)
+		Found = FinishSearch(S, Stages, Steps, 3000000, m_vFinishTiles, &vIn, &vPath, &Len);
+	if(ms_DebugTeam)
+		printf("finish search t%d id %d at %.1f %.1f: %s (%d ticks to it, %d searched)\n", m_Now, pB->m_Core.m_Id, B.x / 32, B.y / 32, Found ? "found" : "none", Len, Steps);
+	if(!Found)
+		return false;
+	m_vFinishPlan = vIn;
+	m_vFinishPath = vPath;
+	m_FinishPlanAt = m_Now;
+	return FinishMove(In);
 }
 
 // down the air field tile by tile from P (the way open air goes to the air goal), or down pField: does it get Tiles above
@@ -1856,7 +2186,7 @@ bool CHookBotBrain::PartnerStuckForGood() const
 {
 	CHookBotSim Probe;
 	Probe.m_pCollision = m_pCollision;
-	return m_pU->m_FreezeTime > 0 && m_pU->m_Grounded && length(m_pU->m_Core.m_Vel) < 1 && Probe.InFreeze(m_pU->m_Core.m_Pos);
+	return m_PartnerFinished || (m_pU->m_FreezeTime > 0 && m_pU->m_Grounded && length(m_pU->m_Core.m_Vel) < 1 && Probe.InFreeze(m_pU->m_Core.m_Pos));
 }
 
 bool CHookBotBrain::SoloMove(CNetObj_PlayerInput &In, bool AllowFrozen)
@@ -1888,42 +2218,73 @@ bool CHookBotBrain::SoloMove(CNetObj_PlayerInput &In, bool AllowFrozen)
 	// start another solo move from the ground then: Stronghold, after the swings along the ceiling and back down through
 	// the gap, on the floor before the next freeze strip)
 	const bool Settle = PartnerFarBehind() && !m_CatchGo;
+	// in the air between swing plans: what I do on a tick (the plan I left, from where I left it, while there's some
+	// left of it; else steering on the way I was)
+	auto CoastInput = [&](int Tick) {
+		CNetObj_PlayerInput I = {};
+		I.m_Direction = m_CoastDir;
+		I.m_TargetX = 1;
+		const int i = Tick - m_DropRestAt;
+		if(i >= 0 && i < (int)m_vDropRest.size())
+			I = m_vDropRest[i];
+		return I;
+	};
+	auto PlayInput = [&](CNetObj_PlayerInput &Out, const CNetObj_PlayerInput &I) {
+		Out.m_Direction = I.m_Direction;
+		Out.m_Jump = I.m_Jump;
+		Out.m_Hook = I.m_Hook;
+		Out.m_TargetX = I.m_TargetX;
+		Out.m_TargetY = I.m_TargetY;
+	};
 	auto Work = [](SSoloJob *pJ) {
-		const int64_t Start = PlanClock();
-		if(!pJ->m_Air)
-			pJ->m_Result = SoloSearch(pJ->m_Base, *pJ->m_pField, Start + time_freq() / (pJ->m_AllowFrozen ? 5 : 10), pJ->m_AllowFrozen);
-		// no jump gets me anywhere: with the hook then
-		if(!pJ->m_Result.m_Valid)
+		// (nothing by my own goal: once more by the shared one; my own was still back on the other one's line through
+		// Stronghold's freeze pool after I came round by the ledge and the pillar, and on the block between the freeze bands
+		// I stood for good with the partner across the gap)
+		for(int Pass = 0; Pass < 2; Pass++)
 		{
-			pJ->m_Result = SwingSearch(pJ->m_Base, *pJ->m_pField, PlanClock() + time_freq() * (pJ->m_LongSwing ? 2 : 1) / 5, pJ->m_Settle);
-			// in the air with nothing found: anything that keeps me out of the freeze, close to it or not (right under a
-			// freeze band, still rising, every move came within the usual 4 px at once, and I coasted into it)
-			if(!pJ->m_Result.m_Valid && pJ->m_Air)
-				pJ->m_Result = SwingSearch(pJ->m_Base, *pJ->m_pField, PlanClock() + time_freq() / 10, pJ->m_Settle, true);
-			// from the ground, a swing plan that doesn't end safe comes last: first through freeze, onto a spot
-			// outside it where I thaw (Stronghold: a drop down a shaft, drifting over to pass a 1-tile freeze column on
-			// its side into an opening behind it; a swing plan hovering on its air jump won, and I fell to the freeze at
-			// the bottom)
-			if(!pJ->m_Air && !pJ->m_AllowFrozen && !(pJ->m_Result.m_Valid && pJ->m_Result.m_Safe))
+			if(Pass == 1)
 			{
-				SSoloPlan Frozen = SoloSearch(pJ->m_Base, *pJ->m_pField, PlanClock() + time_freq() / 5, true);
-				if(Frozen.m_Valid)
-					pJ->m_Result = Frozen;
+				if(pJ->m_Result.m_Valid || !pJ->m_pAltField)
+					break;
+				pJ->m_pField = pJ->m_pAltField;
 			}
-			// on my way to rescue the partner, only somewhere safe: hopping about with nowhere to land gets me no nearer
-			// to a rescue (it jumped up and down on the spot, the route going up from there, and never tried again)
-			if(pJ->m_AllowFrozen && pJ->m_Result.m_Valid && !pJ->m_Result.m_Safe)
-				pJ->m_Result = {};
-			// a plan that doesn't end safe is for a chain of swings, planned on as I go; one without a hook is a jump into
-			// nothing (Stronghold, the end of the ledge after the freeze ceiling, nothing hookable in reach: it ran off it
-			// into the freeze pool 15 tiles below)
-			if(pJ->m_Result.m_Valid && !pJ->m_Result.m_Safe &&
-				std::none_of(pJ->m_Result.m_vInputs.begin(), pJ->m_Result.m_vInputs.end(), [](const CNetObj_PlayerInput &I) { return I.m_Hook != 0; }))
-				pJ->m_Result = {};
+			const int64_t Start = PlanClock();
+			if(!pJ->m_Air)
+				pJ->m_Result = SoloSearch(pJ->m_Base, *pJ->m_pField, Start + time_freq() / (pJ->m_AllowFrozen ? 5 : 10), pJ->m_AllowFrozen);
+			// no jump gets me anywhere: with the hook then
+			if(!pJ->m_Result.m_Valid)
+			{
+				pJ->m_Result = SwingSearch(pJ->m_Base, *pJ->m_pField, PlanClock() + time_freq() * (pJ->m_LongSwing ? 2 : 1) / 5, pJ->m_Settle);
+				// in the air with nothing found: anything that keeps me out of the freeze, close to it or not (right under a
+				// freeze band, still rising, every move came within the usual 4 px at once, and I coasted into it)
+				if(!pJ->m_Result.m_Valid && pJ->m_Air)
+					pJ->m_Result = SwingSearch(pJ->m_Base, *pJ->m_pField, PlanClock() + time_freq() / 10, pJ->m_Settle, true);
+				// from the ground, a swing plan that doesn't end safe comes last: first through freeze, onto a spot
+				// outside it where I thaw (Stronghold: a drop down a shaft, drifting over to pass a 1-tile freeze column on
+				// its side into an opening behind it; a swing plan hovering on its air jump won, and I fell to the freeze at
+				// the bottom)
+				if(!pJ->m_Air && !pJ->m_AllowFrozen && !(pJ->m_Result.m_Valid && pJ->m_Result.m_Safe))
+				{
+					SSoloPlan Frozen = SoloSearch(pJ->m_Base, *pJ->m_pField, PlanClock() + time_freq() / 5, true);
+					if(Frozen.m_Valid)
+						pJ->m_Result = Frozen;
+				}
+				// on my way to rescue the partner, only somewhere safe: hopping about with nowhere to land gets me no nearer
+				// to a rescue (it jumped up and down on the spot, the route going up from there, and never tried again)
+				if(pJ->m_AllowFrozen && pJ->m_Result.m_Valid && !pJ->m_Result.m_Safe)
+					pJ->m_Result = {};
+				// a plan that doesn't end safe is for a chain of swings, planned on as I go; one without a hook is a jump into
+				// nothing (Stronghold, the end of the ledge after the freeze ceiling, nothing hookable in reach: it ran off it
+				// into the freeze pool 15 tiles below)
+				if(pJ->m_Result.m_Valid && !pJ->m_Result.m_Safe &&
+					std::none_of(pJ->m_Result.m_vInputs.begin(), pJ->m_Result.m_vInputs.end(), [](const CNetObj_PlayerInput &I) { return I.m_Hook != 0; }))
+					pJ->m_Result = {};
+			}
 		}
 		if(getenv("HH_SOLODBG"))
-			printf("solodbg %.1f %.1f air %d frozen %d: valid %d swing %d safe %d len %d ends %.1f %.1f score %.0f from %.0f goal %.0f,%.0f\n", pJ->m_From.x / 32, pJ->m_From.y / 32, pJ->m_Air, pJ->m_AllowFrozen, pJ->m_Result.m_Valid,
-				pJ->m_Result.m_Swing, pJ->m_Result.m_Safe, (int)pJ->m_Result.m_vPath.size(), pJ->m_Result.m_vPath.empty() ? 0.0f : pJ->m_Result.m_vPath.back().x / 32,
+			printf("solodbg id %d from %.1f %.1f air %d frozen %d: valid %d swing %d safe %d grounded %d rest %d len %d ends %.1f %.1f score %.0f from %.0f goal %.0f,%.0f\n", pJ->m_Base.m_aTee[0].m_Core.m_Id, pJ->m_From.x / 32,
+				pJ->m_From.y / 32, pJ->m_Air, pJ->m_AllowFrozen, pJ->m_Result.m_Valid, pJ->m_Result.m_Swing, pJ->m_Result.m_Safe, pJ->m_Result.m_EndsGrounded, (int)pJ->m_Result.m_vRestInputs.size(),
+				(int)pJ->m_Result.m_vPath.size(), pJ->m_Result.m_vPath.empty() ? 0.0f : pJ->m_Result.m_vPath.back().x / 32,
 				pJ->m_Result.m_vPath.empty() ? 0.0f : pJ->m_Result.m_vPath.back().y / 32, pJ->m_Result.m_Score, pJ->m_pField->Dist(pJ->m_Base.m_aTee[0].m_Core.m_Pos), pJ->m_pField->m_GoalTile.x, pJ->m_pField->m_GoalTile.y);
 		pJ->m_Done = true;
 	};
@@ -1968,12 +2329,35 @@ bool CHookBotBrain::SoloMove(CNetObj_PlayerInput &In, bool AllowFrozen)
 		const bool Ended = k >= Size;
 		if(getenv("HH_SOLODBG") && !Ended && k >= 0)
 			printf("solodbg %d id %d: plan dropped at %d of %d, at %.1f %.1f, planned %.1f %.1f\n", Now, pB->m_Core.m_Id, k, Size, B.x / 32, B.y / 32, m_Solo.m_vPath[k].x / 32, m_Solo.m_vPath[k].y / 32);
-		// between swing plans in the air: keep steering the way I was (keeps my speed) until the next one
+		if(getenv("HH_SOLODBG") && Ended)
+			printf("solodbg %d id %d: plan ended (%d ticks) at %.1f %.1f v %.1f %.1f, %s\n", Now, pB->m_Core.m_Id, Size, B.x / 32, B.y / 32, pB->m_Core.m_Vel.x, pB->m_Core.m_Vel.y, pB->m_Grounded ? "grounded" : "in the air");
+		// between swing plans in the air: keep steering the way I was (keeps my speed) until the next one (steering
+		// neither way too: then nothing searched on in the air, and I fell into Stronghold's freeze floor below the swing
+		// course)
 		if(m_Solo.m_Swing && !m_Solo.m_vInputs.empty())
+		{
 			m_CoastDir = m_Solo.m_vInputs.back().m_Direction;
+			m_Coasting = true;
+		}
+		// (left in the air a few px off its path: its inputs from here on, the hook too, while the next search runs; coasting
+		// on let go of the hook mid-swing, in Stronghold's swing course right under a freeze band)
+		m_vDropRest.clear();
+		if(m_Solo.m_Swing && !Ended && k > 0 && !pB->m_Grounded)
+		{
+			m_vDropRest.assign(m_Solo.m_vInputs.begin() + k, m_Solo.m_vInputs.end());
+			m_DropRestAt = Now;
+		}
+		// (and the search planned on from its end is for somewhere I won't be: a new one from here)
+		if(!Ended && m_pSoloJob && m_pSoloJob->m_Air)
+		{
+			if(m_pSoloJob->m_Thread.joinable())
+				m_pSoloJob->m_Thread.join();
+			m_pSoloJob.reset();
+		}
 		m_Solo = {};
+		// (in the air at once: the plan I left goes on meanwhile)
 		if(!Ended)
-			m_NextSoloSearch = Now + 5;
+			m_NextSoloSearch = Now + (pB->m_Grounded ? 5 : 0);
 		// a plan that has me back on the ground: the usual rules decide from here (a new search right away went round in
 		// circles: alone, right next to the partner, plans that went nowhere one after another, and the rescue planning
 		// and the rule against moves that get nowhere never got their turn)
@@ -1981,14 +2365,20 @@ bool CHookBotBrain::SoloMove(CNetObj_PlayerInput &In, bool AllowFrozen)
 			return false;
 	}
 	if(pB->m_Grounded || pB->m_FreezeTime > 0)
+	{
 		m_CoastDir = 0;
+		m_Coasting = false;
+	}
 	// collect a search; start one (on a thread) when I stand, and stand still while it runs
 	if(m_pSoloJob)
 	{
 		// (planned from further on in the air: wait for that moment too)
 		if(!m_pSoloJob->m_Done || (m_pSoloJob->m_Air && Now < m_pSoloJob->m_StartTick))
 		{
-			In.m_Direction = m_pSoloJob->m_Air ? m_CoastDir : 0;
+			if(m_pSoloJob->m_Air)
+				PlayInput(In, CoastInput(Now));
+			else
+				In.m_Direction = 0;
 			return true;
 		}
 		if(m_pSoloJob->m_Thread.joinable())
@@ -1998,8 +2388,10 @@ bool CHookBotBrain::SoloMove(CNetObj_PlayerInput &In, bool AllowFrozen)
 		const bool Air = m_pSoloJob->m_Air;
 		const int StartTick = m_pSoloJob->m_StartTick;
 		m_pSoloJob.reset();
-		// planned from where I stood, or from where the last swing plan ended (it starts when that one ends)
-		if(Result.m_Valid && (Air ? Now >= StartTick : distance(From, B) < 2.0f))
+		// planned from where I stood, or from where the last swing plan ended (it starts when that one ends; and I have to be
+		// where it starts: one planned from the end of a plan I left half way started a tile off and was dropped at once)
+		const int K0 = Now - StartTick;
+		if(Result.m_Valid && (Air ? Now >= StartTick && K0 < (int)Result.m_vPath.size() && distance(Result.m_vPath[K0], B) < 3.0f : distance(From, B) < 2.0f))
 		{
 			m_Solo = Result;
 			m_SoloStart = Air ? StartTick : Now;
@@ -2044,21 +2436,18 @@ bool CHookBotBrain::SoloMove(CNetObj_PlayerInput &In, bool AllowFrozen)
 			return false;
 	}
 	// in the air between swing plans, the last search found nothing: keep steering and try again from a bit further on
-	if(m_CoastDir && !pB->m_Grounded && pB->m_FreezeTime == 0 && m_pGoal)
+	if(m_Coasting && !pB->m_Grounded && pB->m_FreezeTime == 0 && m_pGoal)
 	{
-		In.m_Direction = m_CoastDir;
+		PlayInput(In, CoastInput(Now));
 		if(Now >= m_NextSoloSearch)
 		{
 			m_pSoloJob = std::make_unique<SSoloJob>();
 			m_pSoloJob->m_LongSwing = !m_AsyncPlanning; // 400 ms inline (found Stronghold's swings after the freeze shaft 3 of 3 times; 200 ms now and then)
 			SSoloJob &J = *m_pSoloJob;
 			InitSim(J.m_Base);
-			CNetObj_PlayerInput Coast = {};
-			Coast.m_Direction = m_CoastDir;
-			Coast.m_TargetX = 1;
 			const int Lead = 10; // ticks: the search takes up to 200 ms on a thread
 			for(int i = 0; i < Lead; i++)
-				J.m_Base.Step(Coast, CNetObj_PlayerInput{}, 0);
+				J.m_Base.Step(CoastInput(Now + i), CNetObj_PlayerInput{}, 0);
 			J.m_From = J.m_Base.m_aTee[0].m_Core.m_Pos;
 			J.m_pField = SoloField;
 			J.m_Settle = Settle;
@@ -2095,6 +2484,8 @@ bool CHookBotBrain::SoloMove(CNetObj_PlayerInput &In, bool AllowFrozen)
 	InitSim(m_pSoloJob->m_Base);
 	m_pSoloJob->m_From = B;
 	m_pSoloJob->m_pField = SoloField;
+	if(SoloField == m_pOwnSolo && m_pGoalSolo && m_pGoalSolo != m_pOwnSolo)
+		m_pSoloJob->m_pAltField = m_pGoalSolo;
 	m_pSoloJob->m_Settle = Settle;
 	m_pSoloJob->m_AllowFrozen = AllowFrozen;
 	if(m_AsyncPlanning)
@@ -2669,7 +3060,11 @@ void CHookBotBrain::Hammerhit(CNetObj_PlayerInput &In, bool ForceRescue)
 					}
 					if(Dead)
 						continue;
-					if(!Frozen && m_pGoal->Dist(After) < BestMove)
+					// (not off an edge down a long way while the partner is far behind: after the drag under the floor after
+					// Stronghold's long shaft I walked off down the shaft beside the pocket, 45 tiles, and the partner, still
+					// above the freeze column, had nobody to catch it)
+					const bool LongFall = !Frozen && S.m_aTee[0].m_Core.m_Pos.y > B.y + 6 * 32;
+					if(!Frozen && m_pGoal->Dist(After) < BestMove && !(LongFall && PartnerFarBehind()))
 					{
 						BestMove = m_pGoal->Dist(After);
 						MoveDir = Dir;
@@ -2687,10 +3082,16 @@ void CHookBotBrain::Hammerhit(CNetObj_PlayerInput &In, bool ForceRescue)
 					bool DropOk = !PartnerFarBehind() && (m_pGoal->Dist(Clear) < Here - 16 || (!PartnerBehind && m_pGoal->Dist(Clear) < Here + 400));
 					// following a route: only into freeze the route goes near (Stronghold: off a ledge onto a freeze floor 16
 					// tiles below, where the route jumps over a 24-tile gap high above it)
+					// (or the route goes down that far a little further on, within 30 tiles across: at Stronghold's start the
+					// drop down the first shaft lands on the freeze floor 20 tiles left of where rank 1 lands, and we both
+					// stood at its edge for good)
+					bool Down = false;
 					if(DropOk && !m_vRoute.empty() && m_RouteIndex >= 0)
 					{
 						int Seg;
-						DropOk = PathDist(m_vRoute, m_RouteIndex - 2, m_RouteIndex + 6, Clear, &Seg) < 8 * 32;
+						for(int k = m_RouteIndex; k <= std::min((int)m_vRoute.size() - 1, m_RouteIndex + 6) && !Down; k++)
+							Down = m_vRoute[k].y * 32.0f >= Clear.y - 8 * 32 && absolute(m_vRoute[k].x * 32.0f - Clear.x) < 30 * 32;
+						DropOk = Down || PathDist(m_vRoute, m_RouteIndex - 2, m_RouteIndex + 6, Clear, &Seg) < 8 * 32;
 					}
 					// with a bot partner, only where it can get me out if I come to rest in the freeze (off the platform beside
 					// Stronghold's freeze shaft into the pool: nowhere to get me out from, while the way on was the shaft)
@@ -2699,8 +3100,27 @@ void CHookBotBrain::Hammerhit(CNetObj_PlayerInput &In, bool ForceRescue)
 						for(int t = 0; t < 150 && !AtRestSim(S); t++)
 							S.Step(None, None);
 						const vec2 E = S.m_aTee[0].m_Core.m_Pos;
-						DropOk = !S.m_aTee[0].m_Dead && (!S.InFreeze(E) || CanRescue(S, U, E));
+						bool Ok = !S.m_aTee[0].m_Dead && (!S.InFreeze(E) || CanRescue(S, U, E));
+						// (or, the route going down there, it can fall down to me: open air beside me from its height down to just
+						// above me, and hammer me out on its way; at Stronghold's start nothing to stand on is near the freeze
+						// floor at the foot of the first shaft)
+						if(!Ok && !S.m_aTee[0].m_Dead && Down)
+						{
+							bool Open = false;
+							for(float Dx : {-48.0f, 48.0f})
+							{
+								bool Col = true;
+								for(float y = std::min(U.y, E.y - 48); y <= E.y - 48 && Col; y += 16)
+									Col = !S.m_pCollision->CheckPoint(E.x + Dx, y) && !S.InFreeze(vec2(E.x + Dx, y));
+								Open |= Col;
+							}
+							Ok = Open && AirConnected(U, E + vec2(0, -64), 40);
+						}
+						DropOk = Ok;
 					}
+					if(getenv("HH_WALKDBG"))
+						printf("walkdbg t%d id %d dir %d: dead %d frozen %d clear %.1f %.1f (%.0f, here %.0f) farbehind %d behind %d dropok %d\n", m_Now, pB->m_Core.m_Id, Dir, Dead, Frozen, Clear.x / 32,
+							Clear.y / 32, m_pGoal->Dist(Clear), Here, PartnerFarBehind(), PartnerBehind, DropOk);
 					if(Frozen && Clear.y > B.y + 64 && DropOk && m_pGoal->Dist(Clear) < BestDrop)
 					{
 						BestDrop = m_pGoal->Dist(Clear);
@@ -3881,8 +4301,10 @@ CHookBotBrain::STeamPlan CHookBotBrain::PlanCatch(const CHookBotSim &Base, const
 	const float T0Dist = Field.Dist(T0), L0Dist = Field.Dist(L0);
 	// where the low one jumps: under the freeze above it, nearest to the top one first, every other tile
 	std::vector<float> vAll = FreezeColumns(Base, Field, L0);
+	// (or no freeze between us: up an unhookable shaft, after Stronghold's striped room, one thrown up onto the edge of a
+	// column top 18 rows above the other; the low one jumps where it stands)
 	if(vAll.empty())
-		return Best;
+		vAll.push_back(L0.x);
 	std::stable_sort(vAll.begin(), vAll.end(), [&](float a, float b) { return absolute(a - T0.x) < absolute(b - T0.x); });
 	std::vector<float> vXL;
 	for(int i = 0; i < (int)vAll.size() && vXL.size() < 6; i += 2)
@@ -5826,6 +6248,72 @@ static int FieldDir(const CHookBotGoalField &Field, vec2 P)
 // column): the partner, standing free far behind me, walks the way its goal goes into the freeze and falls; where that
 // fall goes 4 tiles down or more, the standing spot outside the freeze within 300 px of it with a clear line, one I can
 // get to, nearest the fall. Checked every half second, or when the partner moves
+// can a tee standing at From get to the spot to stand on at To on foot: from floor to floor, steps of up to 5 tiles across,
+// 4 up and 10 down (or 40 down, 3 across: off an edge down a shaft), the way between clear of freeze and walls (sampled on the line, and 2 rows above it for steps up or
+// across)? CanReach lets a tee go sideways through the air any distance: across Stronghold's 15-tile freeze hole into the
+// pit, the catch spot it found was on the far side, and the run there dropped me into the pit
+static bool WalkReach(const CHookBotSim &S, vec2 From, vec2 To)
+{
+	const CCollision *pCol = S.m_pCollision;
+	auto Stand = [&](int x, int y) {
+		const vec2 C(x * 32 + 16, y * 32 + 16);
+		return !pCol->CheckPoint(C) && !S.InFreeze(C) && pCol->CheckPoint(C.x, C.y + 32);
+	};
+	const int fx = (int)std::floor(From.x / 32), fy = (int)std::floor(From.y / 32), tx = (int)std::floor(To.x / 32), ty = (int)std::floor(To.y / 32);
+	if(!Stand(fx, fy))
+		return true;
+	const int R = 40, N = 2 * R + 1;
+	if(std::abs(tx - fx) > R || std::abs(ty - fy) > R)
+		return false;
+	std::vector<uint8_t> vSeen((size_t)N * N, 0);
+	std::vector<ivec2> vQueue = {ivec2(fx, fy)};
+	vSeen[R * N + R] = 1;
+	auto Clear = [&](vec2 A, vec2 B) {
+		const int K = std::max(2, (int)(distance(A, B) / 12));
+		for(int k = 0; k <= K; k++)
+		{
+			const vec2 P = mix(A, B, k / (float)K);
+			if(pCol->CheckPoint(P) || S.InFreeze(P))
+				return false;
+		}
+		return true;
+	};
+	for(size_t q = 0; q < vQueue.size(); q++)
+	{
+		const ivec2 T = vQueue[q];
+		if(std::abs(T.x - tx) <= 1 && std::abs(T.y - ty) <= 1)
+			return true;
+		const vec2 A(T.x * 32 + 16, T.y * 32 + 16);
+		for(int dy = -4; dy <= 40; dy++)
+			for(int dx = -5; dx <= 5; dx++)
+			{
+				const int x = T.x + dx, y = T.y + dy, lx = x - fx + R, ly = y - fy + R;
+				if((!dx && !dy) || (dy > 10 && std::abs(dx) > 3) || lx < 0 || ly < 0 || lx >= N || ly >= N || vSeen[ly * N + lx] || !Stand(x, y))
+					continue;
+				const vec2 B(x * 32 + 16, y * 32 + 16);
+				const vec2 Top((A.x + B.x) / 2, std::min(A.y, B.y) - (dy <= 0 ? 64 : 0));
+				if(!(dy > 0 && std::abs(dx) <= 1 ? Clear(A, B) : Clear(A, Top) && Clear(Top, B)))
+					continue;
+				vSeen[ly * N + lx] = 1;
+				vQueue.emplace_back(x, y);
+			}
+	}
+	return false;
+}
+
+// or with swings: open air from here to there (not through freeze), and something hookable within 10 tiles of the spot;
+// after the drag under the floor after Stronghold's long shaft, the spot to catch the other one's fall from is across a
+// room under a row of hookable blocks, no floor between (at the pit, nothing hookable anywhere)
+bool CHookBotBrain::SwingReach(const CHookBotSim &S, vec2 From, vec2 To) const
+{
+	bool Hookable = false;
+	const int tx = (int)std::floor(To.x / 32), ty = (int)std::floor(To.y / 32);
+	for(int y = ty - 10; y <= ty + 10 && !Hookable; y++)
+		for(int x = tx - 10; x <= tx + 10 && !Hookable; x++)
+			Hookable = S.m_pCollision->GetTile(x * 32 + 16, y * 32 + 16) == TILE_SOLID;
+	return Hookable && AirConnected(From, To, 40);
+}
+
 bool CHookBotBrain::FindCatchSpot()
 {
 	const SHookBotTee *pB = m_pB, *pU = m_pU;
@@ -5885,7 +6373,17 @@ bool CHookBotBrain::FindCatchSpot()
 					continue;
 				const vec2 Stand(C.x, (y + 1) * 32 - CCharacterCore::PhysicalSize() / 2);
 				const float D = distance(Stand, P);
-				if(D > 300 || D >= BestD || S.InFreeze(Stand) || m_pCollision->IntersectLine(Stand, P, nullptr, nullptr) || !CanReach(S, pB->m_Core.m_Pos, Stand))
+				// (HH_CATCHDBG="x,y" in tiles: why that spot was or wasn't taken)
+				if(const char *pDbg = getenv("HH_CATCHDBG"))
+				{
+					int Dx, Dy;
+					if(sscanf(pDbg, "%d,%d", &Dx, &Dy) == 2 && Dx == x && Dy == y)
+						printf("catchdbg %d %d from fall %.1f %.1f: d %.0f frz %d line %d canreach %d walk %d swing %d\n", x, y, P.x / 32, P.y / 32, D, S.InFreeze(Stand),
+							m_pCollision->IntersectLine(Stand, P, nullptr, nullptr) != 0, CanReach(S, pB->m_Core.m_Pos, Stand), WalkReach(S, pB->m_Core.m_Pos, Stand),
+							SwingReach(S, pB->m_Core.m_Pos, Stand));
+				}
+				if(D > 300 || D >= BestD || S.InFreeze(Stand) || m_pCollision->IntersectLine(Stand, P, nullptr, nullptr) || !CanReach(S, pB->m_Core.m_Pos, Stand) ||
+					!(WalkReach(S, pB->m_Core.m_Pos, Stand) || SwingReach(S, pB->m_Core.m_Pos, Stand)))
 					continue;
 				BestD = D;
 				m_CatchSpot = Stand;
@@ -6284,20 +6782,22 @@ CHookBotBrain::STeamPlan CHookBotBrain::PlanClimb(const CHookBotSim &Base, const
 	// down the shaft)
 	// (two of them a tee apart, one each: the spot there holds one of us, and rank 1's other one goes through the window
 	// and stands on the column's far edge)
+	// (near where the open air ends, the top of the climb, best by the goal field: with the goal 14 waypoints on beyond
+	// the freeze windows at the top of that shaft)
 	float aStandX[2] = {-1, -1};
 	{
-		const vec2 G = Field.m_GoalTile * 32 + vec2(16, 16);
+		const vec2 G = Air.m_GoalTile * 32 + vec2(16, 16);
 		const float h = CCharacterCore::PhysicalSize() / 2;
-		std::vector<std::pair<float, float>> vSpots; // distance to the goal, x
-		for(int ty = -5; ty <= 5; ty++)
-			for(int qx = -24; qx <= 24; qx++)
+		std::vector<std::pair<float, float>> vSpots; // the goal field's distance, x
+		for(int ty = -10; ty <= 10; ty++)
+			for(int qx = -48; qx <= 48; qx++)
 			{
 				const vec2 P(G.x + qx * 8.0f, (std::floor(G.y / 32) + ty + 1) * 32 - h);
 				if(Base.m_pCollision->CheckPoint(P + vec2(h, 0)) || Base.m_pCollision->CheckPoint(P - vec2(h, 0)) || Base.m_pCollision->CheckPoint(P - vec2(0, h)) || Base.InFreeze(P))
 					continue;
 				if(!Base.m_pCollision->CheckPoint(P + vec2(h - 1, h + 2)) && !Base.m_pCollision->CheckPoint(P + vec2(-h + 1, h + 2)))
 					continue;
-				vSpots.push_back({distance(P, G), P.x});
+				vSpots.push_back({Field.Dist(P), P.x});
 			}
 		std::sort(vSpots.begin(), vSpots.end());
 		for(const auto &Sp : vSpots)
@@ -6460,7 +6960,9 @@ CHookBotBrain::STeamPlan CHookBotBrain::PlanClimb(const CHookBotSim &Base, const
 				if(Pass == 1 && t >= 12 && (t % 6 == 0 || (t % 3 == 0 && DropWindow)))
 				{
 					// an end in the air (every 6 ticks; to rest from there every 12)
-					bool Ok = !aFrz[0] && !aFrz[1];
+					// (not touching each other: from there each of us swings on by itself, and two of us a tee apart pushed
+					// each other off every plan at once; both fell into Stronghold's swing course)
+					bool Ok = !aFrz[0] && !aFrz[1] && distance(S.m_aTee[0].m_Core.m_Pos, S.m_aTee[1].m_Core.m_Pos) >= 40;
 					for(int i = 0; i < 2 && Ok; i++)
 					{
 						const vec2 P = S.m_aTee[i].m_Core.m_Pos;
@@ -6961,7 +7463,13 @@ CHookBotBrain::STeamPlan CHookBotBrain::PlanLaunch(const CHookBotSim &Base, cons
 	static const int s_aStagger[] = {0, 4, 8, 12};
 	// (and off the ground: on that way, straight down or back, jumping off or walking off: running and jumping at the
 	// end of the block above Stronghold's shaft after the striped room carried us across it into the freeze column beside)
-	for(int AirSteer = -1; AirSteer <= 1; AirSteer++)
+	// (2: the way the open air goes: dropping down the shaft after the striped room, away from the freeze column beside it
+	// until below its foot, then along under it to the shaft the climb goes up)
+	auto AirDir = [&](vec2 P) {
+		const float L = Air.Dist(P + vec2(-48, -32)), R = Air.Dist(P + vec2(48, -32));
+		return L >= 1e5f && R >= 1e5f ? 0 : L < R - 8 ? -1 : R < L - 8 ? 1 : 0;
+	};
+	for(int AirSteer = -1; AirSteer <= 2; AirSteer++)
 	for(int WalkOff = 0; WalkOff < 2; WalkOff++)
 	for(int First = 0; First < 2; First++)
 		for(int Run : s_aRun)
@@ -6981,7 +7489,7 @@ CHookBotBrain::STeamPlan CHookBotBrain::PlanLaunch(const CHookBotSim &Base, cons
 						const auto &T = S.m_aTee[i];
 						aI[i].m_TargetX = 1;
 						const bool Ground = OnGroundAt(S.m_pCollision, T.m_Core.m_Pos);
-						aI[i].m_Direction = Ground || aJumpAt[i] < 0 ? Dir : AirSteer * Dir;
+						aI[i].m_Direction = Ground || aJumpAt[i] < 0 ? Dir : AirSteer == 2 ? AirDir(T.m_Core.m_Pos) : AirSteer * Dir;
 						const bool Edge = Ground && !S.m_pCollision->CheckPoint(T.m_Core.m_Pos + vec2(Dir * 24.0f, 24));
 						if(aJumpAt[i] < 0 && Ground)
 						{
@@ -7067,7 +7575,8 @@ CHookBotBrain::STeamPlan CHookBotBrain::PlanLaunch(const CHookBotSim &Base, cons
 	for(int k = 0; k < (int)vPick.size() && Steps < MaxSteps; k++)
 	{
 		const SLaunch &L = *vPick[k];
-		STeamPlan Climb = PlanClimb(L.m_S, Field, Air, std::max(100000, (MaxSteps - Steps) / ((int)vPick.size() - k)), Pseudo);
+		// (450 ticks: from under the freeze column's foot after the striped room, along to the shaft and up it took 448)
+		STeamPlan Climb = PlanClimb(L.m_S, Field, Air, std::max(100000, (MaxSteps - Steps) / ((int)vPick.size() - k)), Pseudo, 450);
 		Steps += Climb.m_Steps;
 		if(Stats)
 			printf("launch %d (%.1f %.1f / %.1f %.1f after %d ticks, air %.0f): climb %s %.0f\n", k, L.m_S.m_aTee[0].m_Core.m_Pos.x / 32, L.m_S.m_aTee[0].m_Core.m_Pos.y / 32, L.m_S.m_aTee[1].m_Core.m_Pos.x / 32,
@@ -7092,7 +7601,7 @@ CHookBotBrain::STeamPlan CHookBotBrain::PlanLaunch(const CHookBotSim &Base, cons
 		}
 	}
 	if(ms_DebugTeam)
-		printf("launch: %d states, best %.0f, %d ticks\n", (int)vL.size(), BestValue, Steps);
+		printf("launch: %d states, best %.0f, %d ticks (goal %.0f %.0f, air %.0f %.0f)\n", (int)vL.size(), BestValue, Steps, Field.m_GoalTile.x, Field.m_GoalTile.y, Air.m_GoalTile.x, Air.m_GoalTile.y);
 	Best.m_Steps = Steps;
 	return Best;
 }
@@ -7325,6 +7834,388 @@ CHookBotBrain::STeamPlan CHookBotBrain::PlanColumnDrop(const CHookBotSim &Base, 
 	}
 	if(ms_DebugTeam)
 		printf("column drop: best %.0f, %d ticks\n", BestValue, Steps);
+	Best.m_Steps = Steps;
+	return Best;
+}
+
+// a way of its own to the finish for tee i of S from where it rests (FinishSearch's first stage, the first one found;
+// frozen there, it thaws first), remembered by place
+static bool SoloFinishFrom(const CHookBotSim &S, int i, const std::vector<vec2> &vFinish, int &Steps, std::vector<std::pair<vec2, bool>> &vCache)
+{
+	const vec2 P = S.m_aTee[i].m_Core.m_Pos;
+	for(const auto &C : vCache)
+		if(distance(C.first, P) < 4)
+			return C.second;
+	CHookBotSim R = S;
+	if(i == 1)
+		R.Swap();
+	R.m_aTee[0].m_FreezeTime = 0;
+	R.m_aTee[0].m_Core.m_Vel = vec2(0, 0);
+	int Len = 0;
+	const bool Ok = FinishSearch(R, 1, Steps, Steps + 150000, vFinish, nullptr, nullptr, &Len, true);
+	vCache.push_back({P, Ok});
+	return Ok;
+}
+
+CHookBotBrain::STeamPlan CHookBotBrain::PlanFinishDrop(const CHookBotSim &Base, const std::vector<vec2> &vFinish, int MaxSteps)
+{
+	STeamPlan Best;
+	Best.m_Kind = TEAM_FINISH;
+	int Steps = 0;
+	const CCollision *pCol = Base.m_pCollision;
+	const bool Dbg = ms_DebugTeam && getenv("HH_FINISHDROPDBG");
+	std::vector<std::pair<vec2, bool>> vSolo;
+	int BestLen = 1 << 30;
+	auto Crossed = [&](vec2 A, vec2 B) {
+		for(int k = 0; k <= 4; k++)
+			if(InFinishAt(pCol, mix(A, B, k / 4.0f)))
+				return true;
+		return false;
+	};
+	// the diver into the freeze: walking Side, maybe jumping at the floor's end; off the ground on that way, back the
+	// other way (Mode 1) or neither (2), to fall in close to the floor's end (walked on into it, it fell 2.5 tiles out
+	// from the end of Stronghold's last block, and the hold swung it in under the block, where no hook gets to it)
+	auto DiveInput = [&](const CHookBotSim &S, int P, int Side, int Jump, int Mode) {
+		const auto &Pt = S.m_aTee[P];
+		CNetObj_PlayerInput I = {};
+		I.m_TargetX = Side;
+		const bool Ground = OnGroundAt(pCol, Pt.m_Core.m_Pos);
+		I.m_Direction = Ground || Mode == 0 ? Side : Mode == 1 && Pt.m_Core.m_Vel.x * Side > 0 ? -Side :
+													 0;
+		I.m_Jump = Jump && Ground && !OnGroundAt(pCol, Pt.m_Core.m_Pos + vec2(Pt.m_Core.m_Vel.x * 2, 0));
+		return I;
+	};
+	// the holder: to its spot near the end of its floor, then it hooks the diver whenever it is about to sink below the
+	// band it keeps it in, just under the freeze beside the floor (pulled back up into the freeze, its freeze starts
+	// over; PlanDrop's hold), bracing against the pull or not
+	struct SHold
+	{
+		int m_P, m_T, m_TSide, m_Brace;
+		float m_StandX, m_HoldY;
+	};
+	auto HoldInput = [&](const CHookBotSim &S, const SHold &H, bool Hold, int &PrevHook) {
+		const auto &Pt = S.m_aTee[H.m_P], &Tt = S.m_aTee[H.m_T];
+		CNetObj_PlayerInput I = {};
+		const vec2 Ahead = Pt.m_Core.m_Pos + Pt.m_Core.m_Vel * (distance(Pt.m_Core.m_Pos, Tt.m_Core.m_Pos) / 80.0f);
+		vec2 Dir = HookAimAt(pCol, Tt.m_Core.m_Pos, Ahead);
+		if(Dir.x == 0 && Dir.y == 0)
+			Dir = Ahead - Tt.m_Core.m_Pos;
+		Aim(I, Dir);
+		// (sinking fast, as far as the hook takes to stop it: falling from far above, it went past and into the freeze
+		// below before the pull stopped it)
+		const float Vy = Pt.m_Core.m_Vel.y;
+		const bool Want = Hold && Pt.m_Core.m_Pos.y + Vy * 3 + (Vy > 4 ? Vy * Vy / 4 : 0) > H.m_HoldY;
+		I.m_Hook = HookBotHookInput(Want, PrevHook, Tt.m_Core.m_HookState);
+		PrevHook = I.m_Hook;
+		I.m_Direction = H.m_Brace && Tt.m_Core.m_HookState == HOOK_GRABBED ? -H.m_TSide : SteerTo(H.m_StandX, Tt.m_Core.m_Pos.x, Tt.m_Core.m_Vel.x);
+		return I;
+	};
+	// where tee i of S falls straight down from x (no input, its speed down as it is): over a finish tile, or to rest
+	// outside the freeze where a way of its own goes on
+	auto FallGoes = [&](const CHookBotSim &From, int i, float x) {
+		CHookBotSim F = From;
+		auto &Tee = F.m_aTee[i];
+		const vec2 Start(x, Tee.m_Core.m_Pos.y);
+		if(pCol->TestBox(Start, vec2(28, 28)))
+			return false;
+		Tee.m_Core.m_Pos = Tee.m_PrevPos = Start;
+		Tee.m_Core.m_Vel = vec2(0, Tee.m_Core.m_Vel.y);
+		Tee.m_Core.SetHookedPlayer(-1);
+		Tee.m_Core.m_HookState = HOOK_IDLE;
+		const CNetObj_PlayerInput None = {};
+		int Rest = 0;
+		for(int t = 0; t < 250; t++)
+		{
+			const vec2 Before = Tee.m_Core.m_Pos;
+			F.Step(None, None, i);
+			Steps++;
+			if(Tee.m_Dead)
+				return false;
+			if(Crossed(Before, Tee.m_Core.m_Pos))
+				return true;
+			Rest = AtRest(F, i) ? Rest + 1 : 0;
+			if(Rest >= 3)
+				return !F.InFreeze(Tee.m_Core.m_Pos) && SoloFinishFrom(F, i, vFinish, Steps, vSolo);
+		}
+		return false;
+	};
+	// the hold: the diver walks into the freeze beside the holder's floor (or above it, and falls past), the holder holds
+	// it under that freeze until its freeze is about to run out, or has: a snapshot then (40 and 20 ticks left, thawed)
+	struct SSnap
+	{
+		CHookBotSim m_S;
+		std::vector<CNetObj_PlayerInput> m_avIn[2];
+		std::vector<vec2> m_avPath[2];
+		int m_aPrevHook[2];
+		SHold m_H;
+	};
+	std::vector<SSnap> vSnap;
+	static const int s_aEdgeBack[] = {4, 10, 20}, s_aLo[] = {24, 56, 88}, s_aSnapLeft[] = {0, 20, 40};
+	for(int P = 0; P < 2; P++)
+		for(int Side = -1; Side <= 1; Side += 2)
+			for(int JumpP = 0; JumpP < 2; JumpP++)
+				for(int Mode = 0; Mode < 3; Mode++)
+				{
+					const int T = 1 - P;
+					const vec2 T0 = Base.m_aTee[T].m_Core.m_Pos;
+					if(!OnGroundAt(pCol, T0))
+						continue;
+					// its fall without the holder: it has to freeze and come past the holder's feet
+					CHookBotSim F = Base;
+					bool Froze = false;
+					float PassX = -1;
+					for(int t = 0; t < 250 && PassX < 0; t++)
+					{
+						CNetObj_PlayerInput aI[2] = {};
+						aI[T].m_TargetX = 1;
+						aI[P] = Froze ? CNetObj_PlayerInput{} : DiveInput(F, P, Side, JumpP, Mode);
+						F.Step(aI[0], aI[1]);
+						Steps++;
+						const auto &Pt = F.m_aTee[P];
+						if(Pt.m_Dead || (t > 10 && AtRest(F, P)))
+							break;
+						Froze |= Pt.m_FreezeTime > 0;
+						if(Froze && Pt.m_Core.m_Pos.y > T0.y + 16)
+							PassX = Pt.m_Core.m_Pos.x;
+					}
+					if(PassX < 0)
+						continue;
+					// the freeze band level with the holder's floor in that column, and the first open row under it
+					const int FloorRow = (int)std::floor((T0.y + 20) / 32);
+					int y = FloorRow;
+					while(y < FloorRow + 16 && !Base.InFreeze(vec2(PassX, y * 32 + 16)) && !pCol->CheckPoint(PassX, y * 32 + 16))
+						y++;
+					if(!Base.InFreeze(vec2(PassX, y * 32 + 16)))
+						continue;
+					while(y < FloorRow + 16 && Base.InFreeze(vec2(PassX, y * 32 + 16)))
+						y++;
+					const float Below = y * 32;
+					// the holder's floor's end on that side
+					const int TSide = PassX > T0.x ? 1 : -1;
+					float EdgeX = T0.x;
+					for(int i = 0; i < 400; i++)
+					{
+						const vec2 Next(EdgeX + TSide * 2, T0.y);
+						if(!OnGroundAt(pCol, Next) || Base.InFreeze(Next) || pCol->TestBox(Next, vec2(28, 28)))
+							break;
+						EdgeX = Next.x;
+					}
+					for(int EdgeBack : s_aEdgeBack)
+						for(int Lo : s_aLo)
+							for(int Brace = 0; Brace < 2; Brace++)
+							{
+								const SHold H = {P, T, TSide, Brace, EdgeX - TSide * EdgeBack, Below + Lo + 48};
+								SSnap C;
+								C.m_S = Base;
+								C.m_H = H;
+								for(int i = 0; i < 2; i++)
+									C.m_aPrevHook[i] = Base.m_aTee[i].m_PrevInput.m_Hook;
+								CHookBotSim &S = C.m_S;
+								bool HFroze = false;
+								int Next = 0;
+								for(int t = 0; t < 500 && Next < 3; t++)
+								{
+									const auto &Pt = S.m_aTee[P], &Tt = S.m_aTee[T];
+									HFroze |= Pt.m_FreezeTime > 0;
+									while(Next < 3 && HFroze && Pt.m_FreezeTime <= s_aSnapLeft[2 - Next])
+									{
+										// (held in the air below the holder, the holder standing free)
+										if(!OnGroundAt(pCol, Pt.m_Core.m_Pos) && Pt.m_Core.m_Pos.y > Tt.m_Core.m_Pos.y + 32 && Tt.m_FreezeTime == 0 && OnGroundAt(pCol, Tt.m_Core.m_Pos))
+										{
+											SSnap Sn = C;
+											Sn.m_aPrevHook[P] = 0;
+											bool Same = false;
+											for(const SSnap &O : vSnap)
+												Same |= distance(O.m_S.m_aTee[0].m_Core.m_Pos, S.m_aTee[0].m_Core.m_Pos) < 4 && distance(O.m_S.m_aTee[1].m_Core.m_Pos, S.m_aTee[1].m_Core.m_Pos) < 4 &&
+													absolute(O.m_S.m_aTee[P].m_FreezeTime - Pt.m_FreezeTime) < 10;
+											if(!Same)
+												vSnap.push_back(std::move(Sn));
+										}
+										Next++;
+									}
+									if(Next >= 3)
+										break;
+									CNetObj_PlayerInput aI[2];
+									aI[P] = HFroze ? CNetObj_PlayerInput{} : DiveInput(S, P, Side, JumpP, Mode);
+									if(HFroze)
+										aI[P].m_TargetX = 1;
+									aI[T] = HoldInput(S, H, HFroze, C.m_aPrevHook[T]);
+									// (HH_FINISHDROPTRACE="diver,side,jump,mode,back,lo,brace": that hold, every other tick)
+									if(const char *pTrace = getenv("HH_FINISHDROPTRACE"))
+									{
+										int aQ[7];
+										if(sscanf(pTrace, "%d,%d,%d,%d,%d,%d,%d", &aQ[0], &aQ[1], &aQ[2], &aQ[3], &aQ[4], &aQ[5], &aQ[6]) == 7 && aQ[0] == P && aQ[1] == Side && aQ[2] == JumpP && aQ[3] == Mode && aQ[4] == EdgeBack &&
+											aQ[5] == Lo && aQ[6] == Brace && t % 2 == 0)
+											printf("fdtrace %3d: diver %.2f %.2f v %.1f %.1f frz %d | holder %.2f %.2f v %.1f %.1f hook %d->%d in %+d%s\n", t, Pt.m_Core.m_Pos.x / 32, Pt.m_Core.m_Pos.y / 32, Pt.m_Core.m_Vel.x,
+												Pt.m_Core.m_Vel.y, Pt.m_FreezeTime, Tt.m_Core.m_Pos.x / 32, Tt.m_Core.m_Pos.y / 32, Tt.m_Core.m_Vel.x, Tt.m_Core.m_Vel.y, Tt.m_Core.m_HookState, Tt.m_Core.HookedPlayer(),
+												aI[T].m_Direction, aI[T].m_Hook ? " H" : "");
+									}
+									for(int i = 0; i < 2; i++)
+									{
+										C.m_avPath[i].push_back(S.m_aTee[i].m_Core.m_Pos);
+										C.m_avIn[i].push_back(aI[i]);
+									}
+									S.Step(aI[0], aI[1]);
+									Steps++;
+									if(S.m_aTee[0].m_Dead || S.m_aTee[1].m_Dead || S.m_aTee[T].m_FreezeTime > 0 || (HFroze && OnGroundAt(pCol, S.m_aTee[P].m_Core.m_Pos)))
+										break;
+								}
+								if(Dbg)
+									printf("finishdrop hold: diver %d side %d jump %d mode %d pass %.1f below %.1f edge %.1f back %d lo %d brace %d: %d snapshots so far, diver %.1f %.1f frz %d, holder %.1f %.1f\n", P, Side, JumpP,
+										Mode, PassX / 32, Below / 32, EdgeX / 32, EdgeBack, Lo, Brace, (int)vSnap.size(), S.m_aTee[P].m_Core.m_Pos.x / 32, S.m_aTee[P].m_Core.m_Pos.y / 32, S.m_aTee[P].m_FreezeTime,
+										S.m_aTee[T].m_Core.m_Pos.x / 32, S.m_aTee[T].m_Core.m_Pos.y / 32);
+							}
+				}
+	// the thawed (or thawing) diver first: it has the most time to steer
+	std::stable_sort(vSnap.begin(), vSnap.end(), [](const SSnap &a, const SSnap &b) { return a.m_S.m_aTee[a.m_H.m_P].m_FreezeTime < b.m_S.m_aTee[b.m_H.m_P].m_FreezeTime; });
+	if(Dbg)
+		printf("finishdrop: %d snapshots, %d ticks\n", (int)vSnap.size(), Steps);
+	// after the hold: the holder holds on a little longer and walks into the freeze after it (jumping at the floor's end
+	// or not); the diver, free, steers to a column a fall down which goes to the finish, hooks the holder a while (from a
+	// little before the holder goes, or after) and drags it along, maybe air-jumping once falling near the freeze.
+	// Judged by the finish: each of us crosses a finish tile, or comes to rest outside the freeze where a way of its own
+	// goes there (it thaws first); the shortest
+	static const int s_aDropAt[] = {0, 6, 12, 20, 30}, s_aHookRel[] = {-6, 0, 6, 12, 20}, s_aHookFor[] = {20, 60};
+	for(int n = 0; n < (int)vSnap.size() && Steps < MaxSteps; n++)
+	{
+		const SSnap &Sn = vSnap[n];
+		const SHold &H = Sn.m_H;
+		const int P = H.m_P, T = H.m_T;
+		const int Limit = Steps + (MaxSteps - Steps) / ((int)vSnap.size() - n);
+		// the columns: runs of x (8 px apart, within 12 tiles) a straight fall from where the diver is goes well from; the
+		// middle of each, the 3 nearest
+		std::vector<float> vCols;
+		{
+			const float X0 = Sn.m_S.m_aTee[P].m_Core.m_Pos.x;
+			std::vector<std::pair<float, float>> vRuns;
+			bool In = false;
+			for(int k = -48; k <= 48; k++)
+			{
+				const float x = X0 + k * 8;
+				const bool Goes = FallGoes(Sn.m_S, P, x);
+				if(Goes && !In)
+					vRuns.push_back({x, x});
+				if(Goes)
+					vRuns.back().second = x;
+				In = Goes;
+			}
+			std::stable_sort(vRuns.begin(), vRuns.end(), [&](const auto &a, const auto &b) { return absolute((a.first + a.second) / 2 - X0) < absolute((b.first + b.second) / 2 - X0); });
+			for(int k = 0; k < (int)vRuns.size() && k < 3; k++)
+				vCols.push_back((vRuns[k].first + vRuns[k].second) / 2);
+		}
+		if(Dbg)
+		{
+			printf("finishdrop snapshot %d: diver %d at %.1f %.1f frz %d, holder %.1f %.1f; columns", n, P, Sn.m_S.m_aTee[P].m_Core.m_Pos.x / 32, Sn.m_S.m_aTee[P].m_Core.m_Pos.y / 32, Sn.m_S.m_aTee[P].m_FreezeTime,
+				Sn.m_S.m_aTee[T].m_Core.m_Pos.x / 32, Sn.m_S.m_aTee[T].m_Core.m_Pos.y / 32);
+			for(float X : vCols)
+				printf(" %.2f", X / 32);
+			printf("\n");
+		}
+		for(float Xg : vCols)
+			for(int DropAt : s_aDropAt)
+				for(int TJump = 0; TJump < 2; TJump++)
+					for(int HookRel : s_aHookRel)
+						for(int HookFor : s_aHookFor)
+							for(int PJump = 0; PJump < 2; PJump++)
+							{
+								if(Steps >= Limit)
+									goto NextSnap;
+								const int HookAt = DropAt + HookRel;
+								if(HookAt < 0)
+									continue;
+								CHookBotSim S = Sn.m_S;
+								std::vector<CNetObj_PlayerInput> avIn[2];
+								std::vector<vec2> avPath[2];
+								int aPrevHook[2] = {Sn.m_aPrevHook[0], Sn.m_aPrevHook[1]};
+								bool aDone[2] = {false, false};
+								int Rest = 0, t = 0;
+								for(; t < 400; t++)
+								{
+									const auto &Pt = S.m_aTee[P], &Tt = S.m_aTee[T];
+									CNetObj_PlayerInput aI[2] = {};
+									aI[0].m_TargetX = aI[1].m_TargetX = 1;
+									if(t < DropAt)
+										aI[T] = HoldInput(S, H, true, aPrevHook[T]);
+									else
+									{
+										aPrevHook[T] = 0;
+										if(Tt.m_FreezeTime == 0)
+										{
+											const bool Ground = OnGroundAt(pCol, Tt.m_Core.m_Pos);
+											aI[T].m_Direction = aDone[T] ? 0 : Ground ? H.m_TSide :
+																    SteerTo(Xg, Tt.m_Core.m_Pos.x, Tt.m_Core.m_Vel.x);
+											aI[T].m_Jump = TJump && Ground && !OnGroundAt(pCol, Tt.m_Core.m_Pos + vec2(Tt.m_Core.m_Vel.x * 2, 0));
+										}
+									}
+									if(Pt.m_FreezeTime == 0 && !aDone[P])
+									{
+										const bool Ground = OnGroundAt(pCol, Pt.m_Core.m_Pos);
+										aI[P].m_Direction = Ground ? 0 : SteerTo(Xg, Pt.m_Core.m_Pos.x, Pt.m_Core.m_Vel.x);
+										const bool Hooking = t >= HookAt && t < HookAt + HookFor && !aDone[T];
+										vec2 Dir = HookAimAt(pCol, Pt.m_Core.m_Pos, Tt.m_Core.m_Pos + Tt.m_Core.m_Vel * 2.0f);
+										if(Dir.x == 0 && Dir.y == 0)
+											Dir = Tt.m_Core.m_Pos - Pt.m_Core.m_Pos;
+										Aim(aI[P], Dir);
+										aI[P].m_Hook = HookBotHookInput(Hooking, aPrevHook[P], Pt.m_Core.m_HookState);
+										aI[P].m_Jump = PJump && !Ground && !(Pt.m_Core.m_Jumped & 2) && Pt.m_Core.m_Vel.y > 0 && FreezeClearance(S, Pt.m_Core.m_Pos) < 96;
+									}
+									aPrevHook[P] = aI[P].m_Hook;
+									const vec2 aBefore[2] = {S.m_aTee[0].m_Core.m_Pos, S.m_aTee[1].m_Core.m_Pos};
+									for(int i = 0; i < 2; i++)
+									{
+										avPath[i].push_back(aBefore[i]);
+										avIn[i].push_back(aI[i]);
+									}
+									S.Step(aI[0], aI[1]);
+									Steps++;
+									if(S.m_aTee[0].m_Dead || S.m_aTee[1].m_Dead)
+										break;
+									for(int i = 0; i < 2; i++)
+										aDone[i] |= Crossed(aBefore[i], S.m_aTee[i].m_Core.m_Pos);
+									if(aDone[0] && aDone[1])
+										break;
+									Rest = (aDone[0] || AtRest(S, 0)) && (aDone[1] || AtRest(S, 1)) ? Rest + 1 : 0;
+									if(Rest >= 3)
+										break;
+								}
+								if(S.m_aTee[0].m_Dead || S.m_aTee[1].m_Dead)
+									continue;
+								bool Ok = true;
+								int Len = (int)Sn.m_avIn[0].size() + t;
+								for(int i = 0; i < 2 && Ok; i++)
+									if(!aDone[i])
+									{
+										Ok = AtRest(S, i) && !S.InFreeze(S.m_aTee[i].m_Core.m_Pos) && SoloFinishFrom(S, i, vFinish, Steps, vSolo);
+										Len += S.m_aTee[i].m_FreezeTime + 60;
+									}
+								if(Dbg && getenv("HH_FINISHDROPDBG")[0] == '2')
+									printf("finishdrop try col %.2f drop %d tjump %d hook %d for %d pjump %d: ends %.1f %.1f%s%s / %.1f %.1f%s%s, %s\n", Xg / 32, DropAt, TJump, HookAt, HookFor, PJump,
+										S.m_aTee[0].m_Core.m_Pos.x / 32, S.m_aTee[0].m_Core.m_Pos.y / 32, aDone[0] ? " fin" : "", S.m_aTee[0].m_FreezeTime ? " frz" : "", S.m_aTee[1].m_Core.m_Pos.x / 32,
+										S.m_aTee[1].m_Core.m_Pos.y / 32, aDone[1] ? " fin" : "", S.m_aTee[1].m_FreezeTime ? " frz" : "", Ok ? "ok" : "no");
+								if(!Ok || Len >= BestLen)
+									continue;
+								BestLen = Len;
+								Best.m_Valid = true;
+								Best.m_Score = 10000 - Len;
+								Best.m_Up = P;
+								for(int i = 0; i < 2; i++)
+								{
+									Best.m_avIn[i] = Sn.m_avIn[i];
+									Best.m_avIn[i].insert(Best.m_avIn[i].end(), avIn[i].begin(), avIn[i].end());
+									Best.m_avPath[i] = Sn.m_avPath[i];
+									Best.m_avPath[i].insert(Best.m_avPath[i].end(), avPath[i].begin(), avPath[i].end());
+									Best.m_aEnd[i] = S.m_aTee[i].m_Core.m_Pos;
+								}
+								if(Dbg)
+									printf("finishdrop: found, snapshot %d col %.2f drop %d tjump %d hook %d for %d pjump %d, %d ticks (+ solo), %d searched\n", n, Xg / 32, DropAt, TJump, HookAt, HookFor, PJump, Len, Steps);
+							}
+	NextSnap:
+		// (the first that works will do: the search is costly)
+		if(Best.m_Valid)
+			break;
+	}
+	if(ms_DebugTeam)
+		printf("finish drop: %s, %d snapshots, %d ticks\n", Best.m_Valid ? "found" : "none", (int)vSnap.size(), Steps);
 	Best.m_Steps = Steps;
 	return Best;
 }
@@ -7634,7 +8525,7 @@ bool CHookBotBrain::TeamMove(CNetObj_PlayerInput &In)
 		if(k >= 0 && k < Len && distance(B, m_Team.m_avPath[Me][k]) < 1.0f && distance(U, m_Team.m_avPath[1 - Me][k]) < 1.0f)
 		{
 			const CNetObj_PlayerInput &P = m_Team.m_avIn[Me][k];
-			m_pWhy = m_Team.m_Kind == TEAM_THROW ? "team: throw" : m_Team.m_Kind == TEAM_CATCH ? "team: catch" : m_Team.m_Kind == TEAM_LEAP ? "team: leap" : m_Team.m_Kind == TEAM_JOINT ? "team: joint" : m_Team.m_Kind == TEAM_DROP ? "team: drop" : m_Team.m_Kind == TEAM_FALL ? "team: fall" : m_Team.m_Kind == TEAM_DASH ? "team: dash" : m_Team.m_Kind == TEAM_HOP ? "team: hop" : m_Team.m_Kind == TEAM_CLIMB ? "team: climb" : m_Team.m_Kind == TEAM_DRAG ? "team: drag" : m_Team.m_Kind == TEAM_COLUMN ? "team: column" : m_Team.m_Kind == TEAM_FLING ? "team: fling" : "team: gather";
+			m_pWhy = m_Team.m_Kind == TEAM_THROW ? "team: throw" : m_Team.m_Kind == TEAM_CATCH ? "team: catch" : m_Team.m_Kind == TEAM_LEAP ? "team: leap" : m_Team.m_Kind == TEAM_JOINT ? "team: joint" : m_Team.m_Kind == TEAM_DROP ? "team: drop" : m_Team.m_Kind == TEAM_FALL ? "team: fall" : m_Team.m_Kind == TEAM_DASH ? "team: dash" : m_Team.m_Kind == TEAM_HOP ? "team: hop" : m_Team.m_Kind == TEAM_CLIMB ? "team: climb" : m_Team.m_Kind == TEAM_DRAG ? "team: drag" : m_Team.m_Kind == TEAM_COLUMN ? "team: column" : m_Team.m_Kind == TEAM_FLING ? "team: fling" : m_Team.m_Kind == TEAM_FINISH ? "team: finish" : "team: gather";
 			In.m_Direction = P.m_Direction;
 			In.m_Jump = P.m_Jump;
 			In.m_Hook = P.m_Hook;
@@ -7650,7 +8541,7 @@ bool CHookBotBrain::TeamMove(CNetObj_PlayerInput &In)
 		if(k < Len)
 		{
 			char aBuf[128];
-			str_format(aBuf, sizeof(aBuf), "%s went wrong at tick %d of %d", m_Team.m_Kind == TEAM_THROW ? "the throw" : m_Team.m_Kind == TEAM_CATCH ? "the catch" : m_Team.m_Kind == TEAM_LEAP ? "the leap" : m_Team.m_Kind == TEAM_JOINT ? "the joint move" : m_Team.m_Kind == TEAM_DROP ? "the drop" : m_Team.m_Kind == TEAM_FALL ? "the fall" : m_Team.m_Kind == TEAM_DASH ? "the dash" : m_Team.m_Kind == TEAM_HOP ? "the hop" : m_Team.m_Kind == TEAM_CLIMB ? "the climb" : m_Team.m_Kind == TEAM_DRAG ? "the drag" : m_Team.m_Kind == TEAM_COLUMN ? "the column drop" : m_Team.m_Kind == TEAM_FLING ? "the fling" : "landing", k, Len);
+			str_format(aBuf, sizeof(aBuf), "%s went wrong at tick %d of %d", m_Team.m_Kind == TEAM_THROW ? "the throw" : m_Team.m_Kind == TEAM_CATCH ? "the catch" : m_Team.m_Kind == TEAM_LEAP ? "the leap" : m_Team.m_Kind == TEAM_JOINT ? "the joint move" : m_Team.m_Kind == TEAM_DROP ? "the drop" : m_Team.m_Kind == TEAM_FALL ? "the fall" : m_Team.m_Kind == TEAM_DASH ? "the dash" : m_Team.m_Kind == TEAM_HOP ? "the hop" : m_Team.m_Kind == TEAM_CLIMB ? "the climb" : m_Team.m_Kind == TEAM_DRAG ? "the drag" : m_Team.m_Kind == TEAM_COLUMN ? "the column drop" : m_Team.m_Kind == TEAM_FLING ? "the fling" : m_Team.m_Kind == TEAM_FINISH ? "the finish drop" : "landing", k, Len);
 			m_Say(aBuf);
 		}
 		m_TeamEnd = m_Now;
@@ -7661,6 +8552,7 @@ bool CHookBotBrain::TeamMove(CNetObj_PlayerInput &In)
 		if((m_Team.m_Kind == TEAM_CLIMB || m_Team.m_Kind == TEAM_COLUMN) && k >= Len && !pB->m_Grounded && pB->m_FreezeTime == 0)
 		{
 			m_CoastDir = m_Team.m_avIn[Me].empty() || !m_Team.m_avIn[Me].back().m_Direction ? (B.x < U.x ? -1 : 1) : m_Team.m_avIn[Me].back().m_Direction;
+			m_Coasting = true;
 			m_NextSoloSearch = m_Now;
 			m_NoFlyUntil = m_Now + 60;
 			m_ClimbAgainAt = m_Now;
@@ -7846,7 +8738,14 @@ bool CHookBotBrain::TeamMove(CNetObj_PlayerInput &In)
 			return false;
 		CHookBotSim S;
 		InitTeamSim(S);
-		STeamPlan Plan = PlanJoint(S, *m_pGoal, 2 * m_TeamBudget, 1 + Retry);
+		STeamPlan Plan;
+		// (the first time a fall-catch with more to search: each of its candidates gets a share of the budget, and on the
+		// left end of the platform beside Stronghold's freeze shaft the fall down it and the catch under the platform took
+		// 280k ticks of a 4M budget, none of a 1.2M one; we stood there until the restart)
+		if(Retry == 1 && !m_GoalByAir)
+			Plan = PlanFall(S, m_pGoalFar ? *m_pGoalFar : *m_pGoal, 4 * m_TeamBudget, m_Pseudo);
+		if(!Plan.m_Valid)
+			Plan = PlanJoint(S, *m_pGoal, 2 * m_TeamBudget, 1 + Retry);
 		if(ms_DebugTeam)
 			printf("team retry %d t%d id %d: %s (%d searched)\n", Retry, m_Now, pB->m_Core.m_Id, Plan.m_Valid ? "found" : "none", Plan.m_Steps);
 		if(!Plan.m_Valid)
@@ -7858,8 +8757,12 @@ bool CHookBotBrain::TeamMove(CNetObj_PlayerInput &In)
 		m_TeamEndKind = TEAM_NONE;
 		const int Me = Plan.m_aId[0] == pB->m_Core.m_Id ? 0 : 1;
 		char aBuf[160];
-		str_format(aBuf, sizeof(aBuf), "together then (try %d): I end at %.1f %.1f, you at %.1f %.1f (%d ticks searched)", Retry, Plan.m_aEnd[Me].x / 32, Plan.m_aEnd[Me].y / 32,
-			Plan.m_aEnd[1 - Me].x / 32, Plan.m_aEnd[1 - Me].y / 32, Plan.m_Steps);
+		if(Plan.m_Kind == TEAM_FALL)
+			str_format(aBuf, sizeof(aBuf), Plan.m_Up == Me ? "I fall in, catch me (try %d): I land at %.1f %.1f (%d ticks searched)" : "you fall in, I catch you (try %d): you land at %.1f %.1f (%d ticks searched)",
+				Retry, Plan.m_aEnd[Plan.m_Up].x / 32, Plan.m_aEnd[Plan.m_Up].y / 32, Plan.m_Steps);
+		else
+			str_format(aBuf, sizeof(aBuf), "together then (try %d): I end at %.1f %.1f, you at %.1f %.1f (%d ticks searched)", Retry, Plan.m_aEnd[Me].x / 32, Plan.m_aEnd[Me].y / 32,
+				Plan.m_aEnd[1 - Me].x / 32, Plan.m_aEnd[1 - Me].y / 32, Plan.m_Steps);
 		m_Say(aBuf);
 		return TeamMove(In);
 	}
@@ -7867,7 +8770,20 @@ bool CHookBotBrain::TeamMove(CNetObj_PlayerInput &In)
 	InitTeamSim(S);
 	STeamPlan Plan;
 	const float DistB = m_pGoal->Dist(B), DistU = m_pGoal->Dist(U);
-	if(Together)
+	// the way on goes to the finish: the finish drop first, from wherever near it we stand (Stronghold: one of us on
+	// the block over the last freeze layers, the other on the one 45 tiles above it, where rank 1's comes from)
+	if(NearFinish() && !getenv("HH_NOFINISHDROP"))
+	{
+		Plan = PlanFinishDrop(S, m_vFinishTiles, 4 * m_TeamBudget);
+		if(!Plan.m_Valid)
+		{
+			m_aTeamFailPos[0] = B;
+			m_aTeamFailPos[1] = U;
+		}
+	}
+	if(Plan.m_Valid)
+		;
+	else if(Together)
 	{
 		// next to each other on a floor, with a freeze ceiling above that the way goes up through: a throw; the way on
 		// beyond freeze (not through open air): a leap across together
@@ -7910,7 +8826,28 @@ bool CHookBotBrain::TeamMove(CNetObj_PlayerInput &In)
 		// way 7 waypoints on climbs: Stronghold after the striped room, down a shaft whose foot is a freeze floor, along
 		// under a freeze column and up the unhookable shaft beside it; the air goal 3 waypoints on is level with the foot)
 		if(!Plan.m_Valid && m_GoalByAir && m_pGoalAir && (AirWayClimbs((B + U) / 2, 10) || (m_pGoalSolo && AirWayClimbs((B + U) / 2, 10, m_pGoalSolo.get()))) && !getenv("HH_NOLAUNCH"))
-			Plan = PlanLaunch(S, m_pGoalSolo ? *m_pGoalSolo : *m_pGoal, *m_pGoalAir, 2 * m_TeamBudget, m_Pseudo);
+		{
+			// (through the open air to the goal 7 waypoints on, where it's in the open air: the air goal 3 waypoints on
+			// was level with the foot of the shaft the climb goes up, and the climb steered by it hovered there)
+			// (to the farthest waypoint up to 14 on that open air from here gets to: the top of the climb; the one 7 on
+			// was the foot of a block corner halfway up the shaft after the striped room, where the climb then stopped, and
+			// the throw from there left the other one below for good. Judged by the goal 14 on)
+			std::shared_ptr<const CHookBotGoalField> pAir = m_pGoalAir;
+			if(!m_vRoute.empty() && m_RouteIndex >= 0)
+			{
+				CHookBotGoalField FromHere;
+				FromHere.Build(m_pCollision, vec2(std::floor((B.x + U.x) / 64), std::floor((B.y + U.y) / 64)), 0);
+				for(int k = std::min((int)m_vRoute.size() - 1, m_RouteIndex + 14); k > m_RouteIndex; k--)
+					if(FromHere.Dist(m_vRoute[k] * 32.0f) < 1e5f)
+					{
+						auto pTop = std::make_shared<CHookBotGoalField>();
+						pTop->Build(m_pCollision, vec2(std::floor(m_vRoute[k].x), std::floor(m_vRoute[k].y)), 0);
+						pAir = pTop;
+						break;
+					}
+			}
+			Plan = PlanLaunch(S, m_pGoalFar ? *m_pGoalFar : m_pGoalSolo ? *m_pGoalSolo : *m_pGoal, *pAir, 4 * m_TeamBudget, m_Pseudo);
+		}
 		// (not from here again either: the dash's search ran every tick, both of us standing on the ledge before the slope in
 		// Stronghold's room after the freeze pools)
 		if(!Plan.m_Valid && FreezeColumns(S, *m_pGoal, (B + U) / 2).empty() && DropColumns(S, *m_pGoal, (B + U) / 2).empty() && m_GoalByAir)
@@ -7964,6 +8901,10 @@ bool CHookBotBrain::TeamMove(CNetObj_PlayerInput &In)
 		else if(Plan.m_Kind == TEAM_FALL)
 			str_format(aBuf, sizeof(aBuf), Plan.m_Up == Me ? "I fall in, catch me: I land at %.1f %.1f (%d ticks searched)" : "you fall in, I catch you: you land at %.1f %.1f (%d ticks searched)",
 				Plan.m_aEnd[Plan.m_Up].x / 32, Plan.m_aEnd[Plan.m_Up].y / 32, Plan.m_Steps);
+		else if(Plan.m_Kind == TEAM_FINISH)
+			str_format(aBuf, sizeof(aBuf), Plan.m_Up == Me ? "I fall in, hold me under it, then come after me: on to the finish (%d ticks searched)" :
+									 "you fall in, I hold you under it, then come after you: on to the finish (%d ticks searched)",
+				Plan.m_Steps);
 		else if(Plan.m_Kind == TEAM_FLING)
 			str_format(aBuf, sizeof(aBuf), Plan.m_Up == Me ? "fling me across: I land at %.1f %.1f (%d ticks searched)" : "I fling you across: you land at %.1f %.1f (%d ticks searched)",
 				Plan.m_aEnd[Plan.m_Up].x / 32, Plan.m_aEnd[Plan.m_Up].y / 32, Plan.m_Steps);

@@ -4031,6 +4031,7 @@ TEST_F(SimMapBots, Hammerhit)
 	const bool RealTime = getenv("HH_REALTIME") != nullptr;
 	const auto T0 = std::chrono::steady_clock::now();
 	m_RouteT0 = m_pServer->Tick();
+	int aFinishAt[2] = {-1, -1};
 	for(int i = 0; i < Seconds * SERVER_TICK_SPEED && Missing < 5 * SERVER_TICK_SPEED; i++)
 	{
 		if(RealTime)
@@ -4050,6 +4051,21 @@ TEST_F(SimMapBots, Hammerhit)
 		Missing = 0;
 		for(int t = 0; t < 2; t++)
 			MaxX = std::max(MaxX, (int)(Chr(t)->m_Pos.x / 32));
+		// the finish: the race finished, or (a run from the middle, not started) a finish tile touched
+		for(int t = 0; t < 2; t++)
+		{
+			const int Idx = Col()->GetPureMapIndex(Chr(t)->m_Pos);
+			if(aFinishAt[t] < 0 && (Chr(t)->m_DDRaceState == ERaceState::FINISHED || Col()->GetTileIndex(Idx) == TILE_FINISH || Col()->GetFrontTileIndex(Idx) == TILE_FINISH))
+			{
+				aFinishAt[t] = i;
+				printf("FINISH tee %d at %.2f s (%s)\n", t, i / 50.0, Chr(t)->m_DDRaceState == ERaceState::FINISHED ? "race finished" : "touched the finish");
+			}
+		}
+		if(aFinishAt[0] >= 0 && aFinishAt[1] >= 0)
+		{
+			printf("FINISH both at %.2f s\n", std::max(aFinishAt[0], aFinishAt[1]) / 50.0);
+			break;
+		}
 		// done: both through (or near the goal), and one of them free (it can rescue the other on open floor)
 		const int RouteUntil = getenv("HH_ROUTE_UNTIL") ? atoi(getenv("HH_ROUTE_UNTIL")) : 1 << 20;
 		const bool Through = HasRoute ? m_aBrain[0].m_RouteIndex >= RouteUntil :
@@ -4082,7 +4098,10 @@ TEST_F(SimMapBots, Hammerhit)
 		const auto &St = m_aBrain[t].m_RescueStats;
 		printf("brain %d: plans %d (found %d), hammers %d, last plan %d us\n", t, St.m_Plans, St.m_Found, St.m_Fired, m_aBrain[t].m_LastPlanUs);
 	}
-	printf("hammerhit: %s, furthest tile x %d\n", Done >= 0 ? "both made it past the goal" : "stuck", MaxX);
+	if(aFinishAt[0] >= 0 && aFinishAt[1] >= 0)
+		printf("hammerhit: both finished, %.2f s\n", std::max(aFinishAt[0], aFinishAt[1]) / 50.0);
+	else
+		printf("hammerhit: %s, furthest tile x %d\n", Done >= 0 ? "both made it past the goal" : "stuck", MaxX);
 	if(Done >= 0)
 		printf("both past tile %d after %.2f s\n", Goal, Done / 50.0);
 }
@@ -4249,7 +4268,10 @@ TEST_F(SimMapBots, Alone)
 	if(getenv("AL_LEAD")) // how many waypoints ahead the goal is
 		Brain.m_RouteLead = atoi(getenv("AL_LEAD"));
 	if(getenv("AL_V")) // flying: in the middle of swinging on my own
+	{
 		Brain.m_CoastDir = Chr(0)->m_Core.m_Vel.x < 0 ? -1 : 1;
+		Brain.m_Coasting = true;
+	}
 	const auto T0 = std::chrono::steady_clock::now();
 	for(int i = 0; i < Seconds * SERVER_TICK_SPEED && Chr(0) && Chr(1); i++)
 	{
@@ -5397,7 +5419,16 @@ TEST_F(SimMapBots, JointBench)
 		if(getenv("JB_SIM"))
 			ASSERT_TRUE(HookBotSimLoad(Base, getenv("JB_SIM")));
 		CHookBotBrain::ms_DebugTeam = true;
-		const auto Plan = getenv("JB_FLING") ? CHookBotBrain::PlanFling(Base, *Brain.m_pGoal, Budget) :
+		std::vector<vec2> vFinish;
+		for(int y = 0; y < Col()->GetHeight(); y++)
+			for(int x = 0; x < Col()->GetWidth(); x++)
+			{
+				const int Idx = y * Col()->GetWidth() + x;
+				if(Col()->GetTileIndex(Idx) == TILE_FINISH || Col()->GetFrontTileIndex(Idx) == TILE_FINISH)
+					vFinish.push_back(vec2(x * 32 + 16, y * 32 + 16));
+			}
+		const auto Plan = getenv("JB_FINISHDROP") ? CHookBotBrain::PlanFinishDrop(Base, vFinish, Budget) :
+				  getenv("JB_FLING") ? CHookBotBrain::PlanFling(Base, *Brain.m_pGoal, Budget) :
 				  getenv("JB_LAUNCH") ? CHookBotBrain::PlanLaunch(Base, *Brain.m_pGoal, *Brain.m_pGoalAir, Budget, Brain.m_Pseudo) :
 				  getenv("JB_COLUMN") ? CHookBotBrain::PlanColumnDrop(Base, *Brain.m_pGoal, Budget) :
 				  getenv("JB_DRAG") ? CHookBotBrain::PlanDrag(Base, *Brain.m_pGoal, Budget) :
@@ -5471,6 +5502,38 @@ TEST_F(SimMapBots, HammerProbe)
 // the solo swing search alone from a state: SB_STATE="x,y,vx,vy" (px), SB_PARTNER="x,y" (px, standing; far away by
 // default), SB_GOAL="x,y" (tile), SB_MS (default 400, deterministic at HH_DET ns per tick, default 2000); prints the plan
 // found and, with SB_DUMP=1, its path every 5 ticks (HH_SWINGDBG=1: the search's levels)
+// the finish search alone (FB_STATE="x,y" px, standing there; FB_PARTNER="x,y"; FB_MAX ticks): FinishMove's ways to a
+// finish tile by myself, 1-3 stages
+TEST_F(SimMapBots, FinishBench)
+{
+	Kill(2);
+	vec2 Pos(0, 0), Partner(64, 64);
+	ASSERT_TRUE(getenv("FB_STATE"));
+	sscanf(getenv("FB_STATE"), "%f,%f", &Pos.x, &Pos.y);
+	if(getenv("FB_PARTNER"))
+		sscanf(getenv("FB_PARTNER"), "%f,%f", &Partner.x, &Partner.y);
+	Spawn(1, Partner);
+	Spawn(0, Pos);
+	for(int i = 0; i < 20; i++)
+		Step(2);
+	CHookBotSim S;
+	CHookBot::InitSim(S, GameServer(), Chr(0), Chr(1));
+	std::vector<vec2> vFinish;
+	for(int y = 0; y < Col()->GetHeight(); y++)
+		for(int x = 0; x < Col()->GetWidth(); x++)
+		{
+			const int Idx = y * Col()->GetWidth() + x;
+			if(Col()->GetTileIndex(Idx) == TILE_FINISH || Col()->GetFrontTileIndex(Idx) == TILE_FINISH)
+				vFinish.push_back(vec2(x * 32 + 16, y * 32 + 16));
+		}
+	std::vector<vec2> vPath;
+	int Stages = 0, Steps = 0;
+	const bool Found = CHookBotBrain::TestFinishSearch(S, vFinish, getenv("FB_MAX") ? atoi(getenv("FB_MAX")) : 5000000, &vPath, &Stages, &Steps);
+	printf("fb from %.1f %.1f: %s, %d stages, %d ticks searched\n", S.m_aTee[0].m_Core.m_Pos.x / 32, S.m_aTee[0].m_Core.m_Pos.y / 32, Found ? "found" : "none", Stages, Steps);
+	for(size_t k = 0; k < vPath.size(); k += 5)
+		printf("fb path %3d: %.1f %.1f\n", (int)k, vPath[k].x / 32, vPath[k].y / 32);
+}
+
 TEST_F(SimMapBots, SwingBench)
 {
 	Kill(2);
@@ -5531,6 +5594,28 @@ TEST_F(SimMapBots, ReachProbe)
 // a column of x every 10 tiles; MR_RAW=1 also prints the game and front tile numbers of each non-air tile
 TEST_F(SimMapBots, MapRegion)
 {
+	// (MR_FIND=<tile index>: where that tile is, in the game or front layer, the bounding box and the first few)
+	if(const char *pFind = getenv("MR_FIND"))
+	{
+		const int Want = atoi(pFind);
+		CCollision *pCol = Col();
+		int Count = 0, MinX = 1 << 30, MinY = 1 << 30, MaxX = -1, MaxY = -1;
+		for(int y = 0; y < pCol->GetHeight(); y++)
+			for(int x = 0; x < pCol->GetWidth(); x++)
+			{
+				const int Idx = y * pCol->GetWidth() + x;
+				if(pCol->GetTileIndex(Idx) != Want && pCol->GetFrontTileIndex(Idx) != Want)
+					continue;
+				if(Count++ < 10)
+					printf("mr find %d at %d %d\n", Want, x, y);
+				MinX = std::min(MinX, x);
+				MinY = std::min(MinY, y);
+				MaxX = std::max(MaxX, x);
+				MaxY = std::max(MaxY, y);
+			}
+		printf("mr find %d: %d tiles in x %d-%d y %d-%d\n", Want, Count, MinX, MaxX, MinY, MaxY);
+		return;
+	}
 	const char *p = getenv("MR_RECT");
 	ASSERT_TRUE(p);
 	int x0, y0, x1, y1;
