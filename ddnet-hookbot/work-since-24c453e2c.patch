@@ -314,12 +314,28 @@ index 8f1f7b062..1e55c046f 100644
 +393.5 394.0
 +393.6 402.6
 diff --git a/docs/HOOKBOT.md b/docs/HOOKBOT.md
-index 218414e8d..386039985 100644
+index 218414e8d..06608adcd 100644
 --- a/docs/HOOKBOT.md
 +++ b/docs/HOOKBOT.md
-@@ -18,18 +18,29 @@ Test map (`SimBot.WriteMap`): you spawn in an open shaft (plain hookfly). Walk r
+@@ -17,19 +17,45 @@ Test map (`SimBot.WriteMap`): you spawn in an open shaft (plain hookfly). Walk r
+ ## Skin
  The bot wears `claude` (`cl_hookbot_skin` / `sv_hookbot_skin`): a terracotta tee with an ivory spark, `data/skins/claude.png`, generated from `default.png`'s shapes by `scripts/make_claude_skin.py`. Skins are client-side: a client without the file shows the default tee, so copy it into the client's `skins/` folder (on macOS `~/Library/Application Support/DDNet/skins/`).
  
++## Video of a sim run
++1. Record the run: `SIM_DEMO_DIR=<dir> HH_DEMO=<name>` on `SimMapBots.Hammerhit` writes `<dir>/<name>.demo`. Tee 0 is client id 127 and tee 1 is 126. Both are named Claude and wear `claude`.
++2. Build the client with `-DVIDEORECORDER=ON`.
++3. Put the map in the client's `maps/` under the name the demo asks for (the sim's runs say `tasmap`) and `claude.png` in `skins/`.
++4. Render, headless under Xvfb (Mesa llvmpipe):
++   ```sh
++   DDNET_DEMO_RENDER_WAIT_MS=8000 DDNET_READ_BACK_BUFFER=1 DISPLAY=:99 ./DDNet "gfx_backend OpenGL; gfx_gl_major 3; gfx_gl_minor 3; gfx_screen_width 1280; gfx_screen_height 720; cl_default_zoom 12; snd_enable 0; cl_video_sound_enable 0; player_skin claude; demo_render demos/<name>.demo <name> 4 1 127"
++   ```
++   The video lands in `videos/<name>.mp4`. Speed index 4 is normal speed, 1 quits when done, and 127 follows tee 0.
++
++Why each setting:
++- **`DDNET_READ_BACK_BUFFER=1`:** the recorder reads frames from the front buffer, which is black under Xvfb, so this makes it read the back buffer.
++- **The GL 3.3 settings:** without them Mesa gives a GL 1.1 context.
++- **`player_skin claude` and `DDNET_DEMO_RENDER_WAIT_MS`:** they load the skin before playback starts. Without them the default tee showed for the first two minutes of the video, because skins load in the background and this one was first asked for once playback ran.
++
  ## Chat commands
 -Any message containing the bot's name (`cl_hookbot_name` / `sv_hookbot_name`, default `Claude`, case-insensitive). The client-side bot listens to your own tees and to the players in `cl_hookbot_friends` (comma-separated, default `always`). It plays with whoever gave the last command. When that's a friend, it answers in real chat from the dummy so they can see it. Its view of a friend is only the usual prediction of another player (their inputs aren't known), so aled timing with a friend is less exact than with you. While your own tee is paused, spectating or dead, the client's prediction stands still (`UpdatePrediction` needs your character) and your connection may not even see the dummy, so the bot builds its view from the dummy connection's own snapshots instead (`CGameClient::HookBotWorld`); you can `/pause` or `/spec` and let a friend play with it. A friend's fire button isn't sent to other clients, so its swings (for the gestures) are rebuilt from its tee's attack tick. A friend in another DDRace team is invisible to it. `cl_hookbot_log 1` (the default) writes what the bot saw and did every tick to `hookbot_log.txt` in the save directory, a new file each client start:
 +Any message containing the bot's name (`cl_hookbot_name` / `sv_hookbot_name`, default `Claude`, case-insensitive). The client-side bot listens to your own tees and to the players in `cl_hookbot_friends` (comma-separated, default `always`). It plays with whoever gave the last command. When that's a friend and `cl_hookbot_chat` is 1 (default 0), it answers in real chat from the dummy so they can see it; otherwise its replies stay local echoes. Its view of a friend is only the usual prediction of another player (their inputs aren't known), so aled timing with a friend is less exact than with you. While your own tee is paused, spectating or dead, the client's prediction stands still (`UpdatePrediction` needs your character) and your connection may not even see the dummy, so the bot builds its view from the dummy connection's own snapshots instead (`CGameClient::HookBotWorld`); you can `/pause` or `/spec` and let a friend play with it. A friend's fire button isn't sent to other clients, so its swings (for the gestures) are rebuilt from its tee's attack tick. A friend in another DDRace team is invisible to it. `cl_hookbot_log 1` (the default) writes what the bot saw and did every tick to `hookbot_log.txt` in the save directory, a new file each client start:
@@ -348,7 +364,7 @@ index 218414e8d..386039985 100644
    - It starts at the earliest waypoint within 16 tiles of you (or not much farther than the nearest one). Stronghold's finish is right next to its spawn, so "the nearest waypoint" made it start at the last one and walk to the finish (`claude_wont_start`). It moves on once one of you is within 6 tiles of the current waypoint and both within 14, or once you're nearer to a later stretch of the route than to the current one (a slower team takes a different line: rank 1 flies where you hammerhit along the floor). It says each new waypoint in chat.
    - It picks its place on the route again (like at the start, and says "back to waypoint ...") after a kill, respawn or teleport (a tee jumping more than 4 tiles in one tick), or when you're both more than 30 tiles from the stretch of route it was following (`pretty_big_regression`: after a kill at Stronghold it kept the waypoint of the previous attempt, and from the bottom of the first shaft that goal led back towards the start).
    - It also moves on by progress: once one of you is closer to the current goal (by the walking distances) than a waypoint before it is, that waypoint counts as passed. In `claude_keep_going_towards_startline` you dropped straight down the first shaft where rank 1 flew diagonally, never came within 14 tiles of those waypoints, and the goal stayed behind you, so every rescue dragged you back toward the start.
-@@ -61,6 +72,13 @@ Any message containing the bot's name (`cl_hookbot_name` / `sv_hookbot_name`, de
+@@ -61,6 +87,13 @@ Any message containing the bot's name (`cl_hookbot_name` / `sv_hookbot_name`, de
  - `Claude come` (server-side bot only): teleports it next to you (it also teleports when you start a mode from more than about 19 tiles away).
  - `Claude stop`
  
@@ -362,7 +378,7 @@ index 218414e8d..386039985 100644
  ## How it works
  - **Hookfly** (`CHookBotBrain::Hookfly`): the upper tee hooks the lower one once its own rise has slowed (vy > -12; from the ground: at its apex). It lets go when the partner has passed it, and moves away from the partner while hooking. As a rider it steps aside so it passes beside you. These are the `SimFly` rules; `SimBot.TuneHookfly` grid-searched the bot's parameters.
  - **Lookahead** (`CHookBotSim`): both tees stepped with the shared `CCharacterCore` plus freeze, in the server's tick order. One tick matches the server exactly (checked in `SimBot.Aled` with `SIM_DBG=1`). About 1.2 µs per step. Your future inputs come from a model of a hookflyer (`PartnerModel`): hook the bot up once it is below you and your rise slows, step away while hooking, let go once it has passed.
-@@ -95,6 +113,64 @@ Any message containing the bot's name (`cl_hookbot_name` / `sv_hookbot_name`, de
+@@ -95,6 +128,64 @@ Any message containing the bot's name (`cl_hookbot_name` / `sv_hookbot_name`, de
    - Narrow tunnels: a freed partner can't stay free for 30 ticks between a freeze floor and ceiling 4-5 tiles apart. It needs 12 (`MinFree`), and every tick free up to 30 counts.
    - What it doesn't do yet: set up the aled on purpose (where it lands after hammering you decides whether you can aled it next), or anything faster than the plain cycle.
  
@@ -427,7 +443,7 @@ index 218414e8d..386039985 100644
  ## Tests (`src/test/zz_physics_sim_test.cpp`, `SimBot.*`, `SimPseudo.*`, `SimMapBots.*`)
  The bot is tee 0 (it is the first debug dummy). Tee 1 is a scripted hookflyer with a reaction delay (`SHuman`).
  - `SimBot.Hookfly`: plain hookfly with 10 competent partners. It keeps going with delays up to 2-3 ticks.
-@@ -104,6 +180,16 @@ The bot is tee 0 (it is the first debug dummy). Tee 1 is a scripted hookflyer wi
+@@ -104,6 +195,16 @@ The bot is tee 0 (it is the first debug dummy). Tee 1 is a scripted hookflyer wi
    - Bot hammers: 12/12 in every case when the scripted driver also caps its speed (`PF_HUMANCAP=1`), 6-9/12 sideways when it holds the direction forever. About 230-350 px/s up, 350 px/s sideways.
    - Bot drives: 9-11/12, 260-530 px/s up, about 400 px/s sideways. The losses come from late scripted hammerers.
  - `SimMapBots.Hammerhit` (`TAS_MAP=<Stronghold.map>`): the bot plays both tees from the start: fall into the shaft, hammerhit right, aled through the 1-tile wall at x 105. Both got through from all 7 start positions tried, in 10-18 s (rank 1 takes about 6 s; timing varies with the search budget). Options: `HH_X0` / `HH_X1` (start tiles), `HH_BUDGET` (µs), `HH_EVERY`, `HH_DEMO=<name>` with `SIM_DEMO_DIR`. Planning runs inline by default (repeatable). `HH_ASYNC=1 HH_REALTIME=1` uses the worker thread with 20 ms ticks, as live; both got through in all 3 runs, 9.6-16 s.
@@ -444,7 +460,7 @@ index 218414e8d..386039985 100644
  - `SimMapBots.Hammerhit` on Simple Down (`TAS_MAP=<Simple Down.map> HH_GOALTILE=188,86 HH_X0=172 HH_X1=175 HH_Y=48`): the spawn segment (right, drop, left, drop, right through a 4-tall tunnel, kill tiles in the floors). Same start, 8 runs: 7 got through in 17-21 s with the head-stand option; one ended with both frozen on tunnel 2's floor. Without it: 4 of 8. Before the kill tile check covered the bot's own fall, 3 of 8 runs killed a tee.
    - Stronghold with all of this: 4 of 6 starts (11.6-20.8 s).
  - Simple Down going left (`HH_GOALTILE=55,55`, through the 1-tile walls at x 130, 108, 86 and 64 with 4 aleds): 3 of 4 runs got through, in 19.6-22.6 s. Tunnels: 6 of 6. Stronghold: 5 of 6.
-@@ -111,8 +197,18 @@ The bot is tee 0 (it is the first debug dummy). Tee 1 is a scripted hookflyer wi
+@@ -111,8 +212,19 @@ The bot is tee 0 (it is the first debug dummy). Tee 1 is a scripted hookflyer wi
    - Stronghold from the start to (158, 38): hammerhit along the floor, aled through the wall at 105, hammerhit across the big room, then pseudofly up through the ceiling gap to the goal. 5 of 6 starts, 18-23 s.
    - The fly only starts when both happen to be free in the air after a rescue. In one run that took until x 158; rank 1 flies diagonally right after the aled.
    - Simple Down tunnels and Simple Down left: 3 of 3 each.
@@ -463,6 +479,7 @@ index 218414e8d..386039985 100644
 +- `SimMapBots.HammerProbe` (`HP_A`, `HP_B` = "x,y,vx,vy,frozen" in px, `HP_JUMP`, `HP_FIRE` ticks, `HP_AIM`): the game's own hammer on a scripted jump and hit.
 +- `SimMapBots.JointBench` planners: `JB_FALL`, `JB_DROP`, `JB_DASH`, `JB_HOP`, `JB_CATCH`, `JB_CLIMB` (a number above 1: the climb's ticks), `JB_DRAG`, `JB_FLING`, `JB_LAUNCH`, `JB_COLUMN`, `JB_FINISHDROP` (the finish drop to the map's finish tiles; else `PlanJoint`); `JB_DUMP=1` prints the plan found tick by tick.
 +- Stronghold sections, 2026-10-03 (deterministic, `HH_DET=2000`, one at a time): the zig-zag below the bottom room from its top (`HH_ROUTE_AT=75 HH_X0=454.2 HH_Y=165 HH_X1=464.2 HH_Y1=168 HH_FRZ1=1`) to the bottom area at x 401-416 in 42 s, no restart; the corridor from x 423 (`HH_ROUTE_AT=95 HH_X0=423 HH_X1=425 HH_Y=252`): dash, out of the room, along to the tunnel at x 338 in 12 s; the tunnel (`HH_ROUTE_AT=104 HH_X0=337.5 HH_X1=339.5 HH_Y=228`): hop, then on to the gap at x 236-238 (waypoint 123) in 32 s. Next: the hookable blocks after the gap, both of us across (they get to the foot of the unhookable shaft at x 179-187 together in about 10 s, each on its own swings), then up the shaft together (not yet).
++- Stronghold, the whole map, 2026-10-04 (`HH_ROUTE=data/hookbot/routes/Stronghold.txt HH_X0=33 HH_X1=30 HH_Y=60 HH_DET=2000 HH_SECONDS=2400`, the runs' `fulld.sh`): both tees from the spawn to the finish in 429.06 s with no restart, in two runs: one before the freeze-along-the-path fix and one after it. The two runs' searches differ, the outcome is the same. Tee 1 finishes its race at 426.80 s. Tee 0 falls into the finish at 429.06 s, and the server finishes its race the next tick (recorded: `HH_DEMO=stronghold_f7`). The test stops once both have touched a finish tile (`FINISH both`), steps up to 10 more ticks, and prints the server's verdict for each tee (`race tee N: finished`). The game sees a touched tile one tick after the test does.
 diff --git a/docs/TAS-RENDER.md b/docs/TAS-RENDER.md
 new file mode 100644
 index 000000000..78c98c59b
@@ -602,6 +619,25 @@ index a32c1fe17..562c7a87d 100644
  		GLint Alignment;
  		glGetIntegerv(GL_PACK_ALIGNMENT, &Alignment);
  		glPixelStorei(GL_PACK_ALIGNMENT, 1);
+diff --git a/src/engine/client/client.cpp b/src/engine/client/client.cpp
+index a77e77469..a27a35fb5 100644
+--- a/src/engine/client/client.cpp
++++ b/src/engine/client/client.cpp
+@@ -2839,7 +2839,13 @@ void CClient::UpdateDemoIntraTimers()
+ void CClient::Update()
+ {
+ #if defined(CONF_VIDEORECORDER)
+-	if(m_DemoRenderPending && ++m_DemoRenderWaitFrames > 30)
++	// DDNET_DEMO_RENDER_WAIT_MS: wait that long before the render starts, e.g. for `player_skin <skin>` to load: skins
++	// load in the background, and one first requested once the render runs showed up minutes into the video
++	static int64_t s_DemoRenderPendingSince = 0;
++	if(m_DemoRenderPending && !s_DemoRenderPendingSince)
++		s_DemoRenderPendingSince = time_get();
++	const int64_t DemoRenderWaitMs = getenv("DDNET_DEMO_RENDER_WAIT_MS") ? atoi(getenv("DDNET_DEMO_RENDER_WAIT_MS")) : 0;
++	if(m_DemoRenderPending && ++m_DemoRenderWaitFrames > 30 && (time_get() - s_DemoRenderPendingSince) * 1000 / time_freq() >= DemoRenderWaitMs)
+ 	{
+ 		m_DemoRenderPending = false;
+ 		const char *pError = DemoPlayer_Render(m_aDemoRenderFile, IStorage::TYPE_ALL, m_aDemoRenderVideo, m_DemoRenderSpeedIndex, false);
 diff --git a/src/engine/shared/config_variables.h b/src/engine/shared/config_variables.h
 index d6a53a1e8..f94382ef2 100644
 --- a/src/engine/shared/config_variables.h
@@ -16454,7 +16490,7 @@ index 000000000..5ab77e765
 +	return 0;
 +}
 diff --git a/src/test/zz_physics_sim_test.cpp b/src/test/zz_physics_sim_test.cpp
-index 584aa17d5..d0b1ef5ca 100644
+index 584aa17d5..7d957b7d2 100644
 --- a/src/test/zz_physics_sim_test.cpp
 +++ b/src/test/zz_physics_sim_test.cpp
 @@ -16,6 +16,7 @@
@@ -16676,7 +16712,7 @@ index 584aa17d5..d0b1ef5ca 100644
  	{
  		if(RealTime)
  			std::this_thread::sleep_until(T0 + std::chrono::milliseconds(20 * i));
-@@ -3888,9 +4044,28 @@ TEST_F(SimMapBots, Hammerhit)
+@@ -3888,9 +4044,34 @@ TEST_F(SimMapBots, Hammerhit)
  		}
  		BotsStep();
  		if(!Chr(0) || !Chr(1))
@@ -16701,12 +16737,18 @@ index 584aa17d5..d0b1ef5ca 100644
 +		if(aFinishAt[0] >= 0 && aFinishAt[1] >= 0)
 +		{
 +			printf("FINISH both at %.2f s\n", std::max(aFinishAt[0], aFinishAt[1]) / 50.0);
++			// a touched finish tile is seen here a tick before the server handles it (it checks the way there on the
++			// next tick): a few more ticks, for the server's own verdict on each race
++			for(int k = 0; k < 10 && Chr(0) && Chr(1) && (Chr(0)->m_DDRaceState != ERaceState::FINISHED || Chr(1)->m_DDRaceState != ERaceState::FINISHED); k++)
++				BotsStep();
++			for(int t = 0; t < 2; t++)
++				printf("race tee %d: %s\n", t, !Chr(t) ? "gone" : Chr(t)->m_DDRaceState == ERaceState::FINISHED ? "finished" : Chr(t)->m_DDRaceState == ERaceState::STARTED ? "started, not finished" : "not started");
 +			break;
 +		}
  		// done: both through (or near the goal), and one of them free (it can rescue the other on open floor)
  		const int RouteUntil = getenv("HH_ROUTE_UNTIL") ? atoi(getenv("HH_ROUTE_UNTIL")) : 1 << 20;
  		const bool Through = HasRoute ? m_aBrain[0].m_RouteIndex >= RouteUntil :
-@@ -3899,15 +4074,15 @@ TEST_F(SimMapBots, Hammerhit)
+@@ -3899,15 +4080,15 @@ TEST_F(SimMapBots, Hammerhit)
  		if(Done < 0 && Through && (Chr(0)->m_FreezeTime == 0 || Chr(1)->m_FreezeTime == 0))
  			Done = i;
  		if(getenv("HH_EVERY") ? i % atoi(getenv("HH_EVERY")) == 0 : i % 10 == 0)
@@ -16725,7 +16767,7 @@ index 584aa17d5..d0b1ef5ca 100644
  	for(int t = 0; t < 2; t++)
  		if(!Chr(t))
  			printf("tee %d DIED\n", t);
-@@ -3923,7 +4098,10 @@ TEST_F(SimMapBots, Hammerhit)
+@@ -3923,7 +4104,10 @@ TEST_F(SimMapBots, Hammerhit)
  		const auto &St = m_aBrain[t].m_RescueStats;
  		printf("brain %d: plans %d (found %d), hammers %d, last plan %d us\n", t, St.m_Plans, St.m_Found, St.m_Fired, m_aBrain[t].m_LastPlanUs);
  	}
@@ -16737,7 +16779,7 @@ index 584aa17d5..d0b1ef5ca 100644
  	if(Done >= 0)
  		printf("both past tile %d after %.2f s\n", Goal, Done / 50.0);
  }
-@@ -3958,6 +4136,282 @@ TEST_F(SimMapBots, HeadStand)
+@@ -3958,6 +4142,282 @@ TEST_F(SimMapBots, HeadStand)
  	}
  }
  
@@ -17020,7 +17062,7 @@ index 584aa17d5..d0b1ef5ca 100644
  static bool HammerReachesTest(vec2 From, vec2 To) { return distance(From, To) < 61.5f; }
  static void HammerPushTest(CCharacterCore &Target, vec2 From)
  {
-@@ -3992,6 +4446,9 @@ TEST_F(SimMapBots, FromState)
+@@ -3992,6 +4452,9 @@ TEST_F(SimMapBots, FromState)
  		Spawn(0, vec2(ax, ay));
  		Step(2);
  		Chr(1)->Freeze();
@@ -17030,7 +17072,7 @@ index 584aa17d5..d0b1ef5ca 100644
  		Chr(0)->m_Core.m_Pos = vec2(ax, ay);
  		Chr(0)->m_Core.m_Vel = vec2(avx, avy);
  		Chr(0)->m_PrevPos = vec2(ax, ay);
-@@ -3999,16 +4456,78 @@ TEST_F(SimMapBots, FromState)
+@@ -3999,16 +4462,78 @@ TEST_F(SimMapBots, FromState)
  		Chr(0)->m_ReloadTimer = 0;
  		CHookBotSim Base;
  		CHookBot::InitSim(Base, GameServer(), Chr(0), Chr(1));
@@ -17112,7 +17154,7 @@ index 584aa17d5..d0b1ef5ca 100644
  	}
  }
  
-@@ -4540,3 +5059,775 @@ TEST_F(SimDemo, SliceOnThread)
+@@ -4540,3 +5065,775 @@ TEST_F(SimDemo, SliceOnThread)
  	thread_wait(pThread);
  	EXPECT_TRUE(Job.m_Ok);
  }

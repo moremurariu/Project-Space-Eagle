@@ -17,6 +17,21 @@ Test map (`SimBot.WriteMap`): you spawn in an open shaft (plain hookfly). Walk r
 ## Skin
 The bot wears `claude` (`cl_hookbot_skin` / `sv_hookbot_skin`): a terracotta tee with an ivory spark, `data/skins/claude.png`, generated from `default.png`'s shapes by `scripts/make_claude_skin.py`. Skins are client-side: a client without the file shows the default tee, so copy it into the client's `skins/` folder (on macOS `~/Library/Application Support/DDNet/skins/`).
 
+## Video of a sim run
+1. Record the run: `SIM_DEMO_DIR=<dir> HH_DEMO=<name>` on `SimMapBots.Hammerhit` writes `<dir>/<name>.demo`. Tee 0 is client id 127 and tee 1 is 126. Both are named Claude and wear `claude`.
+2. Build the client with `-DVIDEORECORDER=ON`.
+3. Put the map in the client's `maps/` under the name the demo asks for (the sim's runs say `tasmap`) and `claude.png` in `skins/`.
+4. Render, headless under Xvfb (Mesa llvmpipe):
+   ```sh
+   DDNET_DEMO_RENDER_WAIT_MS=8000 DDNET_READ_BACK_BUFFER=1 DISPLAY=:99 ./DDNet "gfx_backend OpenGL; gfx_gl_major 3; gfx_gl_minor 3; gfx_screen_width 1280; gfx_screen_height 720; cl_default_zoom 12; snd_enable 0; cl_video_sound_enable 0; player_skin claude; demo_render demos/<name>.demo <name> 4 1 127"
+   ```
+   The video lands in `videos/<name>.mp4`. Speed index 4 is normal speed, 1 quits when done, and 127 follows tee 0.
+
+Why each setting:
+- **`DDNET_READ_BACK_BUFFER=1`:** the recorder reads frames from the front buffer, which is black under Xvfb, so this makes it read the back buffer.
+- **The GL 3.3 settings:** without them Mesa gives a GL 1.1 context.
+- **`player_skin claude` and `DDNET_DEMO_RENDER_WAIT_MS`:** they load the skin before playback starts. Without them the default tee showed for the first two minutes of the video, because skins load in the background and this one was first asked for once playback ran.
+
 ## Chat commands
 Any message containing the bot's name (`cl_hookbot_name` / `sv_hookbot_name`, default `Claude`, case-insensitive). The client-side bot listens to your own tees and to the players in `cl_hookbot_friends` (comma-separated, default `always`). It plays with whoever gave the last command. When that's a friend and `cl_hookbot_chat` is 1 (default 0), it answers in real chat from the dummy so they can see it; otherwise its replies stay local echoes. Its view of a friend is only the usual prediction of another player (their inputs aren't known), so aled timing with a friend is less exact than with you. While your own tee is paused, spectating or dead, the client's prediction stands still (`UpdatePrediction` needs your character) and your connection may not even see the dummy, so the bot builds its view from the dummy connection's own snapshots instead (`CGameClient::HookBotWorld`); you can `/pause` or `/spec` and let a friend play with it. A friend's fire button isn't sent to other clients, so its swings (for the gestures) are rebuilt from its tee's attack tick. A friend in another DDRace team is invisible to it. `cl_hookbot_log 1` (the default) writes what the bot saw and did every tick to `hookbot_log.txt` in the save directory, a new file each client start:
 - `Claude hookfly`: stand next to it. It jumps first and hooks you up, then you alternate.
@@ -212,3 +227,4 @@ The bot is tee 0 (it is the first debug dummy). Tee 1 is a scripted hookflyer wi
 - `SimMapBots.HammerProbe` (`HP_A`, `HP_B` = "x,y,vx,vy,frozen" in px, `HP_JUMP`, `HP_FIRE` ticks, `HP_AIM`): the game's own hammer on a scripted jump and hit.
 - `SimMapBots.JointBench` planners: `JB_FALL`, `JB_DROP`, `JB_DASH`, `JB_HOP`, `JB_CATCH`, `JB_CLIMB` (a number above 1: the climb's ticks), `JB_DRAG`, `JB_FLING`, `JB_LAUNCH`, `JB_COLUMN`, `JB_FINISHDROP` (the finish drop to the map's finish tiles; else `PlanJoint`); `JB_DUMP=1` prints the plan found tick by tick.
 - Stronghold sections, 2026-10-03 (deterministic, `HH_DET=2000`, one at a time): the zig-zag below the bottom room from its top (`HH_ROUTE_AT=75 HH_X0=454.2 HH_Y=165 HH_X1=464.2 HH_Y1=168 HH_FRZ1=1`) to the bottom area at x 401-416 in 42 s, no restart; the corridor from x 423 (`HH_ROUTE_AT=95 HH_X0=423 HH_X1=425 HH_Y=252`): dash, out of the room, along to the tunnel at x 338 in 12 s; the tunnel (`HH_ROUTE_AT=104 HH_X0=337.5 HH_X1=339.5 HH_Y=228`): hop, then on to the gap at x 236-238 (waypoint 123) in 32 s. Next: the hookable blocks after the gap, both of us across (they get to the foot of the unhookable shaft at x 179-187 together in about 10 s, each on its own swings), then up the shaft together (not yet).
+- Stronghold, the whole map, 2026-10-04 (`HH_ROUTE=data/hookbot/routes/Stronghold.txt HH_X0=33 HH_X1=30 HH_Y=60 HH_DET=2000 HH_SECONDS=2400`, the runs' `fulld.sh`): both tees from the spawn to the finish in 429.06 s with no restart, in two runs: one before the freeze-along-the-path fix and one after it. The two runs' searches differ, the outcome is the same. Tee 1 finishes its race at 426.80 s. Tee 0 falls into the finish at 429.06 s, and the server finishes its race the next tick (recorded: `HH_DEMO=stronghold_f7`). The test stops once both have touched a finish tile (`FINISH both`), steps up to 10 more ticks, and prints the server's verdict for each tee (`race tee N: finished`). The game sees a touched tile one tick after the test does.

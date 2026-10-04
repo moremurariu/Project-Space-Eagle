@@ -4064,6 +4064,12 @@ TEST_F(SimMapBots, Hammerhit)
 		if(aFinishAt[0] >= 0 && aFinishAt[1] >= 0)
 		{
 			printf("FINISH both at %.2f s\n", std::max(aFinishAt[0], aFinishAt[1]) / 50.0);
+			// a touched finish tile is seen here a tick before the server handles it (it checks the way there on the
+			// next tick): a few more ticks, for the server's own verdict on each race
+			for(int k = 0; k < 10 && Chr(0) && Chr(1) && (Chr(0)->m_DDRaceState != ERaceState::FINISHED || Chr(1)->m_DDRaceState != ERaceState::FINISHED); k++)
+				BotsStep();
+			for(int t = 0; t < 2; t++)
+				printf("race tee %d: %s\n", t, !Chr(t) ? "gone" : Chr(t)->m_DDRaceState == ERaceState::FINISHED ? "finished" : Chr(t)->m_DDRaceState == ERaceState::STARTED ? "started, not finished" : "not started");
 			break;
 		}
 		// done: both through (or near the goal), and one of them free (it can rescue the other on open floor)

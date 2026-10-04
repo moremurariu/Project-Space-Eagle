@@ -20,6 +20,7 @@ The goal is two live hookbot brains (`CHookBotBrain`, one per tee) beating Stron
   - `sect.sh`: one spot, several seeds.
   - `corr.sh`: from the corridor after the shaft (waypoint 144).
   - `swbatch3.sh`: the swing course from 8 start positions.
+  - `render.sh <demo name>`: a recorded run to video (headless, Xvfb).
 
 `docs/HOOKBOT.md` (in the patch and in `files/docs/`) covers the bot's behaviour, the reasons for it, its failure cases, and every test and env var.
 
@@ -34,18 +35,23 @@ cd build-sim && ninja -j2 testrunner
 ```
 
 ## Where Stronghold stands
-All runs are deterministic (`HH_DET=2000`).
+**Beaten.** Both live brains take both tees from the spawn to the finish in **429.06 s with no restart**. All runs are deterministic (`HH_DET=2000`).
+
+- `runs/fulld.sh f7 2400 2000` with the code in this patch: tee 1 finishes its race at 426.80 s and tee 0 at 429.06 s. The server marks both races finished (`race tee 0: finished`, `race tee 1: finished`).
+- A run before the last fix (the sim's freeze check along the path) finished the same way, in the same time.
+
+Section by section, from separate starts:
 
 | Section | Waypoints | State |
 |---|---|---|
 | Start, the pit and the pool | 0-53 | Passes in full runs. |
-| On to the swing course | 54-122 | Clean in one run, 104 s. |
-| Swing course | 122-148 | 5 of 8 start positions get through, and one full run got through. |
-| Corridor, column drop, long shaft, drag, catch | 144-186 | Passes from the corridor. |
-| On to the last block | 186-245 | From the corridor, one run went all the way to the finish drop with no restart. |
-| Finish drop | 245-255 | Both tees finished in 2 of 2 runs. |
+| On to the swing course | 54-122 | Passes in full runs. |
+| Swing course | 122-148 | Passes in full runs. From 8 separate start positions, 5 get through. |
+| Corridor, column drop, long shaft, drag, catch | 144-186 | Passes. |
+| On to the last block | 186-245 | Passes. |
+| Finish drop | 245-255 | Both tees finish. |
 
-One full run from the spawn reached waypoint 181 in 294 s before a restart. The fix for that spot is in.
+The video (`runs/render.sh stronghold_f7`) is rendered from the recorded demo (`HH_DEMO`, `SIM_DEMO_DIR`). `docs/HOOKBOT.md` has a section on making one.
 
 ## This session's main changes
 All in `src/game/hookbot.cpp` and documented in `docs/HOOKBOT.md`.
@@ -65,4 +71,4 @@ All in `src/game/hookbot.cpp` and documented in `docs/HOOKBOT.md`.
 - **Retry:** a stuck pair retries the fall-catch with a bigger budget.
 - **Walking rule:** no long drops while the partner is far behind.
 - **Sim freeze check:** the sim checks freeze along a tee's path exactly as the server does: a sample every pixel, truncated to tiles. Before, it sampled differently and rounded, so a plan could brush a freeze corner that the server counted as touched.
-- **Video:** `DDNET_READ_BACK_BUFFER=1` makes the client's video recorder work headless (Xvfb + Mesa).
+- **Video:** `DDNET_READ_BACK_BUFFER=1` makes the client's video recorder work headless (Xvfb + Mesa). `DDNET_DEMO_RENDER_WAIT_MS` with `player_skin claude` loads the skin before playback starts.
