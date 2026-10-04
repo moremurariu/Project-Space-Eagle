@@ -439,6 +439,8 @@ public:
 	static STeamPlan PlanNudge(const CHookBotSim &Base, int Variant, int *pUsed);
 	// nudges since the route last moved on, and the variant to try next (both of us count the same, so we pick the same)
 	int m_Nudges = 0, m_NextNudge = 0;
+	// when the frozen-pair joint moves last found nothing (the plain one, the wider one): not again for 25 / 200 ticks
+	int m_FrozenJointFail = -1000, m_FrozenWideFail = -1000;
 	bool m_NudgeHold = false; // a nudge since: stand still between the looks (no walking back)
 	static STeamPlan PlanJoint(const CHookBotSim &Base, const CHookBotGoalField &Field, int MaxSteps, int Effort = 0);
 	// a team search (TEAM_CALL), shared between the two brains: both plan the same one at the same tick
@@ -606,6 +608,9 @@ private:
 		bool m_Settle = false; // land at the first safe place that gets me somewhere (the partner is far behind)
 		int m_StartTick = 0; // the tick the plan starts at
 		bool m_LongSwing = false; // 400 ms for the swing search (planning inline); on threads, live, 200 ms
+		// how much longer (PlanClock units) the swing search may go on while it has found nothing that ends safe: twice its
+		// time planning inline, or from the ground; live in the air, what's left before the plan starts
+		int64_t m_Extra = 0;
 		SSoloPlan m_Result;
 	};
 	std::unique_ptr<SSoloJob> m_pSoloJob;
@@ -619,7 +624,8 @@ private:
 	// shaft: across a 30-tile freeze band on the hookable blocks in the ceiling)
 	// Settle: a safe plan is followed on to where I land (and not planned on from there)
 	// Relaxed: only touching the freeze rules a move out, not coming within 4 px of it (a last resort in the air)
-	static SSoloPlan SwingSearch(const CHookBotSim &Base, const CHookBotGoalField &Field, int64_t Deadline, bool Settle = false, bool Relaxed = false);
+	// ExtendTo: past Deadline, it goes on to then while nothing found ends safe
+	static SSoloPlan SwingSearch(const CHookBotSim &Base, const CHookBotGoalField &Field, int64_t Deadline, bool Settle = false, bool Relaxed = false, int64_t ExtendTo = 0);
 	static SSoloPlan TestSwingSearch(const CHookBotSim &S, const CHookBotGoalField &Field, int Ms) { return SwingSearch(S, Field, TestDeadline(Ms)); }
 	static int64_t TestDeadline(int Ms);
 	static SSoloPlan TestSoloSearch(const CHookBotSim &S, const CHookBotGoalField &Field, int Ms, bool AllowFrozen = false) { return SoloSearch(S, Field, TestDeadline(Ms), AllowFrozen); }

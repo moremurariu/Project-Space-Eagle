@@ -26,6 +26,9 @@ The goal is two live hookbot brains (`CHookBotBrain`, one per tee) beating Stron
   - `sec.sh <tag> <route index> <x0> <x1> <y> <through wp> <seconds> <seed>...`: one section from 6 starts per seed (x offsets -0.3, 0, +0.3, each swapped): how many get through.
   - `sw.sh <tag> <seed>...`: the swing course from 8 starts.
   - `stopsim.sh`: stops the scripts and the sim.
+  - `secn.sh`: one section from 22 starts at one seed (11 offsets, each swapped). Where team plans decide, the seed hardly matters and the start does.
+  - `seedstc.sh`: `seeds.sh` with every team search logged (`HH_TEAMCALLS=1`).
+  - `teamcalls.sh <log>`: from such logs, each team search site's calls, finds, and ticks spent finding nothing.
 
 `docs/HOOKBOT.md` (in the patch and in `files/docs/`) covers the bot's behaviour, the reasons for it, its failure cases, and every test and env var.
 
@@ -40,21 +43,32 @@ cd build-sim && ninja -j2 testrunner
 ```
 
 ## Where Stronghold stands
-Both live brains take both tees from the spawn to the finish at three of four timing seeds, each on the first attempt (`runs/seeds.sh`, 900 s of game each). The server marks both races finished. Brain time: 120-151 s per run.
+Both live brains take both tees from the spawn to the finish at three of six timing seeds (`runs/seeds.sh`, 900 s of game each). The server marks both races finished.
 
 | Seed (`HH_DET`) | Result |
 |---|---|
-| 1800 | finished, 417.5 s, no restart |
-| 2200 | finished, 401.5 s, no restart |
-| 2000 | finished, 409.3 s, no restart |
-| 2600 | no finish (to waypoint 142, then stuck three times in the corridor after the bottom room) |
+| 2000 | finished, 387.2 s, no restart |
+| 2400 | finished, 385.5 s, no restart |
+| 2200 | finished, 836.8 s, on the third attempt |
+| 1800 | no finish |
+| 2600 | no finish |
+| 1600 | no finish |
 
-Before this round, none of these four finished. The 429 s finish at seed 2000 was one deterministic path; the bot has changed since, and that seed now takes another one.
+- **Before the robustness work,** none of 2000, 1800, 2200 and 2600 finished.
+- **After the first round** (commit 42bde2f), 3 of these 6 finished (2000, 1800, 2200).
+- **This round** keeps 3 of 6 but with fewer failed attempts (12, from 15). The corridor after the bottom room fails much less (3 times, from 7).
+- **Changes reshuffle seeds:** each one moves where a run goes from there, so judge them on totals over the six seeds, not per seed.
 
 - **Still weak:**
-  - the corridor after the bottom room (waypoints 60-68): freeze above and below, one hookable block; the solo swings fall short of the ledge;
-  - the drop into the unhookable room (waypoint 228): 10 of 18 section starts get through.
-- **Section checks** (`runs/sec.sh`): the gap before the bottom corridor (waypoint 174) gets through 18 of 18 starts (6 offsets × 3 seeds).
+  - the start of the swing course (a climb out of its pocket, or one of us falling down it);
+  - the corridor after the bottom room when one of us gets across and the other doesn't;
+  - the drop into the unhookable room (waypoint 228);
+  - the first shaft.
+- **Sections** (`runs/sec.sh`):
+  - the gap before the bottom corridor: 18 of 18;
+  - the corridor after the bottom room: 18 of 18 (9 at first);
+  - the start of the swing course: 12 of 18 (16 without this round's swing changes).
+- **Brain time:** 0.30 s per second of game over the six runs, down from 0.33.
 
 The video (`runs/render.sh stronghold_f7`) is rendered from the recorded demo (`HH_DEMO`, `SIM_DEMO_DIR`). `docs/HOOKBOT.md` has a section on making one.
 
@@ -69,6 +83,12 @@ All in `src/game/hookbot.cpp`. Details, reasons and switches are in `docs/HOOKBO
 - **Drop:** prefers a candidate after which a joint move gets us out of the freeze, and plays that move as part of the plan.
 - **Route:** skips ahead when we've dropped past the next waypoints.
 - **Fail spot:** a tee standing on the other's head jitters; that no longer reruns every search every 2 ticks.
+- **Second round:**
+  - **swing landings keep off the partner:** the coast after a swing plan no longer slides into a standing partner;
+  - **longer swing searches while nothing safe is found:** up to 3 times the time;
+  - **route:** skips ahead from each tee's position, through freeze when far off;
+  - **frozen-pair searches:** the 5-tick ones only in the first half second;
+  - **wasted searches cut:** the frozen-pair joint moves aren't searched again right after one that found nothing. Over six runs that repeat found something 3 times in 394 calls.
 - **Earlier in this round:**
   - a climb's coast direction avoids freeze;
   - climbs chain on at once;

@@ -217,25 +217,45 @@ Still the biggest costs: the joint search (41 s), fall-catch (29 s, 17 s of it i
 
 `HH_PROF=1` prints the time, simulated ticks and calls per planner at the end of `SimMapBots.Hammerhit` (inclusive). `HH_TEAMCALLS=1` prints every team search: the line it's called from, found or not, ticks and ms ("shared" when the other brain's result was taken). `HH_FIELDDBG=1` prints every goal field built (cache misses).
 
-**Robustness, the reason the searches that find nothing aren't cut yet:** when this was measured, the full run finished with `HH_DET=2000` only. Cutting a search budget changes some plan, the run takes another path from there, and that path failed about as often as another seed did. In one test, the leap and the fall-catch try from the air at a third of their budgets changed the leap at 157 s and failed in the swing course at 264 s. Three of four seeds finish now (section Robustness across timing seeds); cuts get checked against all four. Brain time in those runs: 120-151 s for the three that finish with no restart (401-418 s of game); the robustness changes add searches only where the old ones came up empty (nudges, regroup, the drop's follow-up).
+**Searches that find nothing, after the robustness round** (`HH_TEAMCALLS=1`, `runs/seedstc.sh`, `runs/teamcalls.sh`): over six full runs (seeds 2000, 1800, 2200, 2600, 2400, 1600; 4144 s of game), 71% of the team searches' 1.42G ticks went into searches that found nothing. By call site, with the gap since the last call at the same site:
+
+| Search | Calls | Found | Ticks finding nothing | Repeats (found) | First tries (found) |
+|---|---|---|---|---|---|
+| Fall-catch from the air (`TryFall`) | 376 | 21 | 183M | within 30 ticks: 311 (17) | 65 (4) |
+| Frozen pair, wider joint move (effort 1) | 306 | 12 | 182M | within 200 ticks: 236 (2) | 70 (10) |
+| Leap | 217 | 25 | 143M | | almost all first tries |
+| Fall-catch, standing | 192 | 92 | 107M | | |
+| Frozen pair, joint move | 438 | 132 | 87M | within 25-30 ticks: 158 (1) | 280 (131) |
+
+- **The cut:** the frozen-pair joint moves (one of us lying in freeze, the other standing or flying) aren't searched again within 25 ticks of one that found nothing; the wider one (effort 1) not within 200 (`m_FrozenJointFail`, `m_FrozenWideFail`). `HH_FROZENREPEAT=1` turns it off.
+  - The six runs with it: the same 3 of 6 finish and the same 12 failed attempts (other seeds: 2200 finishes now, 1800 doesn't). Team searches 1.22G ticks; brain time per second of game 0.291 s, down from 0.335.
+- **Not cut:** the fall-catch tries from the air. Their repeats do find catches (17 in 311, with up to 990k ticks each), and a catch is a moment that passes. The leap tries are first tries at each spot.
+- **Why only on six runs:** a cut changes some plan, and the run takes another path from there (1800's second attempt finished before, and failed with it). Six runs show whether finishes and failures stay about the same; a single run doesn't.
 
 ## Robustness across timing seeds
 A run at one `HH_DET` is one deterministic path; other seeds (1800, 2200, 2600) show where the bot is fragile. Each fix below came from a failure at another seed or another start offset, reproduced from a section start (`runs/sec.sh`, `runs/sw.sh`) and checked across offsets and seeds.
 
 Full runs from the spawn (`runs/seeds.sh`, 900 s of game each, one at a time):
 
-| Seed | Before (2026-10-04 noon) | Now |
-|---|---|---|
-| 2000 | no finish (6 attempts; the first to waypoint 232) | **finished, 409.3 s, no restart** (without the route's skip ahead: 723.4 s, on the third attempt) |
-| 1800 | no finish (first attempt to waypoint 232) | **finished, 417.5 s, no restart** |
-| 2200 | no finish (best attempt to waypoint 174) | **finished, 401.5 s, no restart** |
-| 2600 | no finish (best attempt to waypoint 105) | no finish (to waypoint 142, then three times stuck in the corridor after the bottom room, waypoints 63-68) |
+| Seed | Before (2026-10-04 noon) | First round (commit 42bde2f) | Now |
+|---|---|---|---|
+| 2000 | no finish | finished, 409.3 s | **finished, 387.2 s** |
+| 1800 | no finish | finished, 417.5 s | no finish (first attempt to waypoint 142, then the corridor after the bottom room and the pool) |
+| 2200 | no finish | finished, 401.5 s | **finished, 836.8 s** (third attempt) |
+| 2400 | | no finish (four times in the corridor after the bottom room) | **finished, 385.5 s** |
+| 2600 | no finish | no finish | no finish (the corridor, then twice the start of the swing course) |
+| 1600 | | no finish | no finish (waypoints 37, 232, 67 and the swing course) |
+
+Three of six finish both after the first round and now; failed attempts went from 15 to 12, those in the corridor after the bottom room from 7 to 3. Each change moves where a run goes from there on, so a seed that finished can fail and the other way round: what counts is the totals over all six.
 
 Sections, 6 starts per seed (x offsets -0.3, 0, +0.3 and swapped) at seeds 2000, 2200 and 2600:
 - The gap before the bottom corridor (waypoint 174, from the edges where it stalled): 18 of 18 to waypoint 177 (before: stuck for good at 2000, 1800 and 2200).
 - The drop into the unhookable room (waypoint 228, x 318-320): 10 of 18 to waypoint 240 (before: 9). Two of the six starts fail at every seed: from there no drop candidate leaves a way out.
 
-Where it still fails: the corridor after the bottom room (waypoints 60-68, x 362-427: freeze above and below, one hookable block, the solo swings fall short of the ledge at x 413) and the drop into the unhookable room.
+- The corridor after the bottom room (waypoint 54 to 69): 9 of 18 at first, 12 with the landing rule, 18 of 18 with the longer swing search too.
+- The start of the swing course from the platform above it (waypoint 119 to 145): 16 of 18 without this round's swing changes, 12 of 18 with them (in both, each start gives the same result at every seed: 5 of 6 starts and 4 of 6).
+
+Where it still fails: the start of the swing course (a climb out of its pocket ends beside the freeze column, or one of us falls down the pocket with nothing planned), the corridor after the bottom room when one of us gets across and the other falls short, the drop into the unhookable room, and the first shaft (waypoint 37).
 
 - **Nudge** (`PlanNudge`, `TEAM_NUDGE`): both of us standing still where every search came up empty and the first two retries too. One of us steps to one side and stops, and every search runs again from there; the searches go over grids, and a few px move what they find.
   - Variants, in order, from the one after the last used: who steps, which way, and how far: to the floor's end that way (2 px in, within 8 tiles), or 24, 192, 12, 96, 6 or 40 px; 192 and 96 with a jump at the floor's end, over a gap to its far edge. The first that keeps both on the same floor, the other one where it was, both clear of the freeze.
@@ -251,6 +271,7 @@ Where it still fails: the corridor after the bottom room (waypoints 60-68, x 362
   - `HH_NOREGROUP=1` turns it off.
 - **A frozen one lying in freeze, the other falling towards freeze:** the frozen-pair search (climb, joint) also runs every 5 ticks while every way the free one coasts takes it into freeze within 20 ticks (`CoastsClear`), not only every 25.
   - Why: after the drop into Stronghold's unhookable room (x 320-335) the frozen one landed in the freeze floor, and the free one, 9 tiles above it and falling, landed in it 0.3 s later, between two looks.
+  - Only in the first half second after the frozen one came to lie (`m_StuckSince`): swinging along the corridor after the bottom room, every coast ends in freeze, and this searched every 5 ticks for seconds (500k ticks each, nothing found). `HH_FLIESNOLIMIT=1`: the whole time.
   - `HH_OLDFLIES=1`: every 25 ticks only.
 - **The drop's end** (`PlanDrop`, `FollowSteps`): a candidate that doesn't leave us settled (coasting until the frozen one lies still: both at rest, outside the freeze or one where the other gets it out) needs a joint move out of the freeze to follow, played as part of the plan: from where the frozen one comes to rest after the rescue, or with no rescue, from where the drop leaves us. One with a follow-up goes first; else the first candidate as before.
   - Why: in the unhookable room the rescue hammered the frozen one free in the air, 8 tiles off, and both fell into the freeze floor.
@@ -272,9 +293,17 @@ Where it still fails: the corridor after the bottom room (waypoints 60-68, x 362
 - **Live fly, between two bots:** it doesn't start with freeze within 6 tiles above either of us (`FreezeClearanceUp`); one already going goes on. The planned climbs (`PlanClimb`) go round instead.
   - Why: one started 4 rows under the freeze band in Stronghold's first unhookable shaft (x 125-139, row 62) and drove both of us up into it. The way went round its end. With this, the regroup above and then a climb get through there.
   - `HH_OLDLIVEFLY=1` turns it off.
-- **The route skips ahead** (`UpdateRoute`): far from the stretch we're on (no waypoint from 2 back to 4 on within 12 tiles of either of us) and within 6 tiles, through open air, of a stretch further on (up to 15 waypoints on): on to there.
+- **The route skips ahead** (`UpdateRoute`): far from the stretch we're on (no waypoint from 2 back to 4 on within 12 tiles of either of us) and within 6 tiles, through open air, of a stretch further on (up to 15 waypoints on): on to there. More than 16 tiles from the stretch we're on, within 14 tiles of the one further on is enough, freeze on the line or not (on the zig-zag's floor another run stood 7-10 tiles from the stretch on, beyond a freeze level, 40 from the one it was on, and looped the same way). Measured from each of us, not from between us (one thrown up, the other on the floor, the middle was in freeze).
   - Why: a fall-catch judged by the goal 7 waypoints on dropped us past the next ones, in the zig-zag below the bottom room. Both stood on its floor at row 252 next to waypoint 93, the route still at 85 on the level 40 rows up (29 tiles off, just inside the 30 that re-picks the route). Throws back up and falls back down went on until the restart.
   - `HH_NOROUTESKIP=1` turns it off.
+- **Swing landings keep off the partner** (`SoloSearch`, its coast): the coast and the braking after a swing plan keep the same distance from the standing partner as the plan's own steps (`BumpsPartner`). The solo sim steps only me, so the partner doesn't move there; in the game it gets pushed.
+  - Why: after Stronghold's bottom room, I landed on the ledge at x 413-427 at 16 px/tick and slid into the partner standing at its end. In the game that pushed it off into the freeze, and I followed it.
+  - The corridor (`runs/sec.sh` from waypoint 54, through waypoint 69): 12 of 18 with it, 9 of 18 without. `HH_OLDCOASTBUMP=1` turns it off.
+  - Its cost: the start of the swing course from the platform above it (`runs/sec.sh` from waypoint 119, through waypoint 145): 4 of the 6 starts get through with it, 5 without (each start the same at every seed). There both of us swing in the pocket a few tiles apart, the other one mostly in the air, and keeping off where it is now leaves fewer plans that end safe. Keeping off only a partner standing on the ground lost the corridor case too (the partner landed while my search ran), so it stays as it is.
+  - Tried there and taken out: the second of us waiting with its solo move until the first has landed or frozen (up to 4 s): 8 of 18. Swinging close behind, the second one is near enough to get the first out of the freeze floor from the air when its swing falls short; starting late, it isn't.
+- **Swing searches go on while nothing safe is found** (`SwingSearch`'s `ExtendTo`, `SSoloJob::m_Extra`, `SwingExtra`): past its usual deadline, a swing search goes on while none of its plans ends safe, to three times its time when planning inline (the game waits for it) or from the ground. On a thread in the air, live, only as long as is left before its plan starts (beyond its own 200 ms and 2 ticks to spare). One that finds a safe plan in its usual time stops there, as before.
+  - Why: the swings off the one hookable block in the corridor after the bottom room land on the ledge 38 tiles on only a few levels deep, and in its usual time the search never got there; it took the deepest unsafe plan, and fell short. The corridor: 12 of 18 starts with the usual time, 18 of 18 with this (and with three times the time everywhere).
+  - `HH_NOSWINGEXTEND=1` turns it off.
 - **Where nothing was found** (`m_aTeamFailPos`, `AtFailPos`): within 2 px as before, but 4 px across and 12 up and down while one of us stands on the other's head. The one on top jitters there, and at the gap before the bottom corridor every search ran again every 2 ticks (1.1M ticks each).
 
 Scripts (`runs/`, in the snapshot): `seeds.sh <tag> <seed>...` (full runs), `attempts.sh <log>` (each attempt's furthest waypoint and how it ended), `sec.sh <tag> <route index> <x0> <x1> <y> <through wp> <seconds> <seed>...` (one section from 6 starts per seed: x offsets -0.3, 0, +0.3, each swapped), `sw.sh <tag> <seed>...` (the swing course from 8 starts), `stopsim.sh` (stops them; `pkill -f` with the script's name kills the calling shell too).
