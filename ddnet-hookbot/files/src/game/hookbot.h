@@ -65,6 +65,8 @@ public:
 	// Only >= 0: step just that tee (the other stays where it is, still in the world); for cheap lookaheads where
 	// the other one does nothing
 	void Step(const CNetObj_PlayerInput &InA, const CNetObj_PlayerInput &InB, int Only = -1);
+	// tee i is no longer in the world: the other one moves through where it is (step it alone, Only = the other)
+	void Remove(int i);
 	bool PathTouchesFreeze(vec2 From, vec2 To) const;
 	// the two tees trade places (a planner that wants the other one as tee 0)
 	void Swap();
@@ -330,6 +332,8 @@ public:
 		TEAM_COLUMN,
 		TEAM_FLING,
 		TEAM_FINISH,
+		TEAM_REACH,
+		TEAM_NUDGE,
 	};
 	struct STeamPlan
 	{
@@ -381,7 +385,9 @@ public:
 	// 1.2 s) until its freeze is about to run out, then follows it; the first thaws in the air before it lands and gets
 	// the other out of the freeze floor below (a rescue plan, PlanRescue, played as part of this one). Stronghold after the
 	// corridor, the pit at x 275-289: rank 1's way, 3.7 s. Thread-safe, deterministic
-	static STeamPlan PlanDrop(const CHookBotSim &Base, const CHookBotGoalField &Field, int MaxSteps);
+	// FollowSteps >= 0: unless it leaves us settled, the joint move out of the freeze from where the frozen one comes to
+	// rest goes on with it (searched with up to that many ticks more), or it's no good
+	static STeamPlan PlanDrop(const CHookBotSim &Base, const CHookBotGoalField &Field, int MaxSteps, int FollowSteps = -1);
 	// a fall caught on the hook: maybe a pseudofly first (the upper one driving one way or the other, the lower one
 	// hammering it up), then one of us (the diver) lets itself fall into freeze while the other (the catcher) gets ready
 	// beside it, hooks it as it falls past frozen and drags it, and lets go where its fall lands it outside the freeze
@@ -421,11 +427,25 @@ public:
 	static bool TestCanReach(const CHookBotSim &S, vec2 From, vec2 To);
 	static bool TestCanRescue(const CHookBotSim &S, vec2 Free, vec2 Stuck);
 	// Effort 1: a wider beam and all four passes (when the plain one found nothing: a restart costs far more)
+	// the partner lying frozen in freeze out of reach from where I stand: I jump over (and air-jump), hook it from the air,
+	// let go, and we both come to rest with it out of the freeze. A grid (Stronghold's pool: one at the bottom of the
+	// freeze mass, the other on the pillar between the two freeze pools 27 tiles off, in a room with nothing to swing on)
+	static STeamPlan PlanReachHook(const CHookBotSim &Base, const CHookBotGoalField &Field, int MaxSteps);
+	// both of us standing where every search came up empty, retried too: one of us steps a few px to one side and stops,
+	// and the searches run again from there (they go over grids: from the edges of Stronghold's gap before the bottom
+	// corridor, at 176.4 and 182.3, no fall-catch was found; from 175.1 and 181.7, rank 1's). Variant picks who steps,
+	// which way and how far: to the floor's end, or a few px up to 6 tiles with a jump over a gap (the first of the 28
+	// from there that keeps both on the same floor, clear of the freeze)
+	static STeamPlan PlanNudge(const CHookBotSim &Base, int Variant, int *pUsed);
+	// nudges since the route last moved on, and the variant to try next (both of us count the same, so we pick the same)
+	int m_Nudges = 0, m_NextNudge = 0;
+	bool m_NudgeHold = false; // a nudge since: stand still between the looks (no walking back)
 	static STeamPlan PlanJoint(const CHookBotSim &Base, const CHookBotGoalField &Field, int MaxSteps, int Effort = 0);
 	// a team search (TEAM_CALL), shared between the two brains: both plan the same one at the same tick
 	template<typename F>
 	STeamPlan TeamCall(const CHookBotSim &S, int Line, F &&Search);
 	std::string TeamCallKey(const CHookBotSim &S, int Line) const;
+	int SafeCoastDir(int Pref) const;
 	static STeamPlan PlanJointPass(const CHookBotSim &Base, const CHookBotGoalField &Field, int MaxSteps, int K, int MaxDepth, int Width);
 	// its beam: kept nodes per level, ticks per step, steps deep, nodes per level whose rest is simulated (tests tune these)
 	struct SJointParams

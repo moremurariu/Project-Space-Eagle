@@ -5440,6 +5440,7 @@ TEST_F(SimMapBots, JointBench)
 				  getenv("JB_LAUNCH") ? CHookBotBrain::PlanLaunch(Base, *Brain.m_pGoal, *Brain.m_pGoalAir, Budget, Brain.m_Pseudo) :
 				  getenv("JB_COLUMN") ? CHookBotBrain::PlanColumnDrop(Base, *Brain.m_pGoal, Budget) :
 				  getenv("JB_DRAG") ? CHookBotBrain::PlanDrag(Base, *Brain.m_pGoal, Budget) :
+				  getenv("JB_REACH") ? CHookBotBrain::PlanReachHook(Base, *Brain.m_pGoal, Budget) :
 				  getenv("JB_CLIMB") ? CHookBotBrain::PlanClimb(Base, *Brain.m_pGoal, *Brain.m_pGoalAir, Budget, Brain.m_Pseudo, atoi(getenv("JB_CLIMB")) > 1 ? atoi(getenv("JB_CLIMB")) : 300) :
 				  getenv("JB_CATCH") ? CHookBotBrain::PlanCatch(Base, *Brain.m_pGoal, Budget) :
 				  getenv("JB_HOP") ? CHookBotBrain::PlanHop(Base, *Brain.m_pGoal, Budget, Brain.m_Pseudo) :

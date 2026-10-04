@@ -22,6 +22,10 @@ The goal is two live hookbot brains (`CHookBotBrain`, one per tee) beating Stron
   - `swbatch3.sh`: the swing course from 8 start positions.
   - `render.sh <demo name>`: a recorded run to video (headless, Xvfb).
   - `seeds.sh <tag> <seed>...`: full runs at several timing seeds, one after another, with each one's result.
+  - `attempts.sh <log>`: for a run's log, each attempt's furthest waypoint and how it ended.
+  - `sec.sh <tag> <route index> <x0> <x1> <y> <through wp> <seconds> <seed>...`: one section from 6 starts per seed (x offsets -0.3, 0, +0.3, each swapped): how many get through.
+  - `sw.sh <tag> <seed>...`: the swing course from 8 starts.
+  - `stopsim.sh`: stops the scripts and the sim.
 
 `docs/HOOKBOT.md` (in the patch and in `files/docs/`) covers the bot's behaviour, the reasons for it, its failure cases, and every test and env var.
 
@@ -36,15 +40,48 @@ cd build-sim && ninja -j2 testrunner
 ```
 
 ## Where Stronghold stands
-Both live brains take both tees from the spawn to the finish in **429.06 s with no restart**, at timing seed `HH_DET=2000`. The server marks both races finished.
+Both live brains take both tees from the spawn to the finish at three of four timing seeds, each on the first attempt (`runs/seeds.sh`, 900 s of game each). The server marks both races finished. Brain time: 120-151 s per run.
 
-- **Not robust yet:** with seeds 1800, 2200 and 2600 (`runs/seeds.sh`), no run finished in 15 min of game.
-  - The first attempts fail at waypoints 127 (the swing course), 63 and 98.
-  - Later attempts fail in the swing course, at the pool (52-54), just after it (63-64), and at the start.
-  - So the finish at seed 2000 is one deterministic path, not a bot that gets through reliably.
-- **Section by section,** from separate starts at seed 2000: everything passes. The swing course from 8 separate start positions gets through 5 times.
+| Seed (`HH_DET`) | Result |
+|---|---|
+| 1800 | finished, 417.5 s, no restart |
+| 2200 | finished, 401.5 s, no restart |
+| 2000 | finished, 409.3 s, no restart |
+| 2600 | no finish (to waypoint 142, then stuck three times in the corridor after the bottom room) |
+
+Before this round, none of these four finished. The 429 s finish at seed 2000 was one deterministic path; the bot has changed since, and that seed now takes another one.
+
+- **Still weak:**
+  - the corridor after the bottom room (waypoints 60-68): freeze above and below, one hookable block; the solo swings fall short of the ledge;
+  - the drop into the unhookable room (waypoint 228): 10 of 18 section starts get through.
+- **Section checks** (`runs/sec.sh`): the gap before the bottom corridor (waypoint 174) gets through 18 of 18 starts (6 offsets × 3 seeds).
 
 The video (`runs/render.sh stronghold_f7`) is rendered from the recorded demo (`HH_DEMO`, `SIM_DEMO_DIR`). `docs/HOOKBOT.md` has a section on making one.
+
+## Robustness round (latest)
+All in `src/game/hookbot.cpp`. Details, reasons and switches are in `docs/HOOKBOT.md`, section "Robustness across timing seeds".
+
+- **Nudge:** both standing where every search and retry came up empty: one steps a few px, to the floor's end, or over a gap. Then everything is searched again from there.
+- **Fall-catch from the floor's edge:** the catcher can walk to the end of its floor first. At the gap before the bottom corridor that's the difference between found in 30k ticks and nothing in 1.8M.
+- **Regroup:** apart and stuck: a joint move that brings the one ahead back to the one behind.
+- **Live fly:** between bots, it doesn't start under freeze (within 6 tiles); the planned climbs go round.
+- **Frozen-pair search:** every 5 ticks while the free one is falling into freeze.
+- **Drop:** prefers a candidate after which a joint move gets us out of the freeze, and plays that move as part of the plan.
+- **Route:** skips ahead when we've dropped past the next waypoints.
+- **Fail spot:** a tee standing on the other's head jitters; that no longer reruns every search every 2 ticks.
+- **Earlier in this round:**
+  - a climb's coast direction avoids freeze;
+  - climbs chain on at once;
+  - climb ends are checked without the partner in the sim;
+  - reach hook (jump over and hook a frozen partner out);
+  - the safe way down when a swing search finds nothing in the air;
+  - the apart searches after 2 s idle.
+
+New scripts in `runs/`:
+- `sec.sh`: one section from 6 starts per seed;
+- `sw.sh`: the swing course;
+- `attempts.sh`: each attempt's furthest waypoint;
+- `stopsim.sh`.
 
 ## Compute
 **114 s of brain time for the 429 s run, down from 1068 s.** The game is exactly the same as before: same plans, same messages, tick for tick.
