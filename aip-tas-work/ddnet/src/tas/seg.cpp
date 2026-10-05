@@ -20,6 +20,11 @@
 //   prefire=1: shots still in flight after firelook ticks are judged as if not fired (no held-input look), and
 //     states are told apart by their pending explosion (use with padaims=N for long pre-fire aims)
 //   padref=R: also keep pre-fire aims whose explosion lands within R px of the reference line ~that many ticks ahead (turns)
+//   plan=FILE [planforce=1]: shot plan, lines "t0 t1 ex ey [r]" (fire on race ticks t0..t1 so that the grenade
+//     explodes within r px of (ex,ey); exact aims, pre-fires included) or "t0 t1 free" (point-blank shots allowed);
+//     no other shots; planforce drops states that skipped a target shot (use with prefire=1, padtop for the states);
+//     optional explosion race tick: "t0 t1 ex ey r te tol"; planrv=W [planacc=1.5]: credit up to 4W ticks for a grenade
+//     in flight whose explosion point the tee can still reach (rendezvous)
 //   firealign=c: only grenade shots whose kick (opposite to the aim) has cos >= c with the line direction
 //   quota=Q [qcell=32 qvel=6]: beam diversity, at most Q states per coarse position/velocity cell first, then the best
 //     of the rest (keeps the beam alive in maze sections; physlab4)
@@ -109,6 +114,9 @@ struct SParams
 	int m_FireAngles = 32;
 	float m_FireRange = 120; // only shots that hit a solid tile this close (point-blank kicks)
 	int m_FireAllDirs = 0;
+	std::string m_Plan; // shot plan file
+	int m_PlanForce = 0;
+	float m_PlanRv = 0, m_PlanAcc = 1.5f; // rendezvous credit for grenades in flight (planrv=, planacc=)
 	float m_FireAlign = -2; // firealign=c: only shots whose kick has cos >= c with the line direction (-2 = off) // shots with every direction input (default: only towards the line)
 	int m_PendLook = 1; // judge every state with a grenade in flight after its explosion (pre-fired shots)
 	int m_PadAims = 0; // coarse angle count for edge-refined (pre-fire) shot aims, 0 = off
@@ -1088,6 +1096,134 @@ static bool HookLookahead(const CTasGame &G, int Dir, vec2 &PosOut, vec2 &VFree,
 	return false;
 }
 
+// next explosion of a projectile in flight, cached in the state (projectiles ignore the tee in solo)
+static bool PendExpl(CTasGame &G, vec2 &E, int &T)
+{
+	if(G.NumProjectiles() <= 0)
+		return false;
+	if(G.m_PendFire != G.m_Fire || G.m_PendT <= G.m_Tick)
+	{
+		G.m_PendFire = G.m_Fire;
+		if(!G.NextExplosion(G.m_PendE, G.m_PendT))
+		{
+			G.m_PendT = -1;
+			return false;
+		}
+	}
+	if(G.m_PendT <= G.m_Tick)
+		return false;
+	E = G.m_PendE;
+	T = G.m_PendT;
+	return true;
+}
+
+// shot plan (plan=FILE): lines "t0 t1 ex ey [r]" = fire on race ticks t0..t1 so that the grenade explodes within r px
+// (default 40) of (ex,ey) (aims found by exact simulation: coarse scan + golden-section refinement; pre-fires included),
+// "t0 t1 free" = ordinary point-blank shots allowed on t0..t1. With a plan, no other shot is generated (any direction
+// input). planforce=1 drops states that did not fire in a target entry's window (reload still 0 at t1+1).
+struct SPlanEntry
+{
+	int m_T0, m_T1;
+	vec2 m_E;
+	float m_R;
+	bool m_Free;
+	int m_Te = -1, m_Tol = 2; // optional explosion race tick (and tolerance)
+};
+static std::vector<SPlanEntry> gs_vPlanE;
+static void LoadPlan(const char *pPath)
+{
+	FILE *f = std::fopen(pPath, "r");
+	if(!f)
+	{
+		std::printf("cannot read %s\n", pPath);
+		std::exit(1);
+	}
+	char aLine[512];
+	while(std::fgets(aLine, sizeof(aLine), f))
+	{
+		if(aLine[0] == '#')
+			continue;
+		SPlanEntry P{0, 0, vec2(0, 0), 40.0f, false, -1, 2};
+		char aW[64] = "";
+		if(std::sscanf(aLine, "%d %d %63s", &P.m_T0, &P.m_T1, aW) < 3)
+			continue;
+		if(std::string(aW) == "free")
+			P.m_Free = true;
+		else if(std::sscanf(aLine, "%d %d %f %f %f %d %d", &P.m_T0, &P.m_T1, &P.m_E.x, &P.m_E.y, &P.m_R, &P.m_Te, &P.m_Tol) < 4)
+			continue;
+		gs_vPlanE.push_back(P);
+	}
+	std::fclose(f);
+}
+static void PlanAims(const CTasGame &G, const SPlanEntry &P, std::vector<std::pair<int16_t, int16_t>> &vOut)
+{
+	static thread_local CTasGame s_T;
+	auto Dist = [&](float Ang) {
+		s_T.CopyFrom(G);
+		STasInput In;
+		In.m_Dir = 0;
+		In.m_Hook = G.m_LastHook;
+		In.m_Jump = 0;
+		In.m_Fire = 1;
+		In.m_Weapon = 3;
+		In.m_TX = (int16_t)std::lround(std::cos(Ang) * 1000);
+		In.m_TY = (int16_t)std::lround(std::sin(Ang) * 1000);
+		if(!In.m_TX && !In.m_TY)
+			In.m_TY = -1;
+		s_T.Step(In);
+		vec2 E;
+		int T;
+		if(!s_T.NextExplosion(E, T))
+			return 1e9f;
+		float D = distance(E, P.m_E);
+		if(P.m_Te >= 0)
+			D += 8.0f * std::max(0, std::abs(T - G.m_StartTick - P.m_Te) - P.m_Tol);
+		return D;
+	};
+	const int N = 72;
+	float aD[N];
+	for(int a = 0; a < N; a++)
+		aD[a] = Dist(2 * pi * a / N);
+	for(int a = 0; a < N; a++)
+	{
+		const float d = aD[a], dl = aD[(a + N - 1) % N], dr = aD[(a + 1) % N];
+		if(d > 300.0f || d > dl || d > dr)
+			continue;
+		// golden-section search on [a-1, a+1]
+		float Lo = 2 * pi * (a - 1) / N, Hi = 2 * pi * (a + 1) / N;
+		const float g = 0.618034f;
+		float x1 = Hi - g * (Hi - Lo), x2 = Lo + g * (Hi - Lo), f1 = Dist(x1), f2 = Dist(x2);
+		for(int k = 0; k < 22; k++)
+		{
+			if(f1 < f2)
+			{
+				Hi = x2;
+				x2 = x1;
+				f2 = f1;
+				x1 = Hi - g * (Hi - Lo);
+				f1 = Dist(x1);
+			}
+			else
+			{
+				Lo = x1;
+				x1 = x2;
+				f1 = f2;
+				x2 = Lo + g * (Hi - Lo);
+				f2 = Dist(x2);
+			}
+		}
+		const float Best = f1 < f2 ? x1 : x2;
+		if(std::min(f1, f2) > P.m_R)
+			continue;
+		int16_t TX = (int16_t)std::lround(std::cos(Best) * 1000), TY = (int16_t)std::lround(std::sin(Best) * 1000);
+		if(!TX && !TY)
+			TY = -1;
+		std::pair<int16_t, int16_t> Q{TX, TY};
+		if(std::find(vOut.begin(), vOut.end(), Q) == vOut.end())
+			vOut.push_back(Q);
+	}
+}
+
 static void GenActions(const CTasGame &G, const STasInput &Prev, std::vector<STasInput> &vOut, bool Pad = false)
 {
 	vOut.clear();
@@ -1098,7 +1234,39 @@ static void GenActions(const CTasGame &G, const STasInput &Prev, std::vector<STa
 	const bool CanJump = !G.m_LastJump && (G.Grounded() || !(G.Jumped() & 2));
 	const int Weapon = G.HasGrenade() ? 3 : -1;
 	const bool CanFire = gs_P.m_Fire && G.HasGrenade() && G.ActiveWeapon() == 3 && G.ReloadTimer() == 0 && !Prev.m_Fire;
-	if(CanFire)
+	if(!gs_vPlanE.empty())
+	{
+		s_vFire.clear();
+		if(CanFire)
+		{
+			const int Rt = G.m_Tick + 1 - G.m_StartTick;
+			bool Free = false;
+			static thread_local std::vector<std::pair<int16_t, int16_t>> s_vPA;
+			for(const auto &P : gs_vPlanE)
+				if(Rt >= P.m_T0 && Rt <= P.m_T1)
+				{
+					if(P.m_Free)
+						Free = true;
+					else if(Pad)
+					{
+						s_vPA.clear();
+						PlanAims(G, P, s_vPA);
+						for(auto &q : s_vPA)
+							if(std::find(s_vFire.begin(), s_vFire.end(), q) == s_vFire.end())
+								s_vFire.push_back(q);
+					}
+				}
+			if(Free)
+			{
+				s_vPA.clear();
+				FireTargets(G, s_vPA);
+				for(auto &q : s_vPA)
+					if(std::find(s_vFire.begin(), s_vFire.end(), q) == s_vFire.end())
+						s_vFire.push_back(q);
+			}
+		}
+	}
+	else if(CanFire)
 	{
 		FireTargets(G, s_vFire);
 		if(Pad && gs_P.m_PadAims > 0)
@@ -1204,7 +1372,7 @@ static void GenActions(const CTasGame &G, const STasInput &Prev, std::vector<STa
 				vec2 Tg = gs_Ref.Tangent(G.m_RefIdx);
 				FireDir = Tg.x >= 0 ? 1 : -1;
 			}
-			if(CanFire && Jump == 0 && (gs_P.m_FireAllDirs || Dir == FireDir))
+			if(CanFire && Jump == 0 && (gs_P.m_FireAllDirs || !gs_vPlanE.empty() || Dir == FireDir))
 				for(auto [TX, TY] : s_vFire)
 				{
 					if(gs_P.m_FireAlign > -1.5f)
@@ -1330,6 +1498,10 @@ int main(int argc, const char **argv)
 		else if(K == "fire") gs_P.m_Fire = std::stoi(V);
 		else if(K == "fireangles") gs_P.m_FireAngles = std::stoi(V);
 		else if(K == "firerange") gs_P.m_FireRange = std::stof(V);
+		else if(K == "plan") gs_P.m_Plan = V;
+		else if(K == "planrv") gs_P.m_PlanRv = std::stof(V);
+		else if(K == "planacc") gs_P.m_PlanAcc = std::stof(V);
+		else if(K == "planforce") gs_P.m_PlanForce = std::stoi(V);
 		else if(K == "firealign") gs_P.m_FireAlign = std::stof(V);
 		else if(K == "firealldirs") gs_P.m_FireAllDirs = std::stoi(V);
 		else if(K == "pendlook") gs_P.m_PendLook = std::stoi(V);
@@ -1474,6 +1646,11 @@ int main(int argc, const char **argv)
 	gs_Ref.PrepET();
 	if(!gs_P.m_Imit.empty())
 		LoadImit(gs_P.m_Imit.c_str());
+	if(!gs_P.m_Plan.empty())
+	{
+		LoadPlan(gs_P.m_Plan.c_str());
+		std::printf("plan: %zu entries\n", gs_vPlanE.size());
+	}
 	if(!gs_P.m_ShotPlan.empty())
 	{
 		LoadShotPlan(gs_P.m_ShotPlan.c_str());
@@ -1598,6 +1775,16 @@ int main(int argc, const char **argv)
 					ShotBonus(G, Tmp, In);
 					if(!ShotPlanOk(Tmp, In, G.ReloadTimer() == 0 && Tmp.ReloadTimer() > 0))
 						continue;
+					if(gs_P.m_PlanForce && Tmp.ReloadTimer() == 0)
+					{
+						const int RtF = Tmp.m_Tick - Tmp.m_StartTick;
+						bool Missed = false;
+						for(const auto &P : gs_vPlanE)
+							if(!P.m_Free && RtF == P.m_T1 + 1)
+								Missed = true;
+						if(Missed)
+							continue;
+					}
 					if(!Tmp.HasGrenade() && Tmp.m_RefIdx > gs_GrenIdx + 3)
 						continue; // passed the pickup without the grenade
 					const int Rt = Tmp.m_Tick - Tmp.m_StartTick;
@@ -1663,6 +1850,26 @@ int main(int argc, const char **argv)
 						}
 						else
 							S += gs_P.m_HookIdle;
+					}
+					if(gs_P.m_PlanRv > 0 && Tmp.NumProjectiles() > 0)
+					{
+						// rendezvous credit: a grenade in flight is worth up to 4 x planrv ticks if the tee can still be
+						// next to its explosion point when it goes off (ballistic guess +- what control can change)
+						vec2 E;
+						int Te;
+						if(PendExpl(Tmp, E, Te))
+						{
+							const int dt = Te - Tmp.m_Tick;
+							if(dt >= 1 && dt <= 60)
+							{
+								vec2 P = Tmp.Pos(), V = Tmp.Vel();
+								float Sp = length(V);
+								float Rm = Sp > 11 ? gs_Ref.Disp(Sp) / Sp : 1.0f;
+								vec2 Pp(P.x + V.x * Rm * dt, P.y + V.y * dt + 0.25f * dt * (dt + 1));
+								float Miss = std::max(0.0f, distance(Pp, E) - 0.5f * gs_P.m_PlanAcc * dt * dt - 40.0f);
+								S -= gs_P.m_PlanRv * (4.0f - std::min(Miss, 400.0f) / 100.0f);
+							}
+						}
 					}
 					if(gs_P.m_TrackW > 0)
 						S = Tmp.m_TrackCost + gs_P.m_TrackTie * S;

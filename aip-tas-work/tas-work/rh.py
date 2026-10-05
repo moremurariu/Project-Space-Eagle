@@ -267,6 +267,13 @@ def main():
         maxticks = (FINISH_K - k0 if final else WINDOW) * 2 + 60
         variants = (WIDE_R if args.get('vset') in ('r', 'r2', 'r3') else WIDE) if wide else (POST if k0 >= GREN_K else VARIANTS)
         variants = [variants[int(i)] for i in args['vidx'].split(',')] if args.get('vidx') and not wide else variants[:NVAR]
+        if args.get('teeroplan'):
+            # shot plan from Teero's schedule, shifted by our lag at the window start (+ drift per window)
+            lag = rt0 - (k0 - 3)
+            pf = f'{D}/s{step + 1}.plan'
+            subprocess.run(['python3', 'teero_plan.py', prefix, str(rt0), str(rt0 + maxticks), pf, f'lag={lag}',
+                            f"win={args.get('planwin', 2)}"], capture_output=True, text=True)
+            variants = [v + f' prefire=1 padtop=300 plan={pf}' for v in variants]
         step += 1
         with ThreadPoolExecutor(len(variants)) as ex:
             res = list(ex.map(lambda iv: run_variant(prefix, gate, commitk, iv[1], f's{step}v{iv[0]}', maxticks), enumerate(variants)))

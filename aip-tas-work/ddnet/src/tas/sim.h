@@ -96,6 +96,8 @@ public:
 	float m_TrackCost = 0; // search only: accumulated deviation from a reference trajectory
 	float m_Bonus = 0; // search only: accumulated bonus (ticks)
 	int m_LastShot = -1; // search only: last matched reference shot
+	vec2 m_PendE = vec2(0, 0); // search only: cached next explosion of a projectile in flight
+	int m_PendT = -1, m_PendFire = -1;
 
 	int m_Tick = 0; // server tick of the last simulated step
 	int m_StartTick = -1;

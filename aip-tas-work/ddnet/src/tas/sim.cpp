@@ -205,6 +205,9 @@ void CTasGame::CopyFrom(const CTasGame &Other)
 	m_TrackCost = Other.m_TrackCost;
 	m_Bonus = Other.m_Bonus;
 	m_LastShot = Other.m_LastShot;
+	m_PendE = Other.m_PendE;
+	m_PendT = Other.m_PendT;
+	m_PendFire = Other.m_PendFire;
 }
 
 void CTasGame::SetState(vec2 Pos, vec2 Vel)

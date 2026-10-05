@@ -160,25 +160,30 @@
          src/tas/${TAS_TOOL}.cpp
 --- a/ddnet/src/tas/sim.h
 +++ b/ddnet/src/tas/sim.h
-@@ -93,6 +93,9 @@
+@@ -93,6 +93,11 @@
  	STasInput m_CommitIn;
  	int m_LastJump = 0;
  	float m_HookLoss = 0; // search only: accumulated v^2 lost while hooked above the hook speed limit
 +	float m_TrackCost = 0; // search only: accumulated deviation from a reference trajectory
 +	float m_Bonus = 0; // search only: accumulated bonus (ticks)
 +	int m_LastShot = -1; // search only: last matched reference shot
++	vec2 m_PendE = vec2(0, 0); // search only: cached next explosion of a projectile in flight
++	int m_PendT = -1, m_PendFire = -1;
  
  	int m_Tick = 0; // server tick of the last simulated step
  	int m_StartTick = -1;
 --- a/ddnet/src/tas/sim.cpp
 +++ b/ddnet/src/tas/sim.cpp
-@@ -202,6 +202,9 @@
+@@ -202,6 +202,12 @@
  	m_CommitIn = Other.m_CommitIn;
  	m_LastJump = Other.m_LastJump;
  	m_HookLoss = Other.m_HookLoss;
 +	m_TrackCost = Other.m_TrackCost;
 +	m_Bonus = Other.m_Bonus;
 +	m_LastShot = Other.m_LastShot;
++	m_PendE = Other.m_PendE;
++	m_PendT = Other.m_PendT;
++	m_PendFire = Other.m_PendFire;
  }
  
  void CTasGame::SetState(vec2 Pos, vec2 Vel)
@@ -254,7 +259,7 @@
  }
 --- a/tas-work/NOTES.md
 +++ b/tas-work/NOTES.md
-@@ -84,3 +84,420 @@
+@@ -84,3 +84,435 @@
  - Corridor 1 from a Teero-like crossing (900,465,25,-13 spent): 294-296 (Teero 298). Our pre-start crossing gives ~306.
  - TileExists lookup cache in CCollision (opt-in flag, TAS only): step 1.54 -> 1.20 us, identical replays.
  - chain.py: segment chain over distance gates with several configs (gains ~1-2 ticks/gate; slow).
@@ -675,3 +680,18 @@
 +- LNS runs/lnsP1 on kog_full_2700 (restarted after a container restart): first iterations 2705, 2726 (no gain yet).
 +- LNS runs/lnsP2 (cutmin 2250): **2699 (53.98 s)**, cut 2570, server-identical (start 68, finish 2767, no freeze, no double start) -> kog_full_best.txt.
 +- LNS lnsP2: **2693 (53.86 s)** (cut 2550), server-identical (start 68, finish 2761, no freeze, no double start) -> kog_full_best.txt. 13 iterations: 2693, 2699, 2704 x2, 2708 x2, 2718-2739, 3 NOGATE.
++- **Teero input extraction (user, teero/teero_inputs_0-3131.csv):** per 60-fps frame A/D/dir, jump, aim, weapon, and
++  53 fire events (50 audio+recoil, 3 audio), s_since_start -> race tick rt = s*50 - 3.2. He fires on the reload
++  (gaps mostly 25-27 ticks); fire aims are unreliable for some shots (exit point-blank read -8 deg vs ~187 deg).
++  Pairing with the catalog explosions: fires 1+2 = exit double kick (pre-fire 992.7 + point-blank 1018.5 -> 1018.6),
++  then fire n -> catalog explosion n-1; point-blanks match within ~1-2 ticks. teero_shots.py simulates each fire from
++  his track position + aim (teero/shots_sim.tsv). Direction usage is like ours (3% dir 0, ~5% against motion).
++- **seg plan=FILE** (new): "t0 t1 ex ey r [te tol]" target shots (exact aims by scan + golden section, pre-fires
++  included, optional explosion tick) and "t0 t1 free" point-blank windows; no other shots. planforce, planrv (rendezvous
++  credit for grenades in flight; no gain: 1230-1232 vs 1228 free pre-fire, 1225-1226 vs 1223 with the plan).
++  sim.h: CTasGame caches the next explosion (m_PendE/T). teero_plan.py builds plans from Teero's fires + explosions
++  shifted by our lag (per shot from a reference run, or lag=L).
++- **Teero's schedule as a plan, exit -> k1215: 1223 vs 1228 without (same settings)** - pre-fire at 1146 exploding
++  next to the tee at 1163 + corner point-blank at 1171 (lag +3/+4 through the hairpin). Catalog-only plans (guessed
++  fire windows) were much worse (1245-1276). rh.py teeroplan=1 [planwin=3]: per-window plan with the current lag.
++  Chain t1 (vset=p7 + teeroplan) from runs/plan1/pc0 cut at rt 1215.
