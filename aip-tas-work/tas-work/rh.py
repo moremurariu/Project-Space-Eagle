@@ -226,7 +226,7 @@ def main():
         commitk = None if final else k0 + COMMIT
         maxticks = (FINISH_K - k0 if final else WINDOW) * 2 + 60
         variants = (WIDE_R if args.get('vset') in ('r', 'r2', 'r3') else WIDE) if wide else (POST if k0 >= GREN_K else VARIANTS)
-        variants = variants[:NVAR]
+        variants = [variants[int(i)] for i in args['vidx'].split(',')] if args.get('vidx') and not wide else variants[:NVAR]
         step += 1
         with ThreadPoolExecutor(len(variants)) as ex:
             res = list(ex.map(lambda iv: run_variant(prefix, gate, commitk, iv[1], f's{step}v{iv[0]}', maxticks), enumerate(variants)))

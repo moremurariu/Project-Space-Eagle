@@ -1,0 +1,12 @@
+04:44:16 e1021v0 GATE rt 1212 Ee -130 (522s) beam=10000 survevery=2 survive=30 ghost=3 hnow=1000 ghoste=0.02 sinks=1156,1285,1443,1793,2143,2465 ghostsink=1500 prefire=1 padaims=48 padtop=300 padrange=30 latpen=0.02 latdz=48 rothook=1 quant=1
+04:45:08 e1021v7 GATE rt 1213 Ee -545 (574s) beam=10000 survevery=2 survive=30 ghost=3 hnow=600 ghoste=0.0 sinks=1156,1285,1443,1793,2143,2465 brake=2 kcredit=2 kready=10 rothook=1 quant=1
+04:45:16 e1021v1 GATE rt 1211 Ee 647 (582s) beam=10000 survevery=2 survive=30 ghost=3 hnow=1000 ghoste=0.02 sinks=1156,1285,1443,1793,2143,2465 ghostsink=1500 kcredit=2 kready=10 rothook=1 quant=1
+04:53:55 e1023v0 GATE rt 1217 Ee -208 (579s) beam=10000 survevery=2 survive=30 ghost=3 hnow=1000 ghoste=0.02 sinks=1156,1285,1443,1793,2143,2465 ghostsink=1500 prefire=1 padaims=48 padtop=300 padrange=30 latpen=0.02 latdz=48 rothook=1 quant=1
+04:55:21 e1021v3 GATE rt 1210 Ee -314 (1187s) beam=10000 survevery=2 survive=30 ghost=3 hnow=1000 ghoste=0.01 sinks=1156,1285,1443,1793,2143,2465 ghostsink=1500 angles=128 hookdedup=0 rothook=1 quant=1
+04:55:47 e1023v7 GATE rt 1216 Ee -489 (631s) beam=10000 survevery=2 survive=30 ghost=3 hnow=600 ghoste=0.0 sinks=1156,1285,1443,1793,2143,2465 brake=2 kcredit=2 kready=10 rothook=1 quant=1
+05:03:47 e1023v1 GATE rt 1215 Ee 478 (591s) beam=10000 survevery=2 survive=30 ghost=3 hnow=1000 ghoste=0.02 sinks=1156,1285,1443,1793,2143,2465 ghostsink=1500 kcredit=2 kready=10 rothook=1 quant=1
+05:03:54 e1025v0 GATE rt 1211 Ee -530 (513s) beam=10000 survevery=2 survive=30 ghost=3 hnow=1000 ghoste=0.02 sinks=1156,1285,1443,1793,2143,2465 ghostsink=1500 prefire=1 padaims=48 padtop=300 padrange=30 latpen=0.02 latdz=48 rothook=1 quant=1
+05:06:34 e1023v3 GATE rt 1216 Ee -266 (1286s) beam=10000 survevery=2 survive=30 ghost=3 hnow=1000 ghoste=0.01 sinks=1156,1285,1443,1793,2143,2465 ghostsink=1500 angles=128 hookdedup=0 rothook=1 quant=1
+05:13:33 e1025v1 GATE rt 1208 Ee 822 (579s) beam=10000 survevery=2 survive=30 ghost=3 hnow=1000 ghoste=0.02 sinks=1156,1285,1443,1793,2143,2465 ghostsink=1500 kcredit=2 kready=10 rothook=1 quant=1
+05:13:40 e1025v7 GATE rt 1208 Ee -663 (594s) beam=10000 survevery=2 survive=30 ghost=3 hnow=600 ghoste=0.0 sinks=1156,1285,1443,1793,2143,2465 brake=2 kcredit=2 kready=10 rothook=1 quant=1
+05:16:08 e1025v3 GATE rt 1210 Ee -311 (1221s) beam=10000 survevery=2 survive=30 ghost=3 hnow=1000 ghoste=0.01 sinks=1156,1285,1443,1793,2143,2465 ghostsink=1500 angles=128 hookdedup=0 rothook=1 quant=1

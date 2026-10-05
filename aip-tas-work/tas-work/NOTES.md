@@ -426,3 +426,21 @@ Teero played the **KoG** version of AiP-Gores (user, from Teero). Our runs so fa
   (k2504-2524). Old DDNet post-grenade findings apply.
 - gren.py: GREN_RQ=1 env adds rothook=1 quant=1 to its seg runs. Run kog1 from kog_pregren_978 (gate k1100).
 - rh.py vset=p5: 8 post-grenade variants (g4 settings + rothook/quant, kick credit, ghost=3 brake), WIDE likewise.
+- Post chain p1 (vset=p5 from post1100, k1100 at rt 1121): step 1 k1350 at rt 1392 (lead -42; v3/v7 best, 27 min for
+  8 variants). lagtrack: par k1100-1170 (+21 track), then +1 tick per ~12 in corridor B (k1175-1285, going left):
+  Teero's displacement there is ~36 px/t (|v| ~50-60 after his hairpin double kick #5/#6 at k1158/1165), ours 24-31
+  (|v| 26-42) for the first ~80 ticks. kicks.py (new) lists fire ticks and kicks: p1 fires every ~25 ticks but
+  several shots give no kick (1117, 1176 at the hairpin, 1309, 1334, 1360).
+- physlab2 (grenade agent, physlab2/FINDINGS.txt): pickup arrival is the transition loss; braked pickup at rt 981 +
+  double-kick exit gives x>=5671 at rt 1036-1038 (Teero ~1033), label 1100 at 1111 with a crude downstream.
+  Exit cuts for seg: runs/ex/e1021.txt (1092 lines), e1023 (1093), e1025 (1095). multi.py (new): parallel seg jobs.
+- Horizontal displacement limit: D(v) = v * 1.4^(-(50v-550)/2000) peaks at |v| ~119 with 48 px/t (D(36)=29,
+  D(50)=36, D(60)=39.7, D(80)=44.8). Teero's corridors run at D ~36; the TAS ceiling is ~45.
+- **Exits -> k1200** (runs/ex, 4 p5 variants each, beam 10000): e1021 1210-1213, e1023 1215-1217, **e1025 1208 (v1, v7)**
+  (Teero true 1197). e1025v1 lag (track frame): +2 at the exit, +4 at k1100, +5 to the hairpin, +7 at k1200.
+- **Equal-state test (tp at Teero's k1220 state, vx -57, his reload phase) -> k1285:** seg 1286-1291 (b7 best, beam
+  40000 pending) vs Teero 1285. tpreplay.py (new; lab has a new `reload N` command) shows b7 tracking him at lag 0/-1
+  and kicking to |v| 67 at k1244, but the dive (sink at k1285) eats the extra speed. survevery=0 dies; survive=15,
+  vcap=2, ghost=1 no better. => seg is at par with Teero locally; gains must come from turns / slow sections.
+- Teero's slow stretches (track displacement < 30 px/t): exit 1020-1040, hairpin 1140-1180, left U-turn 1420-1520,
+  1600, 1780-1800, 1940-2000 (16-29), 2060-2080, 2240-2260, final maze 2420-2539 (~20 px/t for ~120 ticks).

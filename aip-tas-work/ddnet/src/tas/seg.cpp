@@ -7,6 +7,8 @@
 //
 // usage: seg <map> prefix=FILE ref=teero_track.txt key=value...
 //   gate=K (Teero tick on the reference line) | gate=grenade (pickup) | gate=finish     out=PREFIX (writes PREFIX0.txt)
+//   gate=box:x0,x1,y0,y1[,vymax[,K]] (first tick inside the box with the grenade and vy <= vymax; earliest wins;
+//     K = Teero tick of the box for the time model, default: the reference point nearest the box centre)
 //   beam=20000 threads=1 maxticks=600 angles=64 hnow=300 dirmode=all|tan (tan: only hold towards the line's x)
 //   pjc=130 pgc=160 (energy credit for an unused air / ground jump)  gcred=0 (credit for a loaded grenade)
 //   fire=1 fireangles=48 firelook=12 (grenade shots, judged after the explosion)  survive=20
@@ -1175,8 +1177,16 @@ struct SGate
 	vec2 m_Pos, m_Vel;
 };
 
+static float gs_aBox[6] = {0, 0, 0, 0, 1e9f, -1}; // gate=box:x0,x1,y0,y1[,vymax[,K]] (with the grenade)
+static bool gs_Box = false;
+
 static bool AtGate(const CTasGame &G)
 {
+	if(gs_Box)
+	{
+		vec2 P = G.Pos(), V = G.Vel();
+		return G.HasGrenade() && P.x >= gs_aBox[0] && P.x <= gs_aBox[1] && P.y >= gs_aBox[2] && P.y <= gs_aBox[3] && V.y <= gs_aBox[4];
+	}
 	if(gs_P.m_Gate == "finish")
 		return G.m_FinishTick >= 0;
 	if(gs_P.m_Gate == "grenade")
@@ -1306,7 +1316,20 @@ int main(int argc, const char **argv)
 					}
 				}
 	}
-	if(gs_P.m_Gate != "finish" && gs_P.m_Gate != "grenade")
+	if(gs_P.m_Gate.rfind("box:", 0) == 0)
+	{
+		gs_Box = true;
+		std::sscanf(gs_P.m_Gate.c_str() + 4, "%f,%f,%f,%f,%f,%f", &gs_aBox[0], &gs_aBox[1], &gs_aBox[2], &gs_aBox[3], &gs_aBox[4], &gs_aBox[5]);
+		vec2 C((gs_aBox[0] + gs_aBox[1]) / 2, (gs_aBox[2] + gs_aBox[3]) / 2);
+		float Best = 1e30f;
+		for(int i = 0; i < (int)gs_Ref.m_vP.size(); i++)
+			if(gs_aBox[5] >= 0 ? gs_Ref.m_vK[i] >= gs_aBox[5] && Best > 1e29f : distance(gs_Ref.m_vP[i], C) < Best)
+			{
+				Best = distance(gs_Ref.m_vP[i], C);
+				GateIdx = i;
+			}
+	}
+	else if(gs_P.m_Gate != "finish" && gs_P.m_Gate != "grenade")
 	{
 		int K = std::stoi(gs_P.m_Gate);
 		for(int i = 0; i < (int)gs_Ref.m_vK.size(); i++)
@@ -1464,6 +1487,8 @@ int main(int argc, const char **argv)
 					{
 						float Ee;
 						float V = gs_P.m_Gate == "finish" ? (float)(Tmp.m_FinishTick - Tmp.m_StartTick) : EstTotal(Tmp, &Ee);
+						if(gs_Box)
+							V = (float)Rt + 0.01f * Tmp.Vel().y;
 						// (EstTotal includes the time model's horizon beyond the gate, so energy at the gate counts)
 						if(gs_P.m_Gate == "finish")
 							Ee = EffEnergy(Tmp);
