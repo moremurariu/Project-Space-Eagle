@@ -133,6 +133,30 @@ if args.get('vset') == 'r3':
         f'ghost=1 hnow=600 ghoste=0.02 {A} pjc=250 pgc=250 cpos=8 cvel=1 {LP} {RQ}',
     ]
     NVAR = int(args.get('nvar', 8))
+if args.get('vset') == 'p5':
+    # post-grenade: g4's settings (ghost=3 hairpin survival, prefire / kick credit) + rotation pulses and whole pixels,
+    # 8 variants (k-chains on KoG); sel after the grenade via selpost
+    PS2 = '1156,1285,1443,1793,2143,2465'
+    SV = 'beam=10000 survevery=2 survive=30'
+    PF = 'prefire=1 padaims=48 padtop=300 padrange=30 latpen=0.02 latdz=48'
+    RQ = 'rothook=1 quant=1'
+    POST = [
+        f'{SV} ghost=3 hnow=1000 ghoste=0.02 sinks={PS2} ghostsink=1500 {PF} {RQ}',
+        f'{SV} ghost=3 hnow=1000 ghoste=0.02 sinks={PS2} ghostsink=1500 kcredit=2 kready=10 {RQ}',
+        f'{SV} ghost=1 hnow=600 ghoste=0.02 {PF} {RQ}',
+        f'{SV} ghost=3 hnow=1000 ghoste=0.01 sinks={PS2} ghostsink=1500 angles=128 hookdedup=0 {RQ}',
+        f'{SV} ghost=1 hnow=600 ghoste=0.02 kcredit=2 kready=10 angles=128 hookdedup=0 {RQ}',
+        f'{SV} ghost=3 hnow=1000 ghoste=0.02 sinks={PS2} ghostsink=1500 {PF}',
+        f'{SV} ghost=1 hnow=300 ghoste=0.01 kcredit=1 kready=4 {RQ}',
+        f'{SV} ghost=3 hnow=600 ghoste=0.0 sinks={PS2} brake=2 kcredit=2 kready=10 {RQ}',
+    ]
+    WIDE = [
+        f'beam=20000 survevery=1 survive=40 ghost=3 hnow=1000 ghoste=0.02 sinks={PS2} ghostsink=1500 {RQ}',
+        f'beam=20000 survevery=1 survive=40 ghost=3 hnow=1500 ghoste=0.0 sinks={PS2} brake=2 {RQ}',
+        f'beam=10000 survevery=1 survive=50 ghost=1 hnow=600 ghoste=0.02 kcredit=2 kready=10 {RQ}',
+        f'beam=20000 survevery=2 survive=40 ghost=3 hnow=1000 ghoste=0.01 sinks={PS2} ghostsink=1500 angles=128 hookdedup=0',
+    ]
+    NVAR = int(args.get('nvar', 8))
 STOP_K = int(args.get('stopk', 99999))
 GREN_K = 990
 WIDE_R = [

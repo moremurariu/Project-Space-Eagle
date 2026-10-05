@@ -1,0 +1,212 @@
+AiP-Gores (KoG) post-grenade physics lab - physlab2 (Oct 5)
+=========================================================================================================
+All numbers measured in simulation; every result file listed was also replayed on the real server code
+(srvtrace.sh = testrunner TasReplay.Run, TAS_TRACE=1) and matched the sim exactly, no freeze, start 68.
+Paths relative to tas-work/physlab2/. rt = race tick (state after N input lines is rt N-68).
+Teero "true" tick = track label - 3.
+
+=========================================================================================================
+0. BOTTOM LINE
+=========================================================================================================
+Gate times (first rt reaching the gate, alive):
+                                   pickup  y<=2300  exit kick        x>=5671     x>=5900   x>=7702
+                                                    (rt, v after)    (lbl 1036)  (block)   (lbl 1100)
+  Teero (true)                     ~980    ~992.3   ~1018.6 (26.6,-8.9) ~1033    ~1041.5   ~1097
+  old best runs/kog/post1100.txt   978     1011     1039 (25.2,4.8)   1050        1060      1121
+  results/from978_T1030.txt        978     1001     1030 (29.2,-9.6)  1044        -         -
+  results/exit_T1021_to1036.txt    981     994      1022 (29.3,-10.2) 1036        -         -
+  results/exit_T1023_to1037.txt    981     994      1023 (31.7,-13.2) 1037        -         -
+  results/exit_T1025_to1038.txt    982     995      1025 (32.8,-10.1) 1038        -         -
+  results/c3s3_to_label1100.txt    982     995      1025 (32.8,-10.1) 1038        1047      1111
+  (from978 keeps kog_pregren_978 unchanged; exit_T1021/T1023 change inputs from rt 960 on
+   (first 1028 lines identical), T1025/c3s3 from rt 970 on (first 1038 lines identical).)
+
+* The deficit is the pickup ARRIVAL, not the climb. kog_pregren_978 reaches the pickup at rt 978 with
+  v (19.1,19.9) heading into the corner under the freeze overhang; turning around costs ~10 ticks
+  (y<=2300 at 1001-1002 at best). Teero brakes BEFORE the pickup (vx 19 -> 2 over true 975-980, hook up-left +
+  dir -1), touches the pickup disc almost at rest (5411,2457) and air-jumps. Doing the same from our rt 960-974
+  states (pickup 3 ticks later, rt 981) gives y<=2300 at 994 and the exit double kick at rt 1021-1025.
+* Teero's exit = pre-fired grenade fired at y ~2285 + point-blank shot, both on the L-arm end's right face
+  (x=5248, y 1920-1952), same (or consecutive) tick: +22..24 px/t. Reproduced in all lines above. The pre-fire
+  timing rule (M6) explains the whole schedule: exit tick = pre-fire tick + 26..31.
+* Label-1100 point: rt 1111 (was 1121) with my crude downstream (xbeam + hill climb, not seg quality). Lag vs
+  Teero there: constant 5 ticks from the exit to rt ~1066, then +8 in the up-turn (k1075-1095) that my crude
+  search plays badly (it is ~25 px too high over the freeze floor for Teero's jump + floor kick, M3).
+  The exits are the useful product: run seg/rh.py from results/exit_T102*.txt (cut at the exit tick).
+* Downstream coupling: the reload after the point-blank exit shot is back at exit+25; Teero reaches the
+  block (184,60) exactly then (exit vx 26.6). Our faster exits reach the block 4-6 ticks before the reload
+  is back; with my crude search the T1025 line (flatter, block kick at rt 1050) did best downstream, the
+  T1021 line (earliest exit) did worst (1120). seg should evaluate all three exits.
+
+=========================================================================================================
+1. TOOLS (new, physlab2 only; nothing existing modified; all single-threaded)
+=========================================================================================================
+- xlab (xlab.cpp; ./build.sh xlab): interactive lab with save/restore of whole worlds (tee, hook, projectiles,
+  reload). stdin: load PATH [N] | save K | restore K | in d j h f tx ty [n] | r <input-file line> |
+  a d j h f deg [n] | p | loud | quiet | exp (all pending explosions: rt x y) | tp x y vx vy | gren | reload0 |
+  sync. State line: S rt x y vx vy hook hx hy jumped grounded reload proj frz gren(0 none,1 got,2 active).
+  build.sh links the existing build-sim objects of the *match* target. WARNING: build-sim's lab target
+  objects are stale (lab.dir/sim.cpp.o Oct 2, sim.h changed Oct 3): new code linked against them reads
+  CTasGame fields at wrong offsets (rt printed 21749). The old lab binary itself is self-consistent.
+- xl.py (Python driver, writer thread; ~100k ticks/s incl. IO), hc.py ((1+lambda) hill climbing over per-tick
+  [dir, jump, hook, fire, aim_deg]), gmodel.py (analytic pre-fire model, M6).
+- b1_turn.py / b3_cut.py / b4_turn.py: turnaround optimisation (gate y<=Y climbing, x<=5376).
+- c3_climb.py: climb optimiser scored by simulated double kicks (gmodel options -> pre-fire + point-blank +
+  14-tick dir-1 tail -> estimated rt at x=5900). env KEEPFIRE, FIXM, NMAX, FROZEN.
+- xrv (xrv.cpp): rendezvous beam: prefix ends right after the pre-fire step; reads the pending explosion
+  (tick, point) and beam-searches hook/dir inputs to be next to it on the tick before, then tries
+  point-blank aims (made exit_T1021).
+- xbeam (xbeam.cpp): small beam to a Teero-track gate (projection on his smoothed track); d2_down.py:
+  gate hill climbing (polished c3s3 to 1111).
+- srvtrace.sh INPUTS OUT: real-server replay keeping the per-input trace. killpy.sh PATTERN: kill own python
+  jobs (pkill -f PATTERN also kills the calling shell when its command line contains PATTERN).
+
+=========================================================================================================
+2. VERIFIED MECHANICS (Q2)
+=========================================================================================================
+M1. Weapon-switch latency: fire the grenade one tick earlier after the pickup.
+    HandleWeaponSwitch (called from OnDirectInput, before FireWeapon) uses the PREVIOUS tick's
+    m_Input.m_WantedWeapon (server: game/server/entities/character.cpp:446, same code). With weapon -1 on the
+    pickup tick's input, an input with fire on pickup+1 fires the GUN (reload 5, blocks the grenade 5 ticks).
+    With weapon 3 on the pickup tick's line (no effect before the pickup) the grenade fires on pickup+1.
+      ../ddnet/build-sim/lab AiP-Gores.map "quiet;replay physlab2/pre978w.txt;loud;in -1 1 1 1 1000 0"
+        (pre978w.txt = kog_pregren_978.txt with line 1046 weapon -1 -> 3)
+        -> rt 979 reload 24 proj 1; wall explosion at rt 982: v (14.61,-11.00) -> (5.32,-16.10)
+      ../ddnet/build-sim/lab AiP-Gores.map "quiet;replay kog_pregren_978.txt;loud;in -1 1 1 1 1000 0"
+        -> rt 979 reload 5 (gun), no kick, tee freezes at rt 984.
+    Server: runs_d/wsw_test.txt / wsw_ctrl.txt via srvtrace.sh give the same (5.320,-16.098) / freeze.
+    Search: emit weapon 3 on the pickup tick (or on every line); never put fire on pickup+1 otherwise.
+
+M2. Point-blank wall kick geometry (m1_wallkick.py; spawn room, bare wall x=64, tee at rest, dir 0).
+    The projectile starts at tee + 21*aim and moves 20 px per tick (+0.28 n^2 drop); its first segment is
+    checked in the fire step, so a solid within ~41 px ALONG THE AIM explodes in the fire step itself, and
+    the kick uses the tee position before the move. Kick = 12*(1-clamp((r-48)/87)) from the explosion to the
+    tee centre; the explosion lies on the aim line => the kick is exactly opposite to the aim as long as the
+    hit point is <= 48 px away. kick (x,y) / step of the explosion (1 = fire step); columns = aim offset
+    from straight at the wall (+ = aimed down-left -> kick up-right):
+      d    -30          -15          0            +15          +30          +45
+      30   1:10.4,+5.9  1:11.6,+3.1  1:12.0,0     1:11.6,-3.2  1:10.4,-6.1  2:8.6,-8.4
+      36   2:10.3,+6.1  1:11.6,+3.0  1:12.0,0     1:11.6,-3.2  2:10.5,-5.9  2:8.1,-8.0
+      42   2:10.1,+5.9  2:11.6,+3.2  2:12.0,0.2   2:11.6,-3.0  2:10.3,-5.8  2:7.2,-7.2
+      48   2:9.3,+5.4   2:11.2,+3.1  2:11.9,0.1   2:11.3,-3.0  2:9.4,-5.4   3:6.5,-6.4
+      56   3:8.2,+4.8   2:10.1,+2.7  2:10.7,0     2:10.1,-2.7  3:8.3,-4.7   3:5.3,-5.3
+      64   3:7.2,+4.1   3:9.0,+2.5   3:9.7,0.1    3:9.0,-2.4   3:7.1,-4.1   4:4.2,-4.2
+      80   4:5.0,+2.9   4:6.7,+1.9   3:7.4,0      4:6.9,-1.7   4:5.0,-2.8   5:2.0,-2.0
+    lab: "quiet;in 0 0 0 0 0 -1 3;gren;reload0;tp 94 200 0 0;loud;in 0 0 0 1 -1000 0" -> v (11.398, 0.449)
+         = 12 kick then the dir-0 air friction (x0.95) of the same tick;
+         "...;in 0 0 0 1 -866 500" (30 deg down-left) -> v (9.844,-5.551) = 12 at 30 deg up-right, x*0.95.
+    A moving tee: for later-step explosions the tee has moved; in exit_T1021 the point-blank fired from
+    47 px exploded one step later with the tee 18 px further away: 9.7 instead of 12.
+    => Aim the shot exactly opposite to the wanted kick; full 12 needs hit distance <= 48, same-step <= ~41.
+       Hold the kick direction (dir 0 loses 5% of vx per air tick, including the kick tick).
+
+M3. Jump and kick in the same tick: the jump SETS vy (-12 air / -13.2 ground) after the kick was added
+    (projectiles tick before characters) -> the kick's vertical part is lost (m2_kickjump.py, tee (300,350),
+    floor 34 px below, shooting down, start vy 6):
+      kick only -> vy -5.5 | air jump only -> -12.0 | jump + kick same tick -> -12.0 |
+      kick, jump next tick -> -12.0 | jump, then kick next tick -> -12.0, then -21.59 (stacks).
+      Side kick + jump same tick: vx kept (11.40, -12.0).
+    lab: "quiet;in 0 0 0 0 0 -1 3;gren;reload0;tp 300 350 0 6;loud;in 0 1 0 1 0 1000" -> vy -12.0;
+         "...;tp 300 350 0 6;loud;in 0 1 0 0 0 -1;in 0 0 0 1 0 1000;in 0 0 0 0 0 -1" -> -12.0, -11.5, -21.59.
+    => Jump first, kick >= 1 tick later. A jump also cancels a downward kick. Teero's #3 (true ~1072.8,
+       v (33,3) -> (33,-20), dv_y -23 > 12+3) fits "air jump + floor kick" (jumps refilled on the block
+       touch at true ~1043).
+
+M4. Hook + kick: the 15 px/t hook limit is tested on the post-kick velocity (m3_hookkick.py; hook grabbed
+    on the ceiling straight above):
+      kick up off the floor: unhooked -11.5,-11.0,... | hooked -14.5 (pull still applied up to |v|=15), then
+        only gravity;   kick right off the wall: unhooked (12.0,0.45) | hooked (12.0,-2.55), (11.86,-5.04),
+        (11.55,-7.52): while |v| < 15 the hook keeps pulling after the kick.
+    => Pre-accelerate with the hook toward the kick direction BEFORE the kick (below 15 it is free);
+       after the kick (|v| > 15) a hook only brakes or turns. exit_T1025: right-wall hook vx -1.3 -> 10.2
+       in the 3 ticks before the double kick -> exit vx 32.8 instead of ~24.
+
+M5. Two explosions in the same step add linearly (each uses the tee position before the move):
+    exit_T1025 rt 1025: (10.16,-9.26) -> (32.80,-10.14) = +22.6 from the pre-fire + point-blank.
+
+M6. Pre-fire timing (gmodel.py; verified against xlab: fire from (5351,2294) at 260.40 deg -> model n=30,
+    y 1933.7; xlab: explosion rt 1025 at (5247.3,1933.7); fire at 258.6 deg from (5357,2292) on the step to
+    rt 995 -> model n=27 -> xlab explosion rt 1021 (5247.0,1947.6)).
+    - A shot fired on input step m starts at the tee position BEFORE that step; its n-th 20-px segment is
+      simulated in step m+n-1. The point-blank follow-up can be fired on step >= m+25, so a same-step
+      double kick needs n >= 26.
+    - Max rise 357 px (vertical, apex ~36 segments); 325 px after 25. At n = 26-31 the grenade climbs only
+      2-5 px per segment, so 1 px of fire height costs ~0.25 tick of explosion time.
+    - Face hits (x=5248, y 1921-1951) for a fire position x0=5350 [aims]:
+        y0 2270: n 24-27 (257.8-259.5)  y0 2280: n 25-27  y0 2290: n 26-29 (258.9-260.2)
+        y0 2300: n 28-31 (259.6-260.8)  y0 2310: n 30-33  y0 2320: n 34-36  y0 >= 2330: unreachable
+      (x0 5300: aims 263.8-265.7; x0 5400: 251.6-257.8). Each n has a ~0.2-0.4 deg aim window: 64 fixed
+      angles cannot hit it (the old NOTES' "0.1-0.3 deg window").
+    => Fire the pre-fire from y ~2270-2290 (x ~5350) with n = 26-27, then climb ~13 px/t to arrive at
+       x 5281-5300 next to the explosion point on the tick before it. Teero: y ~2285 at true ~993.8 ->
+       explosion ~1018.6, consistent.
+
+M8. Single vs double exit kick (c5_single.py vs c3/xrv, same turnaround to rt 994, same scoring = est. rt at
+    x=5900 after a 14-tick dir-1 tail): best single point-blank exit (no pre-fire, hook climb straight to
+    the face, right-hook pre-acceleration to vx 9.1): kick at rt 1020-1021 -> (19.38,-10.46), est. 1051.6.
+    Double kick (pre-fire + point-blank): exit 1021-1023, est. 1043.2-1043.6. The hook climb from the
+    pre-fire height (y ~2290) to the face takes ~26 ticks anyway, i.e. the pre-fire's n >= 26 constraint costs
+    almost nothing, and the second kick is worth ~8 ticks at x=5900.
+
+M7. The pickup corner. Freeze: overhang row 73 x>=5376 and row 74 x>=5440 (y 2336-2400), right wall
+    x>=5504, floor y>=2560. Pickup disc: |tee - (5456,2480)| < 48 (checked with the previous tick's
+    position). Turnaround benchmark (first rt with y<=2300, x<=5376, alive; hill climbing, 30k+ sequences
+    per run):
+      from the 978 state, no shot 1002 | with a brake shot at the wall 1002-1005 | reload-free pre-fire
+      height (y<=2290, vy<=-12, reload 0) 1010 without / 1003-1004 with the rt-979 brake shot (M1)
+      cut at rt 970 / 965 / 960 / 955 / 950: y<=2290 climbing at 995 / 994 / 995 (2277) / 995 / 995
+      Teero ~992.3 (y<=2300).
+    The pre-pickup brake: hook to the block's right face (5279,~2321) on rt 974-976 with dir -1
+    (vx 23 -> 10), enter the disc slowly, air jump at rt 980 with an up-left hook.
+
+=========================================================================================================
+2b. WHAT TEERO DOES (track + shot catalog, consistent with the mechanics above)
+=========================================================================================================
+- true 975-980: comes in at ~(19,21) like us but ~40 px higher; brakes vx 19 -> 2 in 5 ticks (hook up/left +
+  dir -1, ~3.5 px/t^2) while falling; reaches the pickup disc at (5411,2457) almost at rest (true ~980).
+- true ~981: air jump (vy +13 -> -12 within 1-2 ticks), then hook climb at 12-16 px/t with v ~(-4.5,-13):
+  direction consistent with an anchor on the L-arm underside (y 1952, x <= 5248, through the freeze row 61).
+- label 990-991 (5377,2373) -> (5372,2362): passes the freeze overhang corner (5376,2368) by ~4 px.
+- y ~2285 at true ~993.8: pre-fire (reproduced aims 258.9-260 deg); explosion n ~25-27 segments later.
+- labels 1014-1021: climbs straight up at x ~5280-5288 (the freeze edge is x 5280), hooked horizontally to the
+  right wall (catalog), double kick at label 1021.6 from the L-arm end's right face, offset (-34,-3):
+  v (1.9,-11.8) -> (26.6,-8.9); passes the freeze corner (5376,1920) at labels 1025-1026 within a few px.
+- label 1045-1046 (true ~1042-1043): lands on the bare block (184,60) and shoots it point-blank exactly when
+  the reload is back (24.2 ticks after the exit): (27,4) -> (34,-6); the touch refills both jumps.
+- true ~1072.8 (#3): freeze-lined floor 43 px below-left, dv_y -23: air jump + floor kick (M3).
+- true ~1092.8 (#4): block column above (hooked down), (31,-21) -> (34,14).
+
+=========================================================================================================
+3. THE EXIT LINES (Q1)  - per-tick trace of T1023: results/exit_T1023_trace.txt
+=========================================================================================================
+exit_T1023 (cut rt 960):
+  974-976 hook (-809,-587) on the block face, dir -1: vx 23.2 -> 10.6 | 979 hook (-831,-556), 980 air jump |
+  pickup rt 981 (5411,2466) | 984-993 climb 12-15 px/t past the overhang corner (5371,2362) at rt 989 |
+  994 PRE-FIRE from (5357,2306), aim (-182,-983) = 259.53 deg | 1009-1022 hook (436,-900) on the right wall |
+  1022 POINT-BLANK from (5287,1959), aim (-946,-325) | both explode in step 1023: (7.81,-12.77) ->
+  (31.73,-13.15) at (5321,1933) | x 5686 at rt 1037.
+exit_T1021 (same turnaround to rt 994): pre-fire on the step to 995 from (5357,2292), aim (-198,-980)
+  (258.6 deg, n=27, explosion rt 1021 at (5247,1947.6)); climb by xrv; point-blank at rt 1021 from (5294,1954)
+  (explodes 1 step later: kicks 11.9 + 9.7) -> (29.45,-10.06) at rt 1022; x>=5671 at rt 1036.
+exit_T1025 (cut rt 970): pre-fire rt 995 from (5351,2311) (n=31); right-wall hook pre-acceleration;
+  point-blank rt 1024 -> (32.80,-10.14) at rt 1025 (5327,1937); x>=5671 at rt 1038.
+from978_T1030 (kog_pregren_978 unchanged; weapon 3 on its last line): brake shot rt 979 aim 40 deg at the
+  right wall, pre-fire rt 1004 (258.01 deg), point-blank rt 1029 -> (29.18,-9.58) at rt 1030; x>=5671 at 1044.
+c3s3_to_label1100: exit_T1025 + crude downstream: block touch + kick rt 1050 (38.9 px/t), x>=7702 at rt 1111.
+
+=========================================================================================================
+4. SUGGESTIONS FOR THE BEAM SEARCH
+=========================================================================================================
+1. Pre-grenade gate: never rank "grenade picked up earliest" (978 with vx 19 is ~7 ticks worse at y=2300
+   and ~6-9 at the exit than 981 with vx ~5). Gate after the pickup: e.g. "y<=2290 climbing (vy<=-12),
+   reload 0, x<=5376", or the exit tick, or x>=5671. Or: cut the pre-grenade run at rt ~960 and let the
+   post-pickup search own the approach.
+2. Always emit weapon 3 on the pickup tick (M1).
+3. Exit macro (seg prefire=1 keeps pending explosions apart): when the tee is at y 2270-2320 near
+   x 5300-5400 with reload 0, add the gmodel.face_hits aims for n = 26..31 (one aim per n, 0.02-deg
+   precision). Reward being at x 5281-5300, |y - y_E| < ~10 on the tick before the explosion, with the
+   point-blank fired so that it explodes in the same step (tee within ~41 px of the face along the aim,
+   aim toward (5248, clamp(y-4,1922,1950))). xrv shows a rendezvous beam does this in ~20 s.
+4. Hook pre-acceleration (<15 px/t) right before kicks (M4); jump BEFORE a vertical kick, never with it (M3).
+5. Score the exit together with the next reload: exit kick + 25 should coincide with reaching the block
+   (184,60) at x 5888-5952 (touch refills the jumps for the jump+floor kick at k~1075).

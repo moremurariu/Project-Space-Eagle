@@ -29,7 +29,11 @@ CLIMB_VARIANTS = [f'ghost=1 hnow=600 ghoste=0.02 {LAT}', f'ghost=1 hnow=300 ghos
 POST = 'ghost=1 hnow=600 ghoste=0.02 kcredit=2 kready=10'
 
 
+RQ = ' rothook=1 quant=1' if os.environ.get('GREN_RQ') else ''
+
+
 def seg(prefix, gate, extra, out, maxticks=400):
+    extra = extra + RQ
     cmd = [SEG, MAP, f'prefix={prefix}', f'gate={gate}', 'horizon=150', 'beam=20000', 'threads=1', f'maxticks={maxticks}', 'quiet=1',
            'survevery=10', f'out={out}'] + extra.split()
     res = subprocess.run(cmd, capture_output=True, text=True).stdout

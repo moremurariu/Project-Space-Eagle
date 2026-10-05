@@ -1,0 +1,8 @@
+b0 runs/ex/e1021.txt 1285 tp=7512,2087,-57,0 tpk=1220 tpreload=21 beam=10000 survevery=2 survive=30 ghost=3 hnow=1000 ghoste=0.02 sinks=1156,1285,1443,1793,2143,2465 ghostsink=1500 prefire=1 padaims=48 padtop=300 padrange=30 latpen=0.02 latdz=48 rothook=1 quant=1
+b3 runs/ex/e1021.txt 1285 tp=7512,2087,-57,0 tpk=1220 tpreload=21 beam=10000 survevery=2 survive=30 ghost=3 hnow=1000 ghoste=0.01 sinks=1156,1285,1443,1793,2143,2465 ghostsink=1500 angles=128 hookdedup=0 rothook=1 quant=1
+b7 runs/ex/e1021.txt 1285 tp=7512,2087,-57,0 tpk=1220 tpreload=21 beam=10000 survevery=2 survive=30 ghost=3 hnow=600 ghoste=0.0 sinks=1156,1285,1443,1793,2143,2465 brake=2 kcredit=2 kready=10 rothook=1 quant=1
+bg1 runs/ex/e1021.txt 1285 tp=7512,2087,-57,0 tpk=1220 tpreload=21 beam=10000 survevery=2 survive=30 ghost=1 hnow=600 ghoste=0.02 rothook=1 quant=1
+bvc2 runs/ex/e1021.txt 1285 tp=7512,2087,-57,0 tpk=1220 tpreload=21 beam=10000 survevery=2 survive=30 ghost=3 vcap=2 hnow=1000 ghoste=0.01 sinks=1156,1285,1443,1793,2143,2465 ghostsink=1500 rothook=1 quant=1
+bs15 runs/ex/e1021.txt 1285 tp=7512,2087,-57,0 tpk=1220 tpreload=21 beam=10000 survevery=2 survive=15 ghost=3 hnow=1000 ghoste=0.01 sinks=1156,1285,1443,1793,2143,2465 ghostsink=1500 rothook=1 quant=1
+bs0 runs/ex/e1021.txt 1285 tp=7512,2087,-57,0 tpk=1220 tpreload=21 beam=10000 survevery=0 ghost=3 hnow=1000 ghoste=0.01 sinks=1156,1285,1443,1793,2143,2465 ghostsink=1500 rothook=1 quant=1
+bb40 runs/ex/e1021.txt 1285 tp=7512,2087,-57,0 tpk=1220 tpreload=21 beam=40000 survevery=2 survive=30 ghost=3 hnow=1000 ghoste=0.01 sinks=1156,1285,1443,1793,2143,2465 ghostsink=1500 rothook=1 quant=1

@@ -417,3 +417,12 @@ Teero played the **KoG** version of AiP-Gores (user, from Teero). Our runs so fa
   "as the pickup is about to happen" = rt ~980.2 on the clock that matched our replays). Post-pickup check: reaches
   Teero's k1005 point at rt 1024 without freeze (server-checked, runs/post/kog979_0.txt).
 - LNS K2 on 979: **978** (job 10, cut 851, post-pickup climb check ok). kog_pregren_978.txt, server-identical.
+
+## Post-grenade on KoG (Oct 5)
+- Proceeding past the pickup: kog_pregren_978 (978) vs Teero ~980-981 by our timing (user asked to confirm by their
+  video timing; not yet confirmed). Full-run target < 2500 ticks -> post-grenade < 1522 ticks from the pickup;
+  Teero's post-grenade ~1556 (2536 - 980).
+- KoG vs DDNet along Teero's post-grenade path: no hook-ray differences; changed tiles only near the finish
+  (k2504-2524). Old DDNet post-grenade findings apply.
+- gren.py: GREN_RQ=1 env adds rothook=1 quant=1 to its seg runs. Run kog1 from kog_pregren_978 (gate k1100).
+- rh.py vset=p5: 8 post-grenade variants (g4 settings + rothook/quant, kick credit, ghost=3 brake), WIDE likewise.
