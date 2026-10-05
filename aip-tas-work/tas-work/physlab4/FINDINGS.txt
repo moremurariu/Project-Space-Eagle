@@ -1,0 +1,249 @@
+AiP-Gores (KoG) final maze, Teero track k~2380 -> finish (2539) - physlab4 (Oct 5)
+=========================================================================================================
+Everything was measured in simulation (no server check: the entry states are teleports, not playable).
+Ticks are Teero-track ticks ("k"; true race tick = k - 3). A teleported entry "at k=K" is given the race
+clock m_StartTick = m_Tick - K, so our finish tick is directly comparable with Teero's official finish
+2539 (= true 2536 = 50.72 s). Paths relative to tas-work/physlab4/.
+
+=========================================================================================================
+0. BOTTOM LINE
+=========================================================================================================
+Best complete solutions (fbeam, then HC/LNS polishing; inputs in results/):
+
+  entry (Teero-like state)                                     finish   ticks   Teero (k->2539)   delta
+  k2390  tp=7817,4000,60.7,21.6  reload=3  air=1               2552     162     149               +13
+  k2380  tp=7422,3826,60.5,11.6  reload=13 air=1               2554     174     159               +15
+  (both: prefix ../runs/ex/e1025.txt, grenade held, hook idle; files results/entry2390_best.txt,
+   results/entry2380_best.txt = post-entry inputs, one line per tick; *.trace = per-tick states)
+
+So I did NOT find a way to beat Teero here. My best search plays this section ~13 ticks slower than his
+official time from a state taken from his own track. What I could establish (details below):
+
+* The maze has exactly one route (sec. 1). Every part of it is a tight turn in a 3-8 tile corridor lined
+  with freeze; the speed limit is set by turning, not by the ramp: hook-only turning radius is v^2/3 px
+  (|v| <= ~17-28 px/t for the 96-256 px corridors), so |v| stays at 18-30 px/t for the whole section and
+  each 25-tick reload buys one 12 px/t kick. Geodesic progress: Teero 3304 px in 149 ticks (22.2 px/t),
+  our best 20.4 px/t.
+* Locally the search is at par with Teero: started from Teero's own (track-estimated) states it reproduces
+  his segment times within the track noise (k2419 -> top passage x>8900: 2447 vs his 2445; k2452 -> under
+  the island: 2477-2478 vs 2478; k2520 -> finish: 2543 vs 2543 implied by his own track, see sec. 2.4).
+  The 13 ticks come from accumulating ~1-3 ticks per turn from our own (slightly worse) states: the up-turn
+  into the column (we enter at vy -30, his track says -33..-35) -> corner +2 -> ceiling kick 6 ticks later
+  than his (#47 k2435.8 vs our k2442) -> +3 at the top passage, +4..+7 after the right-side U-turn, +13 at
+  the finish (table in sec. 4).
+* Teero's track is not self-consistent at the very end: simulating from his track state at k2536 (or k2520)
+  gives the finish at k2543 (needs >= 20-25 px more x than his last track points). Either the track lags
+  ~3-4 ticks in the final room or it is ~25 px off in x there. Per-gate comparisons near the end carry this
+  +-3 tick uncertainty; the bottom-line comparison uses his official time.
+* Entry-state sensitivity is small (sec. 5): +-5 px/t of entry speed, +-30 px of height, reload phase 0..10
+  and the air jump change the column arrival by <= 1 tick. The up-turn always lands on the bare platform,
+  ground-jumps and hooks the hill; what matters for later is the RELOAD PHASE (sec. 3.3) and keeping energy
+  through the up-turn.
+* seg's failure here had two causes (sec. 6): a teleport clock bug (gate=finish can never fire when
+  tpk > prefix length) and a beam collapse at the up-turn (no positional diversity; shot children with
+  energy/speed credit fill the beam and all crash). segx/seg.cpp (patched copy) fixes both and reaches the
+  finish (2581); fbeam (new tool) reaches 2552.
+
+=========================================================================================================
+1. ROUTE (map.txt, tiles 240-299 x 100-147)
+=========================================================================================================
+Single route, verified on the tile map (all other openings are sealed by freeze/solid):
+  valley (cols 248-267, rows 122-135; bare platform row 135 cols 257-260, top y=4320; freeze floor row 136)
+  -> column cols 265-267 (x 8480-8575 for the tee centre at rows 127-130; right wall freeze col 268, solid
+     from x=8608; left wall the freeze-lined hill, solid lower-right edge ~(8447,4159))
+  -> top passage rows 109-116 (centre y 3488..3743: freeze ceiling row 108 over solid y<=3455, freeze top of
+     the island row 117), x 8576 -> ~9230
+  -> right side cols 288-295 (right wall freeze col 296, solid from x=9504), around the island's right end
+     (freeze col 287, solid x<=9183)
+  -> under the island rows 121-126 (y 3872..4063), going left
+  -> hole cols 272-281 at rows 127-130 (bare zig-zag blocks at cols 273-275 rows 124-130; freeze col 282)
+  -> lower chamber rows 131-134 (cols 280-289), going right; bare right wall col 290 (x=9280)
+  -> gap cols 288-289 rows 135-137 (centre x 9230-9266 in rows 136-137)
+  -> final room rows 138-140 (all bare), going left; ceiling y=4415, floor y=4512 (island cols 275-292
+     rows 141-142, bare)
+  -> column cols 271-274 (centre x 8686-8786 while 4498 < y < 4590), around the island tip (8800,4512-4575)
+  -> finish tiles cols 276-277 rows 143-146: finish when a sensitivity point x+9.33 >= 8832 (x >= 8822.67)
+     with y >= ~4590; detected by CheckRace one tick later.
+The region above (rows 95-104) is sealed from the top passage by rows 105-108; the shaft cols 293-296
+rows 130-146 is a dead end opening only into the finish row.
+Geodesic distance (tee centre, box vs solid, centre vs freeze) from the k2390 point (7817,4000): 3304 px.
+
+=========================================================================================================
+2. TEERO IN THIS SECTION (track + shots catalog; teerovel.py = local quadratic fit + de-ramp)
+=========================================================================================================
+2.1 Gates (first track tick; splits.py):  column y<4190 2410 | corner y<3744 2425 | top x>8900 2446 |
+    right y>3900 2470 | under x<9050 2478 | hole y>4150 2488 | gap y>4352 2505 | room x<9000 2520 |
+    left column x<8800 2530 | finish 2539.
+2.2 Speeds: entry |v| ~64 (v ~(61,21), x displacement ~39 px/t); after the up-turn |v| 30-35 (vertical, not
+    ramped); top passage 25-27; right side 20-25; under/hole 17-24; final room 24-29; final U-turn 13-22.
+    Energy E = v^2 - y: +150..+390 at k2390, ~ -2800 after the up-turn, ~ -3800 in the final room.
+2.3 Kick schedule (catalog): #46 pre-fired ~k2410, explodes k2415 on the column's right wall (up-left kick);
+    #47 k2435.8 ceiling, point-blank (down-right kick); no kick k2436-2482; #48 pre-fired ~k2481-2483
+    (weak, r~103); #49 k2508.3 gap right wall (kick left); #50 k2533.3 island tip. 2483 -> 2508 -> 2533 are
+    exactly 25 ticks apart: the reload clock drives his turns.
+2.4 Consistency: from his k2536 track state (8788,4590) v(3.7,22.2) the sim finishes at 2543 with the best
+    hook; his last track point (8813,4655) at k2539 is ~10 px short of the line and the finish is detected
+    one tick after crossing. So the track is ~3-4 ticks late (or ~25 px left) at the end.
+2.5 Up-turn: his track and ours coincide within ~5 px until k2410 (platform touch k2404, ground jump k2405
+    giving vy -16.4 = -13.2 jump + -3 hook), then he climbs faster (16 px ahead at k2415, 40 px at k2421).
+
+=========================================================================================================
+3. PHYSICS / STRUCTURE (what limits the speed)
+=========================================================================================================
+3.1 Turning, not the ramp. The ramp only caps HORIZONTAL displacement (vertical is free), but nowhere in this
+    maze can the tee use |v| > ~35: every leg ends in a turn of 90-180 deg inside 96-256 px. Above 15 px/t
+    the hook only acts when the new |v| (after gravity) is not larger than the old one, so it can only brake
+    or rotate (rotation <= 3/|v| rad/tick, radius >= |v|^2/3 px). Kicks (12 px/t, one per 25 ticks; two at
+    once with a pre-fire) and wall/floor contacts (which zero the normal component) are the only sharper
+    turns. Gravity 0.5/t; the hook's downward pull is *0.3, so vertical braking while rising is <= 1.4/t^2.
+3.2 Energy. E = v^2 - y is conserved in free flight. The entry has E ~ +150 (|v| 64): ~3000 units are
+    destroyed in the up-turn (the 110 deg turn into a 96 px column has ~10 ticks between the platform and the
+    column; the hook can lift only while the motion is still mostly horizontal, sec. 3.4). After that both
+    Teero and we fly at |v| 18-30 and E -2800..-3900; kicks along the motion are the energy source
+    (+2*v*12 per kick). Our best run's energy is at or above Teero's from k2445 on - the deficit is position
+    (timing), not speed.
+3.3 Reload clock. With 25-tick reload there are ~6 kicks in the section; every turn wants one. An idle loaded
+    grenade is a lost kick; a pre-fire (shot that explodes n ticks later) starts the reload n ticks earlier
+    for the same kick. Example (scanfire on our line): firing at k2410 with aim -48 deg explodes at k2418 on
+    the column's right wall (8608,4070) and gives the same kick as our point-blank shot at k2416, with the
+    reload back 6 ticks earlier. In our lines that alone did not help (2553 with the forced pre-fire,
+    runs/f6pf): we reach the ceiling only at k2441 anyway because our climb is slower.
+3.4 The up-turn (k2390 -> column). Best found (all entry variants): hook the hill's lower edge early
+    (k~2392-2402), land on the bare platform (k2403, vy -> 0, jumps refilled), ground jump (k2404-2405:
+    vy = -13.2, plus up to -3 from the hook), hold the hill hook while braking vx (~4/tick), kick off the
+    column's right wall (aim 15-25 deg down-right, explosion at x=8608 behind the freeze col 268, kick
+    ~(-12,-8)) at k2414-2417 -> column at vy ~ -30, gate "column y<3900" at k2420-2421.
+    Why not more: above 15 px/t a hook pulls up only while its pull also brakes enough; with v=(40,-16) the
+    anchor may be at most ~57 deg above the backward horizontal (pull (-1.3,-2.5)/t), with v=(25,-23) at most
+    ~35 deg. As the velocity turns upward the hook can only brake. Variants tried and not better: steeper
+    re-hooks at k2405-2412 (all aims -175..-115 deg, dir -1/0/+1; best equal to ours), jump + platform kick
+    (k2406: vy -27 but vx 43 left -> column at k2428), finer hook aims (128-256 aims), longer rollouts,
+    hill climbing (fhc, 400k evaluations, +0.3 tick).
+3.5 Top turn (column -> top passage). Rise past the corner (8576,3744) at -25..-30, hook down-right on the
+    island's left face / top (anchor ~(8608-8650,3776-3848)) to build vx +1..2/tick (dir +1), reach the
+    ceiling band y in [3488,3503] (the only place a ceiling kick has full strength: solid at y<=3455, centre
+    must stay >= 3488) and kick up-left (aim -105..-127 deg) -> v ~(25,-2). Then cruise at vx ~24 (dir +1,
+    hook pulses on the island top). Cutting the corner low is slower (vx 14-21 afterwards).
+3.6 Right side U-turn: swing down around the island's right end (hooks on the island top/right end, anchor
+    ~(9125-9180,3776)), drop to y~3900, go left under the island at -15..-20, kick from below the island
+    (aim up) at k~2478, down through the hole at x~9000, hook the lower chamber's ceiling/hole edge, right at
+    +20 to the gap.
+3.7 Final room: kick off the gap's right wall (k2519, aim right -> kick left, vx -23), floor touch + jumps to
+    stay in the room's upper half at vx -25, hook the island top (anchor (8880-9000,4512)) to brake while
+    dropping into the left column, reverse vx with the hook at (8880,4512), kick (k2545, aim up-right at the
+    island tip's underside -> kick down-left, vy +9) and hook right to the finish.
+
+=========================================================================================================
+4. RESULTS AND SPLITS (python3 splits.py TRACE...)
+=========================================================================================================
+gate                 col<4190 corner top>8900 right under hole  gap  room  x<8800 finish
+Teero (track)          2410   2425   2446    2470  2478  2488  2505  2520  2530   2539
+entry2390_best (f4)    2410   2427   2449    2474  2485  2498  2513  2530  2540   2552
+f5 (beam 3000)         2410   2430   2450    2479  2487  2497  2513  2530  2540   2552
+f3 (no energy credit)  2410   2427   2450    2480  2487  2496  2513  2530  2539   2554
+entry2380_best         2411   2428   2450    2480  2488  2497  2514  2531  2540   2554
+Our kicks (entry2390_best; tick after the fire input): k2417 column wall (aim 22.5 deg), k2442 ceiling
+(-120), k2478 under the island (-82.5), k2519 gap wall (-15), k2545 island tip (-52.5).
+Other complete runs (all from the k2390 entry): Teero-tracking beam (track=1) 2558; chained stages with
+speed-credited gates 2572; seg (patched, quota) 2581; seg fire=0 2593; LNS re-searches from cuts
+k2445-k2530 of the best: no gain (2553-2555); fhc hill climbing: same finish tick.
+Sub-problems from Teero's track states (beam 2000-3000):
+  k2419 (8568,3921) v(-3.8,-35.1) rl 17 -> x>8900: 2447 (Teero 2445); hc polishing: 2446.65
+  k2452 (9050,3610) v(25.5,12.3) rl 9 -> under: 2477-2478 (Teero 2478)
+  k2520 (8995,4430) v(-25.8,-4.5) rl 13 -> finish: 2543 air 1 / 2544 air 0 (Teero official 2539; his own
+        track states imply 2543, sec. 2.4)
+
+=========================================================================================================
+5. ENTRY-STATE SENSITIVITY (runs/sens.res; sub-problem entry -> column gate y<3900, value = tick - 0.4*|vy|)
+=========================================================================================================
+  variant (k2390 base: 7817,4000 v 60.7,21.6 rl3 air1)   gate tick   vy at gate
+  base                                                   2421        -29.9
+  air jump used (air=0)                                  2421        -27.3
+  reload 0 / reload 10                                   2421 / 2420 -29.3 / -27.7
+  vx 55.7 / 65.7                                         2421 / 2421 -29.2 / -28.8
+  vy 16.6 / 26.6                                         2422 / 2421 -29.0 / -25.3
+  y 3970 / 4030                                          2421 / 2422 -28.5 / -28.1
+  entry k2380 (7422,3826 v 60.5,11.6 rl13)               2421        -29.7
+  entry k2370 (7016,3752 v 61.3,-0.3 rl23)               2423        -26.8
+  Teero (track)                                          ~2419.6     ~ -33..-35
+=> The up-turn absorbs the entry differences (the platform landing resets vy, the hook brakes vx).
+   Advice for the earlier sections: arrive on Teero's line at k~2390 with |v| 60-65 and vy 15-22 (more vy
+   makes the climb slower), the air jump is not needed (the platform refills it), and plan the RELOAD so that
+   one shot is fired at ~k2409-2411 (pre-fire onto the column wall, explosion ~k2415) and the next one is
+   available when the tee reaches the ceiling band (~k2435): i.e. the previous shot (#45-equivalent) at
+   k <= 2385 and no shot in k2386-2408. Arriving later than k2390 costs 1:1.
+
+=========================================================================================================
+6. SEARCH: WHY seg DIED, WHAT WORKS (segx/seg.cpp, fbeam.cpp)
+=========================================================================================================
+6.1 seg tp bug (all tp runs with gate=finish): seg sets m_StartTick = m_Tick - tpk after the prefix. With
+    e1025.txt (1095 inputs) and tpk=2390 this is negative, and CTasGame::CheckRace only records a finish when
+    m_StartTick >= 0 -> gate=finish can never fire (NOGATE for every tp job in runs/tpF). Fix (segx, fbeam):
+    advance the world clock before setting the race clock (m_Tick += 4000; no projectile exists at that
+    point; verified identical physics incl. shots with fl trace FL_NOSHIFT=1 vs default).
+6.2 seg beam collapse at the up-turn (tested with the patched seg, beam 4000, the tpF f7 settings):
+    default -> beam 1056 at step 20, NOGATE; survevery=0 -> 5 states at step 20, NOGATE (so survival pruning
+    is not the cause); kcredit=0 -> NOGATE; ghost=1 or ghost=0 -> dies even earlier; fire=0 -> survives and
+    finishes at 2593. Cause: without positional diversity the beam fills with the states the time model likes
+    most - fast states and freshly kicked ones (judged after their explosion) moving at 40-60 px/t into the
+    valley - none of which can make the 110 deg turn into the 3-tile column; survival rollouts (constant dir,
+    hook keep/release/new hook, no kicks/jumps) cannot tell recoverable states apart and are switched off
+    when all are doomed.
+    Fix in segx: `quota=Q` (new, default 0 = old behaviour): first pass keeps at most Q states per coarse
+    cell (x/32, y/32, vx/6, vy/6, loaded, shot in flight, air jump), second pass fills the beam with the best
+    of the rest. quota=6 with the f7 settings: survives, finish 2581.
+    Usage: physlab4/segx/seg AiP-Gores.map prefix=runs/ex/e1025.txt ref=teero_track.txt gate=finish
+      horizon=150 threads=1 tp=7817,4000,60.7,21.6 tpk=2390 tpreload=3 beam=4000 survevery=2 survive=30
+      ghost=3 hnow=600 ghoste=0.0 sinks=1156,1285,1443,1793,2143,2465 brake=2 kcredit=2 kready=10 rothook=1
+      quant=1 maxticks=250 quota=6 out=...      (run from tas-work)
+6.3 fbeam (new, physlab4/fbeam.cpp; build: ./build.sh fbeam): beam to the finish from a teleported entry.
+    - Progress = geodesic distance D to the finish tiles (4-px field: box vs solid, centre vs freeze),
+      turned into time by Teero's own remaining time at that D (monotone envelope; model=1). model=0 (D/v0),
+      model=2 (Teero's arc position) and model=3 (mix) were tried: not better.
+    - Score = t + n + T(D(end of rollout)) over 3-6 core-only rollouts of tau ticks (dir -1/0/1 x hook kept /
+      released); a rollout that touches freeze pays deathpen*(1-n/2tau); rollouts may take one virtual
+      point-blank kick (24 directions, explosion strength by distance) instead of dying if the grenade is
+      loaded by then (vkick=1).
+    - Shots: 48 aims prescreened analytically (CProjectile path); every child with a grenade in flight that
+      explodes within firelook ticks is judged after its explosion (holding its input). Without this,
+      pre-fired branches are scored as "reload spent, no kick" and die before their kick lands.
+    - Diversity: quota q per (32 px, 6 px/t, jumps, loaded, shot in flight) cell, then fill; fine dedup by
+      (pos/8, vel/2, hook, jumps, reload/4, pending explosion). Without the fill, a single-cell start keeps
+      only q states and the search starves.
+    - Options also used: rlw (tie-break for earlier reload), ghoste/ehgt/ecap (capped energy credit incl.
+      height; +1-2 ticks), gate=col|under|gap|room|x>X|y<Y with gatevw (speed credit at the gate),
+      pre=FILE (continue after given inputs), track=W (time-indexed Teero tracking).
+    Typical: ./fbeam ../AiP-Gores.map beam=2000 deathpen=5 rlw=0.05 tau=6 ghoste=0.01 ehgt=1 ecap=32
+      maxticks=200 out=runs/X     (entry keys: tp=x,y,vx,vy tpk=K reload=N air=0|1 prefix=FILE)
+      ~2.5 s/step at beam 2000 (single thread), ~6.5 min to the finish.
+6.4 What did not help: bigger beam (3000/6000: same results), longer rollouts (tau 10-16), finer hook aims,
+    model=2/3, staged gates with speed credits (2572), Teero tracking (2558), speed credit by D-rate (worse).
+6.5 Suggestions for seg / the main pipeline:
+    1. Fix the tp clock (6.1) before trusting any tp benchmark with gate=finish.
+    2. Add positional diversity (quota + fill) - the single change that makes seg survive here.
+    3. Judge every child whose grenade is still in flight after its explosion (seg's pendlook does this; keep
+       it on) and prefer the earlier reload on ties (pre-fire = same kick, reload back earlier).
+    4. In maze sections use a geodesic-distance progress (distfield.h with goal = finish/gate tiles) and
+       short rollouts with a death penalty instead of an energy/speed credit; energy credit only capped
+      (|v| <= ~32) - beyond that speed must be destroyed before the next turn anyway.
+    5. The search is locally at par with Teero; the remaining loss is long-horizon (reload phase and energy
+       through the up-turn decide the top turn ~25 ticks later). A value that knows the next kick's timing
+       (e.g. rollouts that may kick when loaded, not only to avoid death) is the most promising next step.
+
+=========================================================================================================
+7. TOOLS (physlab4; nothing outside modified; all single-threaded)
+=========================================================================================================
+- flcommon.h: entry construction (prefix replay, teleport, hook idle, jump state, reload, race clock with the
+  4000-tick world-clock shift), input I/O, explosion listing, distance field.
+- fl (fl.cpp): `fl MAP trace in=FILE [entry]` per-tick states (FILE lines "d j h f deg [n]" or raw 7-field
+  lines); `fl MAP df` geodesic D along Teero's track; `AT=i LEN=n STEP=deg fl MAP scanfire in=FILE` fire every
+  aim on input i and continue the file's inputs; `fl MAP bench`.
+- fbeam (fbeam.cpp): the beam search above. Writes OUT.txt (post-entry inputs) and OUT.trace.
+- fhc (fhc.cpp): (1+1) hill climbing on a post-entry input file with the exact simulator (dir runs, jump
+  toggles, hook press/release shifts, hook/fire aim nudges, shot moves/adds/removes); objective finish tick
+  + sub-tick, or a gate (col/under/gap/room/x>X/y<Y) with vw x speed credit. ~25k evaluations/s.
+- segx/seg.cpp: seg with the tp clock fix and quota=Q (sec. 6.2).
+- scripts: teerovel.py (Teero velocity from the track), splits.py (gate ticks), lag.py (D-lag vs Teero),
+  cmp.py (tick-by-tick vs Teero), ov.py (map overlay of a trace), stages.sh, lns.sh, runs/*.sh.
+- Replay a result: ./fl ../AiP-Gores.map trace in=results/entry2390_best.txt tp=7817,4000,60.7,21.6 tpk=2390
+  reload=3 air=1        (prefix ../runs/ex/e1025.txt is the default; the finish shows as "fin 2552").

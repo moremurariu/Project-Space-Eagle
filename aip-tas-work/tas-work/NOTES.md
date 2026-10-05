@@ -444,3 +444,36 @@ Teero played the **KoG** version of AiP-Gores (user, from Teero). Our runs so fa
   vcap=2, ghost=1 no better. => seg is at par with Teero locally; gains must come from turns / slow sections.
 - Teero's slow stretches (track displacement < 30 px/t): exit 1020-1040, hairpin 1140-1180, left U-turn 1420-1520,
   1600, 1780-1800, 1940-2000 (16-29), 2060-2080, 2240-2260, final maze 2420-2539 (~20 px/t for ~120 ticks).
+- Chain q1 (vset=p5 vidx=1,7,0,3 from e1025v1): k1300 at 1336 (-36), k1400 at 1444 (-44), k1500 at 1554 (-54).
+  Step 1 lost 20 ticks at rt 1240-1290: from our (slower, +10) state the beam took a high path over the block at
+  x ~6600 (78-118 px off Teero's line, |v| 25). Stopped.
+- **Strong line following helps from weaker states:** from q1's rt-1225 state to k1290: latpen=0.1 latdz=32 -> 1310,
+  without -> 1330 (q1's own path ~1321). New vset=p6 in rh.py (latpen 0.05-0.2 variants). Chain q2 (p6, window 150,
+  commit 75) from e1025v1.
+- seg `padref=R` (pre-fire aims exploding near the reference line ~T ticks ahead, for turns): hairpin window
+  k1125 -> k1215: 1228 vs 1224 without. Off.
+- seg `gate=box:x0,x1,y0,y1[,vymax[,K]]` (new): pickup turnaround (cut 960, box x 5150-5376 y<=2290 vy<=-10): 1013 vs
+  the grenade agent's hill climbing 994-995 -> seg can't find the braked pickup; keep physlab2's exits.
+- Chain q2 (p6): k1275 1293 (-18), k1350 1377 (-27), k1425 1454 (-29), k1500 1536 (-36), k1575 1617 (-42),
+  k1650 1707 (-57). Stopped (losses everywhere; shots every ~25-43 ticks).
+- **Hairpin agent (physlab3/FINDINGS.txt):** no new structure; best e1025v1_hairpin_rt1223 (x<=7700 over the column at
+  rt 1223, |v| 43; +0.5 tick). The hairpin itself costs nothing; the loss is exit speed (28.6 vs ~38.5) because our
+  shot schedule (1100 shot + 1125 floor kick) locks the reload out of Teero's corner slot (point-blank on the L-block
+  top at ~1169-1171, +10) and the rt-1098 bump under block (235-236,43) wastes energy (v^2-y 513 -> 14). Teero's
+  schedule would be ~3-4 ticks better at the gate. seg suggestions: plan the 25-tick shot schedule against kick slots,
+  rendezvous value for pre-fires, full-sim survival, gate on y too. Tools: hp, hcx, gates.py, alive.sh.
+- **seg `shotplan=teero/catalog/shots.tsv`** (new; planpre=8 planpost=6 plangap=25 planr=96): a shot is only allowed
+  near one of Teero's kick slots (our reference tick within [k-8, k+6]), when his next slot is >= 25 reference ticks
+  away, or as a pre-fire exploding within 96 px of his next explosion point -> keeps the reload for his slots.
+- **Final-maze agent (physlab4/FINDINGS.txt):** from Teero-like teleported entries (k2390 / k2380) best finishes
+  2552 / 2554 vs his 2539 (+13 / +15); from his own track states the search is level with him (k2419 -> top passage
+  2447 vs 2445, k2452 -> under the island 2477-2478 vs 2478). Single route; turning radius v^2/3 limits speed to
+  18-30 px/t; the up-turn at k2410-2420 throws away the entry speed (|v| 64 -> 30); reload plan matters (previous
+  shot at k<=2385, column shot pre-fired at ~k2409-2411, ceiling kick ready ~k2435). Teero's track end is ~3-4 ticks
+  inconsistent with his official finish.
+  **seg bugs/fixes ported:** tp clock (m_StartTick < 0 -> a finish was never recorded: every tp + gate=finish job was
+  NOGATE; now the world clock is advanced by 4000) and `quota=Q [qcell qvel]` beam diversity (keeps the beam alive
+  through the maze up-turn; quota=6 finished at 2581 where plain seg died). Tools: fbeam (geodesic distance +
+  rollouts with a virtual kick + quota), fhc (exact hill climber), segx.
+- Both agents (hairpin, final maze) conclude: local play is level with Teero from his states; our losses come from
+  long-horizon state differences (energy, reload phase). No section found where a TAS beats him by a large margin.

@@ -157,6 +157,27 @@ if args.get('vset') == 'p5':
         f'beam=20000 survevery=2 survive=40 ghost=3 hnow=1000 ghoste=0.01 sinks={PS2} ghostsink=1500 angles=128 hookdedup=0',
     ]
     NVAR = int(args.get('nvar', 8))
+if args.get('vset') == 'p6':
+    # post-grenade with strong line following (latpen): from states weaker than Teero's the beam strays off his line
+    PS2 = '1156,1285,1443,1793,2143,2465'
+    SV = 'beam=10000 survevery=2 survive=30'
+    RQ = 'rothook=1 quant=1'
+    G3 = f'ghost=3 hnow=1000 ghoste=0.02 sinks={PS2} ghostsink=1500'
+    POST = [
+        f'{SV} {G3} kcredit=2 kready=10 {RQ} latpen=0.1 latdz=32',
+        f'{SV} {G3} kcredit=2 kready=10 {RQ} latpen=0.2 latdz=24',
+        f'{SV} ghost=3 hnow=600 ghoste=0.0 sinks={PS2} brake=2 kcredit=2 kready=10 {RQ} latpen=0.1 latdz=32',
+        f'{SV} {G3} prefire=1 padaims=48 padtop=300 padrange=30 {RQ} latpen=0.1 latdz=32',
+        f'{SV} {G3} kcredit=2 kready=10 {RQ} latpen=0.05 latdz=32',
+        f'{SV} ghost=3 hnow=1000 ghoste=0.01 sinks={PS2} ghostsink=1500 angles=128 hookdedup=0 {RQ} latpen=0.1 latdz=32',
+    ]
+    WIDE = [
+        f'beam=20000 survevery=1 survive=40 {G3} {RQ} latpen=0.1 latdz=32',
+        f'beam=20000 survevery=1 survive=40 ghost=3 hnow=1500 ghoste=0.0 sinks={PS2} brake=2 {RQ} latpen=0.2 latdz=24',
+        f'beam=10000 survevery=1 survive=50 ghost=1 hnow=600 ghoste=0.02 kcredit=2 kready=10 {RQ} latpen=0.1 latdz=32',
+        f'beam=20000 survevery=2 survive=40 {G3} {RQ} latpen=0.05 latdz=48',
+    ]
+    NVAR = int(args.get('nvar', 4))
 STOP_K = int(args.get('stopk', 99999))
 GREN_K = 990
 WIDE_R = [

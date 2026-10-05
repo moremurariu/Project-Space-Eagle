@@ -19,6 +19,11 @@
 //     Teero's position at race tick + trackoff (default: the start state's offset), + tracktie x the time model
 //   prefire=1: shots still in flight after firelook ticks are judged as if not fired (no held-input look), and
 //     states are told apart by their pending explosion (use with padaims=N for long pre-fire aims)
+//   padref=R: also keep pre-fire aims whose explosion lands within R px of the reference line ~that many ticks ahead (turns)
+//   quota=Q [qcell=32 qvel=6]: beam diversity, at most Q states per coarse position/velocity cell first, then the best
+//     of the rest (keeps the beam alive in maze sections; physlab4)
+//   shotplan=teero/catalog/shots.tsv [planpre=8 planpost=6 plangap=25 planr=96]: keep the reload for Teero's kick
+//     slots: shots only near his slots, when his next slot is >= plangap ticks away, or as pre-fires for it
 //   shotref=teero/catalog/shots.tsv shotbonus=3 shotrad=64: a shot whose explosion lands within shotrad px of one of
 //     Teero's explosion points (later than the last one matched) earns shotbonus ticks
 //   kcredit=0 kready=4: energy credit (x kcredit) for the best point-blank kick along the line when reload <= kready
@@ -35,6 +40,7 @@
 #include <game/mapitems.h>
 
 #include <algorithm>
+#include <cctype>
 #include <atomic>
 #include <chrono>
 #include <cmath>
@@ -106,6 +112,7 @@ struct SParams
 	int m_PadAims = 0; // coarse angle count for edge-refined (pre-fire) shot aims, 0 = off
 	int m_PadTop = 300; // only the best this many beam states get them
 	int m_PadRange = 30; // pre-fired shots may explode up to this many ticks later
+	float m_PadRef = 0; // also keep pre-fire aims exploding within this many px of the reference line ~that many ticks ahead
 	int m_SurvEvery = 2; // every this many steps, beam states that can't survive `survive` ticks stop breeding (0 = off)
 	int m_FireLook = 12;
 	int m_Survive = 20;
@@ -124,6 +131,8 @@ struct SParams
 	int m_Prefire = 0; // judge shots still in flight neutrally, separate states by their explosion point
 	std::string m_ShotRef; // Teero's shot catalog (tsv)
 	float m_ShotBonus = 3, m_ShotRad = 64;
+	std::string m_ShotPlan; // Teero's shot catalog: keep the reload for his kick slots
+	float m_PlanPre = 8, m_PlanPost = 6, m_PlanGap = 25, m_PlanR = 96;
 	int m_GateWait = 2;
 	float m_TrackBack = 0, m_TrackFwd = 30;
 	int m_Horizon = 300; // the time model looks this many Teero ticks past the gate
@@ -139,6 +148,8 @@ struct SParams
 	float m_TrackW = 0; // tracking mode: rank by accumulated squared distance to Teero's position at the same (offset) tick
 	int m_TrackOff = -100000; // Teero tick minus our race tick (default: from the start state)
 	float m_TrackCap = 96, m_TrackTie = 0.05f;
+	int m_Quota = 0; // diversity quota per coarse cell (0 = off; physlab4)
+	float m_QCell = 32, m_QVel = 6;
 	float m_KCredit = 0; // energy credit for the point-blank kick available when the grenade is (nearly) loaded
 	int m_KReady = 4;
 	int m_TpK = -1; // diagnostics: teleport after the prefix (tp=x,y,vx,vy tpk=K tpreload=N)
@@ -472,6 +483,65 @@ static void ShotBonus(const CTasGame &Parent, CTasGame &G, const STasInput &In)
 		}
 }
 
+// shot plan (Teero's catalog): a shot is allowed near one of his kick slots (our reference tick within
+// [k - planpre, k + planpost]), when his next kick is at least plangap reference ticks away (the reload is back by
+// then), or when it explodes within planr px of his next explosion point (a pre-fire for that kick)
+struct SPlanShot
+{
+	float m_K;
+	vec2 m_E;
+};
+static std::vector<SPlanShot> gs_vPlan;
+static void LoadShotPlan(const char *pPath)
+{
+	FILE *f = std::fopen(pPath, "r");
+	if(!f)
+	{
+		std::printf("cannot read %s\n", pPath);
+		std::exit(1);
+	}
+	char aLine[1024];
+	while(std::fgets(aLine, sizeof(aLine), f))
+	{
+		// tab-separated: n, race_tick, gap (may be empty), expl_tile_x, expl_tile_y, ...
+		std::vector<std::string> vF;
+		std::string Cur;
+		for(const char *c = aLine; *c && *c != '\n'; c++)
+		{
+			if(*c == '\t')
+			{
+				vF.push_back(Cur);
+				Cur.clear();
+			}
+			else
+				Cur += *c;
+		}
+		vF.push_back(Cur);
+		if(vF.size() < 5 || vF[0].empty() || !std::isdigit((unsigned char)vF[0][0]))
+			continue;
+		gs_vPlan.push_back({std::stof(vF[1]), vec2(std::stof(vF[3]) * 32, std::stof(vF[4]) * 32)});
+	}
+	std::fclose(f);
+}
+static bool ShotPlanOk(const CTasGame &Tmp, const STasInput &In, bool Fired)
+{
+	if(gs_vPlan.empty() || !In.m_Fire || !Fired)
+		return true;
+	const float K = gs_Ref.m_vK[std::clamp(Tmp.m_RefIdx, 0, (int)gs_Ref.m_vK.size() - 1)];
+	for(const auto &P : gs_vPlan)
+	{
+		if(P.m_K < K - gs_P.m_PlanPost)
+			continue;
+		// P = the next kick slot not yet passed
+		if(K >= P.m_K - gs_P.m_PlanPre || P.m_K - K >= gs_P.m_PlanGap)
+			return true;
+		vec2 E;
+		int Te;
+		return Tmp.NextExplosion(E, Te) && distance(E, P.m_E) < gs_P.m_PlanR;
+	}
+	return true;
+}
+
 // tracking mode: squared distance (capped) to Teero's smoothed position at our race tick + trackoff
 static std::vector<int> gs_vTickIdx; // Teero tick -> reference point
 static float TrackInc(const CTasGame &G)
@@ -753,7 +823,18 @@ static void PadAims(const CTasGame &G, std::vector<std::pair<int16_t, int16_t>> 
 		if(!S.m_Ok || S.m_T < 4 || S.m_T > gs_P.m_PadRange)
 			return false;
 		vec2 Pred = P + V * (S.m_T * 0.85f);
-		return distance(Pred, S.m_E) < 140.0f;
+		if(distance(Pred, S.m_E) < 140.0f)
+			return true;
+		if(gs_P.m_PadRef > 0 && G.m_Started)
+		{
+			// near the reference line where it will be about S.m_T ticks from here (turns: the straight-line guess fails)
+			const int N = gs_Ref.m_vK.size();
+			const float K0 = gs_Ref.m_vK[std::clamp(G.m_RefIdx, 0, N - 1)];
+			for(int i = std::max(G.m_RefIdx, 0); i < N && gs_Ref.m_vK[i] <= K0 + 1.4f * S.m_T + 3; i++)
+				if(gs_Ref.m_vK[i] >= K0 + 0.6f * S.m_T && distance(gs_Ref.m_vP[i], S.m_E) < gs_P.m_PadRef)
+					return true;
+		}
+		return false;
 	};
 	auto Emit = [&](float Ang) {
 		int16_t TX = (int16_t)std::lround(std::cos(Ang) * 1000), TY = (int16_t)std::lround(std::sin(Ang) * 1000);
@@ -1155,6 +1236,14 @@ static bool Survives(const CTasGame &G, int N)
 	return false;
 }
 
+static int64_t QuotaKey(const CTasGame &G)
+{
+	vec2 P = G.Pos(), V = G.Vel();
+	int64_t k = ((int64_t)std::floor(P.x / gs_P.m_QCell) + 1000) * 100000 + ((int64_t)std::floor(P.y / gs_P.m_QCell) + 1000);
+	k = (k * 1000 + ((int64_t)std::floor(V.x / gs_P.m_QVel) + 500)) * 1000 + ((int64_t)std::floor(V.y / gs_P.m_QVel) + 500);
+	return k * 8 + (G.ReloadTimer() == 0 ? 1 : 0) + (G.NumProjectiles() > 0 ? 2 : 0) + ((G.Jumped() & 2) ? 4 : 0);
+}
+
 struct SCand
 {
 	float m_S; // estimated total (lower better)
@@ -1165,6 +1254,7 @@ struct SCand
 	float m_Ee;
 	int m_Rt;
 	int m_Ref;
+	int64_t m_QKey = 0; // coarse position/velocity cell for the diversity quota
 };
 
 struct SGate
@@ -1236,6 +1326,7 @@ int main(int argc, const char **argv)
 		else if(K == "padaims") gs_P.m_PadAims = std::stoi(V);
 		else if(K == "padtop") gs_P.m_PadTop = std::stoi(V);
 		else if(K == "padrange") gs_P.m_PadRange = std::stoi(V);
+		else if(K == "padref") gs_P.m_PadRef = std::stof(V);
 		else if(K == "firelook") gs_P.m_FireLook = std::stoi(V);
 		else if(K == "survive") gs_P.m_Survive = std::stoi(V);
 		else if(K == "hookrange") gs_P.m_HookRange = std::stof(V);
@@ -1253,6 +1344,11 @@ int main(int argc, const char **argv)
 		else if(K == "shotref") gs_P.m_ShotRef = V;
 		else if(K == "shotbonus") gs_P.m_ShotBonus = std::stof(V);
 		else if(K == "shotrad") gs_P.m_ShotRad = std::stof(V);
+		else if(K == "shotplan") gs_P.m_ShotPlan = V;
+		else if(K == "planpre") gs_P.m_PlanPre = std::stof(V);
+		else if(K == "planpost") gs_P.m_PlanPost = std::stof(V);
+		else if(K == "plangap") gs_P.m_PlanGap = std::stof(V);
+		else if(K == "planr") gs_P.m_PlanR = std::stof(V);
 		else if(K == "gatewait") gs_P.m_GateWait = std::stoi(V);
 		else if(K == "quiet") gs_P.m_Quiet = std::stoi(V);
 		else if(K == "horizon") gs_P.m_Horizon = std::stoi(V);
@@ -1265,6 +1361,9 @@ int main(int argc, const char **argv)
 		else if(K == "latpen") gs_P.m_LatPen = std::stof(V);
 		else if(K == "tpk") gs_P.m_TpK = std::stoi(V);
 		else if(K == "tpreload") gs_P.m_TpReload = std::stoi(V);
+		else if(K == "quota") gs_P.m_Quota = std::stoi(V);
+		else if(K == "qcell") gs_P.m_QCell = std::stof(V);
+		else if(K == "qvel") gs_P.m_QVel = std::stof(V);
 		else if(K == "kcredit") gs_P.m_KCredit = std::stof(V);
 		else if(K == "track") gs_P.m_TrackW = std::stof(V);
 		else if(K == "trackoff") gs_P.m_TrackOff = std::stoi(V);
@@ -1364,6 +1463,11 @@ int main(int argc, const char **argv)
 	gs_Ref.PrepET();
 	if(!gs_P.m_Imit.empty())
 		LoadImit(gs_P.m_Imit.c_str());
+	if(!gs_P.m_ShotPlan.empty())
+	{
+		LoadShotPlan(gs_P.m_ShotPlan.c_str());
+		std::printf("shotplan: %zu kick slots\n", gs_vPlan.size());
+	}
 	if(!gs_P.m_ShotRef.empty())
 	{
 		LoadShotRef(gs_P.m_ShotRef.c_str());
@@ -1410,6 +1514,7 @@ int main(int argc, const char **argv)
 		{
 			// diagnostics only: teleport after the prefix and set the race clock to Teero tick tpk
 			G->SetState(gs_P.m_TpPos, gs_P.m_TpVel);
+			G->m_Tick += 4000; // m_StartTick must stay >= 0 or CheckRace never records the finish (physlab4)
 			G->Chr()->m_Core.m_HookState = HOOK_IDLE;
 			G->Chr()->m_Core.m_HookTick = 0;
 			G->m_LastHook = 0;
@@ -1480,6 +1585,8 @@ int main(int argc, const char **argv)
 					UpdateTrack(Tmp);
 					Tmp.m_TrackCost += TrackInc(Tmp);
 					ShotBonus(G, Tmp, In);
+					if(!ShotPlanOk(Tmp, In, G.ReloadTimer() == 0 && Tmp.ReloadTimer() > 0))
+						continue;
 					if(!Tmp.HasGrenade() && Tmp.m_RefIdx > gs_GrenIdx + 3)
 						continue; // passed the pickup without the grenade
 					const int Rt = Tmp.m_Tick - Tmp.m_StartTick;
@@ -1549,7 +1656,7 @@ int main(int argc, const char **argv)
 					if(gs_P.m_TrackW > 0)
 						S = Tmp.m_TrackCost + gs_P.m_TrackTie * S;
 					S -= Tmp.m_Bonus;
-					vTC[T].push_back({S, i, In, CellKey(Tmp), Tmp.Hash(), Ee, Rt, Tmp.m_RefIdx});
+					vTC[T].push_back({S, i, In, CellKey(Tmp), Tmp.Hash(), Ee, Rt, Tmp.m_RefIdx, QuotaKey(Tmp)});
 				}
 			}
 		};
@@ -1569,19 +1676,53 @@ int main(int argc, const char **argv)
 		std::unordered_set<uint64_t> Seen;
 		std::unordered_set<int64_t> Cells;
 		std::vector<SCand> vSel;
-		for(const auto &C : vAll)
-		{
-			if((int)vSel.size() >= gs_P.m_Beam)
-				break;
-			if(!Seen.insert(C.m_Hash).second || !Cells.insert(C.m_Key).second)
-				continue;
-			if(gs_P.m_Dom)
+		if(gs_P.m_Quota <= 0)
+			for(const auto &C : vAll)
 			{
-				auto it = Dom.find(C.m_Key);
-				if(it != Dom.end() && it->second <= C.m_S + 0.5f)
+				if((int)vSel.size() >= gs_P.m_Beam)
+					break;
+				if(!Seen.insert(C.m_Hash).second || !Cells.insert(C.m_Key).second)
 					continue;
+				if(gs_P.m_Dom)
+				{
+					auto it = Dom.find(C.m_Key);
+					if(it != Dom.end() && it->second <= C.m_S + 0.5f)
+						continue;
+				}
+				vSel.push_back(C);
 			}
-			vSel.push_back(C);
+		else
+		{
+			// diversity quota (physlab4): at most `quota` states per coarse position/velocity cell in a first pass,
+			// then the beam is filled with the best of the rest
+			std::unordered_map<int64_t, int> QCnt;
+			std::vector<char> vTaken(vAll.size(), 0);
+			for(int Pass = 0; Pass < 2; Pass++)
+				for(size_t ci = 0; ci < vAll.size(); ci++)
+				{
+					const auto &C = vAll[ci];
+					if((int)vSel.size() >= gs_P.m_Beam)
+						break;
+					if(vTaken[ci] || Seen.count(C.m_Hash) || Cells.count(C.m_Key))
+						continue;
+					if(gs_P.m_Dom)
+					{
+						auto it = Dom.find(C.m_Key);
+						if(it != Dom.end() && it->second <= C.m_S + 0.5f)
+							continue;
+					}
+					if(Pass == 0)
+					{
+						int &Q = QCnt[C.m_QKey];
+						if(Q >= gs_P.m_Quota)
+							continue;
+						Q++;
+					}
+					Seen.insert(C.m_Hash);
+					Cells.insert(C.m_Key);
+					vTaken[ci] = 1;
+					vSel.push_back(C);
+				}
 		}
 		for(const auto &C : vSel)
 		{
