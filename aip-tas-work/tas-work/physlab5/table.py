@@ -9,7 +9,7 @@ for path in sys.argv[1:]:
     fires = [S[i]['rt'] for i in range(len(S)) if L[i].split()[3] == '1' and S[i]['proj'] > (S[i-1]['proj'] if i else 0)]
     pick = next(s['rt'] for s in S if s['gren'])
     y2290 = next(s['rt'] for s in S if s['gren'] and s['y'] <= 2290 and s['vy'] < 0)
-    kicks = [(b['rt'], b['vx'] - a['vx'], b['vx'], b['vy']) for a, b in zip(S, S[1:]) if b['rt'] > 1005 and b['vx'] - a['vx'] > 5]
+    kicks = [(b['rt'], b['vx'] - a['vx'], b['vx'], b['vy']) for a, b in zip(S, S[1:]) if b['rt'] > 990 and b['vx'] - a['vx'] > 5]
     def tg(g):
         for a, b in zip(S, S[1:]):
             if b['x'] >= g > a['x'] and b['rt'] > 1000:

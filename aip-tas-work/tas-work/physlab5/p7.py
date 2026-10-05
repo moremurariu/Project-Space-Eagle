@@ -23,7 +23,7 @@ def score(S):
         if b['x'] >= XG > a['x']:
             tg = a['rt'] + (XG - a['x']) / (b['x'] - a['x'])
             i = S.index(b)
-            ex = next((k for k, s in enumerate(S) if s['vx'] > 20 and s['rt'] > 1005), None)
+            ex = next((k for k, s in enumerate(S) if s['vx'] > 20 and s['rt'] > 990), None)
             if ex is None:
                 return None
             vx = S[min(ex + 1, len(S) - 1)]['vx']

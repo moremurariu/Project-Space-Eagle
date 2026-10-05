@@ -538,3 +538,11 @@ Teero played the **KoG** version of AiP-Gores (user, from Teero). Our runs so fa
   double kick, vx 31.45, x>=5671 at 1031.04) - 7 ticks better than exit_T1025 (1038) and ahead of Teero (~1033).
   Server-verified. Reload back at 1042 (block at x 5888 reached ~1039).
 - Chains n1 (from E1017 cut rt 1019) and n2 (from E1018B cut rt 1019), vset=p8 vidx 0-5 (6 samples per window).
+- **Other agent's 968 pre-grenade run** (user upload, runs/kog_pregren_968_invalid.txt, freezes after the pickup): diverges
+  from kog_pregren_978 at line 406 (rt ~338), **9 ticks ahead at the same positions from rt ~890** (978-run rt 900 ->
+  891, 950 -> 941, 960 -> 951); air jump spent at ~951. Uses large aim vectors (x10000) for finer angles. Transition
+  agent re-fitting the braked pickup/exit on it (cut ~925-955).
+- **Transition re-fit on the 968 prefix (physlab5 F lines): exit_F1010_to1024 (cut rt 948, block-top landing rt 961,
+  braked pickup rt 971, y<=2290 ~983.8, pre-fire 985, point-blank 1010 -> x>=5671 at rt 1024, exit vx 30.2)** and
+  F1011B (same-step double kick, vx 30.73, x>=5671 at 1025). Server-verified. Teero ~1033 -> we are ~9 ticks ahead of
+  him at the exit. Chains f1 (F1010 cut rt 1012) and f2 (F1011B cut rt 1012), p8 vidx 0-5. (n1/n2 from E stopped.)

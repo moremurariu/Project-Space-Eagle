@@ -8,7 +8,7 @@ def evf(x, path, start=960):
     S = [parse_state(l) for l in out if l.startswith('S ')]
     if any(s['frz'] for s in S):
         return None
-    ex = next((s for s in S if s['vx'] > 20 and s['rt'] > 1005), None)
+    ex = next((s for s in S if s['vx'] > 20 and s['rt'] > 990), None)
     if ex is None:
         return None
     i = S.index(ex)

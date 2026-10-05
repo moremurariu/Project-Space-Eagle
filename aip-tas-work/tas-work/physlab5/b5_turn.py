@@ -33,6 +33,22 @@ if os.environ.get('YFRAC'):
         p = S[i - 1]
         return (p['rt'] + (p['y'] - YG) / (p['y'] - S[i]['y']),)
 
+if os.environ.get('SHAPE'):
+    _g2 = sc
+    def sc(S):
+        r = _g2(S)
+        if r is not None:
+            return (0,) + tuple(r)
+        best = None
+        fz = next((j for j, t in enumerate(S) if t['frz']), len(S) + 6)
+        for s_ in S[:max(0, fz - 6)]:
+            if s_['gren']:
+                est = s_['rt'] + max(0, s_['y'] - YG) / 13 + abs(s_['x'] - 5365) / 20 + max(0, s_['vy'] + 12) / 2.5
+            else:
+                est = 50 + s_['rt'] + max(0.0, ((s_['x'] - 5456) ** 2 + (s_['y'] - 2480) ** 2) ** 0.5 - 46) / 15
+            if best is None or est < best:
+                best = est
+        return None if best is None else (1, best)
 rng = random.Random(seed)
 R = x.runmany([tuples(init)], restore=0)
 best = sc(R[0]); bestseq = init
