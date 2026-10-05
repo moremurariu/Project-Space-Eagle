@@ -20,6 +20,7 @@
 //   prefire=1: shots still in flight after firelook ticks are judged as if not fired (no held-input look), and
 //     states are told apart by their pending explosion (use with padaims=N for long pre-fire aims)
 //   padref=R: also keep pre-fire aims whose explosion lands within R px of the reference line ~that many ticks ahead (turns)
+//   firealign=c: only grenade shots whose kick (opposite to the aim) has cos >= c with the line direction
 //   quota=Q [qcell=32 qvel=6]: beam diversity, at most Q states per coarse position/velocity cell first, then the best
 //     of the rest (keeps the beam alive in maze sections; physlab4)
 //   shotplan=teero/catalog/shots.tsv [planpre=8 planpost=6 plangap=25 planr=96]: keep the reload for Teero's kick
@@ -107,7 +108,8 @@ struct SParams
 	int m_Fire = 1;
 	int m_FireAngles = 32;
 	float m_FireRange = 120; // only shots that hit a solid tile this close (point-blank kicks)
-	int m_FireAllDirs = 0; // shots with every direction input (default: only towards the line)
+	int m_FireAllDirs = 0;
+	float m_FireAlign = -2; // firealign=c: only shots whose kick has cos >= c with the line direction (-2 = off) // shots with every direction input (default: only towards the line)
 	int m_PendLook = 1; // judge every state with a grenade in flight after its explosion (pre-fired shots)
 	int m_PadAims = 0; // coarse angle count for edge-refined (pre-fire) shot aims, 0 = off
 	int m_PadTop = 300; // only the best this many beam states get them
@@ -1205,6 +1207,14 @@ static void GenActions(const CTasGame &G, const STasInput &Prev, std::vector<STa
 			if(CanFire && Jump == 0 && (gs_P.m_FireAllDirs || Dir == FireDir))
 				for(auto [TX, TY] : s_vFire)
 				{
+					if(gs_P.m_FireAlign > -1.5f)
+					{
+						// the kick points opposite to the aim: keep only shots that push along the line
+						vec2 Tg = gs_Ref.Tangent(G.m_RefIdx);
+						vec2 A(TX, TY);
+						if(dot(-normalize(A), Tg) < gs_P.m_FireAlign)
+							continue;
+					}
 					STasInput F = In;
 					F.m_Fire = 1;
 					F.m_TX = TX;
@@ -1320,6 +1330,7 @@ int main(int argc, const char **argv)
 		else if(K == "fire") gs_P.m_Fire = std::stoi(V);
 		else if(K == "fireangles") gs_P.m_FireAngles = std::stoi(V);
 		else if(K == "firerange") gs_P.m_FireRange = std::stof(V);
+		else if(K == "firealign") gs_P.m_FireAlign = std::stof(V);
 		else if(K == "firealldirs") gs_P.m_FireAllDirs = std::stoi(V);
 		else if(K == "pendlook") gs_P.m_PendLook = std::stoi(V);
 		else if(K == "survevery") gs_P.m_SurvEvery = std::stoi(V);

@@ -495,3 +495,7 @@ Teero played the **KoG** version of AiP-Gores (user, from Teero). Our runs so fa
   at low speed (|v| 14-30), where 2 v.k is small. Teero is fast and next to a surface when the reload is back.
 - Energy weighting test (q2 c4 -> k1650): ghoste 0.05 / ghostsink 3000 / ghost=1 ghoste 0.04 -> 1720-1723 vs 1707
   (base). Not the lever.
+- seg `firealign=c` (new: only shots whose kick has cos >= c with the line direction): c4 -> k1650 1711 (c 0.3) / 1712
+  (c 0.6) vs 1707. Off. Also tried today without gain: padref, shotplan, box gate, tracking (track=1), bigger beams
+  (40000) and 128 aims on the hairpin approach, higher energy weight. Stronger latpen was the only clear gain.
+- LNS runs/lnsP1 on kog_full_2700 (restarted after a container restart): first iterations 2705, 2726 (no gain yet).
