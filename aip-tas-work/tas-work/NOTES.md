@@ -483,3 +483,15 @@ Teero played the **KoG** version of AiP-Gores (user, from Teero). Our runs so fa
   no freeze, no double start).** (DDNet-map best was 56.08 s.)
 - lnspost.py (new): LNS on the complete run (random cut >= cutmin, seg to gate=finish with a random p6-like variant
   incl. quota/prefire/angles, keep earlier finishes). Run runs/lnsP1 from kog_full_2700.
+- **Why we lose post-grenade (kog_full_2700 vs Teero at the same track point, every 25 ticks):** our |v| is 5-10
+  px/t below his almost everywhere (energy v^2-y ~500 lower), so the lag grows steadily (+5 at k1120, +30 at k1395,
+  +64 at k1736, +102 at k1998, +135 at k2390, +164 at the end). eacct.py (new, energy accounting per tick):
+  rt 1030-2700: kicks +31,000 (61 kicks), **hook -30,700 over 1138 hooked ticks** (a held hook at |v|>15 only brakes
+  or rotates; seg steers along the line with long hook holds), walls -3,600 (4 ticks), dir0 -500, ground -500.
+  => steering efficiency (rotation pulses instead of long holds, kicks for steering) is the lever.
+- **Kick quality:** Teero's 50 kicks add +725 to v^2 on average (36,000 total; catalog displacements converted to
+  velocity); ours +475 (54 fires, ~17,000 total from explosion ticks). Ours are nearly all full-strength point-blank
+  (|k| ~12, explode in 0-5 ticks) but often misaligned with the motion (cos 0.2-0.6: kicks used for steering) or fired
+  at low speed (|v| 14-30), where 2 v.k is small. Teero is fast and next to a surface when the reload is back.
+- Energy weighting test (q2 c4 -> k1650): ghoste 0.05 / ghostsink 3000 / ghost=1 ghoste 0.04 -> 1720-1723 vs 1707
+  (base). Not the lever.
