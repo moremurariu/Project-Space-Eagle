@@ -37,6 +37,8 @@
 //     slots: shots only near his slots, when his next slot is >= plangap ticks away, or as pre-fires for it
 //   shotref=teero/catalog/shots.tsv shotbonus=3 shotrad=64: a shot whose explosion lands within shotrad px of one of
 //     Teero's explosion points (later than the last one matched) earns shotbonus ticks
+//   erel=1: (ghost 1-3) the energy credit counts our energy minus the reference's own energy at the matched point
+//   firemax=N: drop states that keep a loaded grenade (reload 0) for more than N ticks (kick as often as possible)
 //   kfut=W [kfutn=25]: while the reload is in (kready, kfutn], credit W x the point-blank kick available where a
 //     ballistic flight puts the tee when the reload is back (be next to a surface when the grenade is loaded)
 //   kcredit=0 kready=4: energy credit (x kcredit) for the best point-blank kick along the line when reload <= kready
@@ -184,6 +186,8 @@ struct SParams
 	float m_QCell = 32, m_QVel = 6;
 	float m_KCredit = 0; // energy credit for the point-blank kick available when the grenade is (nearly) loaded
 	int m_KReady = 4;
+	float m_ERel = 0; // erel=1: ghost energy credit relative to the reference's own energy at the matched point
+	int m_FireMax = -1; // firemax=N: drop states that keep a loaded grenade for more than N ticks
 	float m_KFut = 0; // kfut=W: credit W x the kick available where the tee flies to by the time the reload is back
 	int m_KFutN = 25; // (only while the reload is <= kfutn and > kready)
 	int m_TpK = -1; // diagnostics: teleport after the prefix (tp=x,y,vx,vy tpk=K tpreload=N)
@@ -739,7 +743,10 @@ static float EstTotal(const CGameT &G, float *pEe = nullptr)
 			float Dist = gs_Ref.m_vL[J] - gs_Ref.m_vL[I];
 			Ge *= std::clamp(Dist / gs_P.m_GhostSink, 0.0f, 1.0f);
 		}
-		T -= Ge * Ee; // optional energy credit (ticks per unit)
+		float Eref = 0;
+		if(gs_P.m_ERel > 0)
+			Eref = gs_P.m_ERel * (gs_Ref.m_vET[I] + Frac * (gs_Ref.m_vET[std::min(I + 1, N - 1)] - gs_Ref.m_vET[I]));
+		T -= Ge * (Ee - Eref); // optional energy credit (ticks per unit; erel: relative to the reference's energy here)
 		return (float)(G.m_Tick - G.m_StartTick) + T + LatPen(G, I, Frac);
 	}
 	// energy part up to the next sink (or the evaluation end), Teero's own time after it
@@ -1678,6 +1685,8 @@ int main(int argc, const char **argv)
 		else if(K == "tracktie") gs_P.m_TrackTie = std::stof(V);
 		else if(K == "kready") gs_P.m_KReady = std::stoi(V);
 		else if(K == "kfut") gs_P.m_KFut = std::stof(V);
+		else if(K == "firemax") gs_P.m_FireMax = std::stoi(V);
+		else if(K == "erel") gs_P.m_ERel = std::stof(V);
 		else if(K == "kfutn") gs_P.m_KFutN = std::stoi(V);
 		else if(K == "tp") std::sscanf(V.c_str(), "%f,%f,%f,%f", &gs_P.m_TpPos.x, &gs_P.m_TpPos.y, &gs_P.m_TpVel.x, &gs_P.m_TpVel.y);
 		else if(K == "latdz") gs_P.m_LatDz = std::stof(V);
@@ -1953,6 +1962,9 @@ int main(int argc, const char **argv)
 					UpdateTrack(Tmp);
 					Tmp.m_TrackCost += TrackInc(Tmp);
 					ShotBonus(G, Tmp, In);
+					Tmp.m_ReadyTicks = Tmp.HasGrenade() && Tmp.ReloadTimer() == 0 ? G.m_ReadyTicks + 1 : 0;
+					if(gs_P.m_FireMax >= 0 && Tmp.m_ReadyTicks > gs_P.m_FireMax && !(IsInc && SameIn(In, IncIn)))
+						continue;
 					if(!ShotPlanOk(Tmp, In, G.ReloadTimer() == 0 && Tmp.ReloadTimer() > 0))
 						continue;
 					if(gs_P.m_PlanForce && Tmp.ReloadTimer() == 0)
@@ -2177,6 +2189,7 @@ int main(int argc, const char **argv)
 				UpdateTrack(*vNew[k]);
 				vNew[k]->m_TrackCost += TrackInc(*vNew[k]);
 				ShotBonus(*vBeam[vSel[k].m_Parent], *vNew[k], vSel[k].m_In);
+				vNew[k]->m_ReadyTicks = vNew[k]->HasGrenade() && vNew[k]->ReloadTimer() == 0 ? vBeam[vSel[k].m_Parent]->m_ReadyTicks + 1 : 0;
 				vNewPrev[k] = vSel[k].m_In;
 			}
 		};

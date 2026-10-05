@@ -213,6 +213,7 @@ void CTasGame::CopyFrom(const CTasGame &Other)
 	m_PendE = Other.m_PendE;
 	m_PendT = Other.m_PendT;
 	m_PendFire = Other.m_PendFire;
+	m_ReadyTicks = Other.m_ReadyTicks;
 }
 
 void CTasGame::SetState(vec2 Pos, vec2 Vel)

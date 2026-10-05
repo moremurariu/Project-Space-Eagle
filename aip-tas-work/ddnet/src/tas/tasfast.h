@@ -23,6 +23,7 @@ public:
 	int m_LastShot = -1;
 	vec2 m_PendE = vec2(0, 0);
 	int m_PendT = -1, m_PendFire = -1;
+	int m_ReadyTicks = 0;
 
 	void CopyFrom(const CTasFast &Other) { *this = Other; }
 	void FromGameFull(const CTasGame &G)
@@ -40,6 +41,7 @@ public:
 		m_PendE = G.m_PendE;
 		m_PendT = G.m_PendT;
 		m_PendFire = G.m_PendFire;
+		m_ReadyTicks = G.m_ReadyTicks;
 	}
 	void Step(const STasInput &In)
 	{

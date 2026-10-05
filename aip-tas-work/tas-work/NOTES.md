@@ -568,3 +568,21 @@ Teero played the **KoG** version of AiP-Gores (user, from Teero). Our runs so fa
   (k1158-1217: 4 kicks, 17 -> ~55 |v|; ours 3 kicks, 19 -> 47).
 - f1 step 1 (F1010 -> k1174), p8: non-quota variants 1167-1168, quota variants 1176-1182 -> vset p9 (5 seeds each of
   latpen 0.2/24 and 0.1/32, + 2 quota setups). Chain g1 = f1 resumed after step 1 with p9 on segf. f2 stopped.
+- Window tests on segf (single seeds; same-setting baselines in brackets; window-to-window noise is +-3-5):
+  firemax=4/10 (new: drop states holding a loaded grenade > N ticks) 1170/1170, 1172/1169 [exit window F1011B -> k1174:
+  1172/1169]; erel=1 (new: ghost energy credit relative to the reference's energy) 1171/1173; prefire on the U-turn-1
+  window (g1 c1 -> k1249) 1253/1252 [1251/1250]; extended sinks (Teero's speed minima 1976, 2095, 2266, ...) on the
+  S-bend window (cut 1960 -> k2080) 2208/2208 [2188/2189]; time-shifted Teero tracking (track=1 trackoff 8/10/9)
+  1190/1175/1179 [1172/1169]. None helps.
+- **vcap** (ghost=3 cap on the credited speed, x Teero's local speed; default 1.25): U-turn-4 window (cut 1780 ->
+  k1830, where the 2693 run kicks twice to |v| 66 and slams into the end wall 54 -> 0): vcap 1.1 1903, vcap 1.0 +
+  brakepen 10 1903/1904 vs 1915 (old run 1906). Exit / U-turn-1 windows: vcap 1.1 = base, vcap 1.0 +2-3. S-bend: vcap
+  1.1 2194/2195 (worse), vcap 1.0 + brakepen 10 2186 (better). => window-dependent; rh.py vset p10 mixes 1.25 / 1.1 /
+  1.0+brakepen10 (x seeds) + quota setups. Chain g2 = g1 resumed after step 2 with p10.
+- Loss anatomy of the 2693 run (bigloss.py, hookeff.py): ~18k v^2 is lost braking (hook) or slamming walls within
+  ~25 ticks after a kick, right before a bend (kicks at 1125, 1256, 1422, 1836, 2000 -> braking/impacts at 1147-1155,
+  1275-1282, 1453-1457, 1844-1849 (54 -> 0 into the wall), 2016-2028 (68 -> 15)). Hook pulls at |v| >= 15: 594 ticks,
+  2882 deg of rotation for -21.7k v^2; 325 near-boundary ticks rotate 1338 deg for only -2.6k, 21 ticks lose 10k.
+  Teero instead turns with kicks at bends (e.g. S-bend k1945: a braking/turning kick) and arrives slower.
+- Chain g1 step 2 (k1174 -> k1249, first right U-turn): best 1250 = 4 behind Teero (was 4 ahead at k1174): Teero's
+  pre-fire + point-blank pair at the apex (k1158/k1165) and kicks at k1192/k1217 vs our 1158/1183 then a 45-tick gap.

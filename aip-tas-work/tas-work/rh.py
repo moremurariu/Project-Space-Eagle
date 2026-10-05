@@ -236,6 +236,28 @@ if args.get('vset') == 'p9':
         f'beam=20000 survevery=2 survive=40 {G3} {RQ} latpen=0.05 latdz=48 quota=10',
     ]
     NVAR = int(args.get('nvar', 12))
+if args.get('vset') == 'p10':
+    # p9 with vcap=1.1 (corridor-4 U-turn window: 1903 vs 1915 at vcap 1.25, early windows unchanged)
+    PS2 = '1156,1285,1443,1793,2143,2465'
+    SV = 'beam=10000 survevery=2 survive=30'
+    RQ = 'rothook=1 quant=1'
+    G3 = f'ghost=3 hnow=1000 ghoste=0.02 sinks={PS2} ghostsink=1500'
+    B1 = f'{SV} {G3} kcredit=2 kready=10 {RQ} latpen=0.2 latdz=24'
+    B3 = f'{SV} {G3} kcredit=2 kready=10 {RQ} latpen=0.1 latdz=32'
+    B0 = f'{SV} {G3} kcredit=2 kready=10 {RQ} latpen=0.1 latdz=32 quota=6'
+    B2 = f'{SV} ghost=3 hnow=600 ghoste=0.0 sinks={PS2} brake=2 kcredit=2 kready=10 {RQ} latpen=0.1 latdz=32 quota=4'
+    # balanced (window-dependent: U-turn 4 likes vcap 1.0-1.1, the S-bend vcap 1.0 + brakepen 10, early windows 1.25)
+    POST = [f'{B1} vcap=1.1 jitter=1 seed={sd}' for sd in (1, 2)] + [f'{B3} vcap=1.1 jitter=1 seed=1'] + \
+           [f'{B1} jitter=1 seed={sd}' for sd in (1, 2)] + [f'{B3} jitter=1 seed=1'] + \
+           [f'{B1} vcap=1.0 brakepen=10 jitter=1 seed={sd}' for sd in (1, 2)] + [f'{B3} vcap=1.0 brakepen=10 jitter=1 seed=1'] + \
+           [f'{B0} vcap=1.1 jitter=1 seed=1', f'{B2} jitter=1 seed=1', f'{B0} jitter=1 seed=2']
+    WIDE = [
+        f'beam=20000 survevery=1 survive=40 {G3} {RQ} latpen=0.1 latdz=32 quota=6',
+        f'beam=20000 survevery=2 survive=30 ghost=3 hnow=600 ghoste=0.0 sinks={PS2} brake=2 {RQ} latpen=0.2 latdz=24 quota=3',
+        f'beam=10000 survevery=1 survive=50 ghost=1 hnow=300 ghoste=0.01 {RQ} latpen=0.1 latdz=32 quota=6',
+        f'beam=20000 survevery=2 survive=40 {G3} {RQ} latpen=0.05 latdz=48 quota=10',
+    ]
+    NVAR = int(args.get('nvar', 12))
 STOP_K = int(args.get('stopk', 99999))
 GREN_K = 990
 WIDE_R = [
