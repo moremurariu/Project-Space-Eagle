@@ -499,3 +499,4 @@ Teero played the **KoG** version of AiP-Gores (user, from Teero). Our runs so fa
   (c 0.6) vs 1707. Off. Also tried today without gain: padref, shotplan, box gate, tracking (track=1), bigger beams
   (40000) and 128 aims on the hairpin approach, higher energy weight. Stronger latpen was the only clear gain.
 - LNS runs/lnsP1 on kog_full_2700 (restarted after a container restart): first iterations 2705, 2726 (no gain yet).
+- LNS runs/lnsP2 (cutmin 2250): **2699 (53.98 s)**, cut 2570, server-identical (start 68, finish 2767, no freeze, no double start) -> kog_full_best.txt.
