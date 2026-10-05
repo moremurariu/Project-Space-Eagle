@@ -527,3 +527,14 @@ Teero played the **KoG** version of AiP-Gores (user, from Teero). Our runs so fa
 - seg jitter=J seed=N (new, stochastic beam): exit -> k1215 with 8 seeds: 1227-1231. Window distribution over ~20 runs
   ~1226-1230 (rare 1223) -> best-of-N sampling worth ~1-3 ticks per window. Chain b12 (vset=p8: 4 setups x 3 seeds,
   best of 12 per window) from runs/ex/e1025.txt to the finish.
+- Chain b12 (best of 12, from e1025): k1175 1181 (-6), k1250 1263 (-13), k1325 1345, k1400 1421 (-21), k1475 1498 (-23),
+  k1550 1583 (-33), k1625 1676 (-51). Stopped (no better than the 53.86 run by k1625).
+- **Other agent's fast pre-grenade (branch claude/wonderful-faraday-klv0ms, aip-tas-fast/: exact fast stepper + beam,
+  pickup 975)**: identical to kog_pregren_978 up to rt ~789, 2-3 ticks ahead from rt ~900. Copied to
+  runs/kog_pregren_975_fast.txt.
+- **Transition re-fit agent (physlab5/FINDINGS.txt):** on the 975 prefix (cut rt 955; the prefix has no air jump left,
+  so it re-lands on the block top at rt 968 and slides off the corner), braked pickup rt 978, y<=2290 at ~990.8,
+  pre-fire step 992, point-blank 1017: **exit_E1017_to1031 (x>=5671 at 1031, exit vx 30.0)** and E1018B (same-step
+  double kick, vx 31.45, x>=5671 at 1031.04) - 7 ticks better than exit_T1025 (1038) and ahead of Teero (~1033).
+  Server-verified. Reload back at 1042 (block at x 5888 reached ~1039).
+- Chains n1 (from E1017 cut rt 1019) and n2 (from E1018B cut rt 1019), vset=p8 vidx 0-5 (6 samples per window).
