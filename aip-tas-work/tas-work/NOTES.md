@@ -500,3 +500,4 @@ Teero played the **KoG** version of AiP-Gores (user, from Teero). Our runs so fa
   (40000) and 128 aims on the hairpin approach, higher energy weight. Stronger latpen was the only clear gain.
 - LNS runs/lnsP1 on kog_full_2700 (restarted after a container restart): first iterations 2705, 2726 (no gain yet).
 - LNS runs/lnsP2 (cutmin 2250): **2699 (53.98 s)**, cut 2570, server-identical (start 68, finish 2767, no freeze, no double start) -> kog_full_best.txt.
+- LNS lnsP2: **2693 (53.86 s)** (cut 2550), server-identical (start 68, finish 2761, no freeze, no double start) -> kog_full_best.txt. 13 iterations: 2693, 2699, 2704 x2, 2708 x2, 2718-2739, 3 NOGATE.
