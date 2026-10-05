@@ -158,6 +158,212 @@
      if(EXISTS ${PROJECT_SOURCE_DIR}/src/tas/${TAS_TOOL}.cpp)
        add_executable(${TAS_TOOL} EXCLUDE_FROM_ALL
          src/tas/${TAS_TOOL}.cpp
+@@ -3554,6 +3557,23 @@
+       list(APPEND TARGETS_LINK ${TAS_TOOL})
+     endif()
+   endforeach()
++  # seg on the exact single-tee grenade stepper (src/tas/fastg.cpp, checked against CTasGame by fastgcheck)
++  if(EXISTS ${PROJECT_SOURCE_DIR}/src/tas/fastg.cpp)
++    add_executable(segf EXCLUDE_FROM_ALL
++      src/tas/seg.cpp
++      src/tas/fastg.cpp
++      ${TAS_EXTRA_SRC}
++      $<TARGET_OBJECTS:engine-shared>
++      $<TARGET_OBJECTS:game-shared>
++      $<TARGET_OBJECTS:rust-bridge-shared>
++      ${DEPS}
++    )
++    target_compile_definitions(segf PRIVATE SEG_FAST)
++    target_link_libraries(segf ${LIBS_SERVER})
++    target_include_directories(segf BEFORE PRIVATE src/tas/shim)
++    list(APPEND TARGETS_OWN segf)
++    list(APPEND TARGETS_LINK segf)
++  endif()
+ 
+   set(TARGET_TESTRUNNER testrunner)
+   add_executable(${TARGET_TESTRUNNER} EXCLUDE_FROM_ALL
+--- a/ddnet/src/game/collision.cpp
++++ b/ddnet/src/game/collision.cpp
+@@ -269,6 +269,8 @@
+ 			vec2(-1, 0),
+ 			vec2(0, -1)};
+ 	dbg_assert(0.0f <= Distance && Distance <= 32.0f, "Invalid Distance: %f", Distance);
++	if(m_FastOk && ms_FastPaths)
++		return 0; // InitFast() only enables the fast paths on maps without stoppers, doors, front or switch layers
+ 	int Restrictions = 0;
+ 	for(int d = 0; d < NUM_MR_DIRS; d++)
+ 	{
+@@ -356,6 +358,47 @@
+ 
+ int CCollision::IntersectLineTeleHook(vec2 Pos0, vec2 Pos1, vec2 *pOutCollision, vec2 *pOutBeforeCollision, int *pTeleNr) const
+ {
++	if(m_FastOk && ms_FastPaths && !FastAnySolid(std::min(Pos0.x, Pos1.x), std::min(Pos0.y, Pos1.y), std::max(Pos0.x, Pos1.x), std::max(Pos0.y, Pos1.y)))
++	{
++		// no tele layer, no through tiles, no solid tile in the segment's box: the per-pixel loop finds nothing
++		if(pTeleNr)
++			*pTeleNr = 0;
++		if(pOutCollision)
++			*pOutCollision = Pos1;
++		if(pOutBeforeCollision)
++			*pOutBeforeCollision = Pos1;
++		return 0;
++	}
++	if(m_FastOk && ms_FastPaths)
++	{
++		// same sampling as below; without tele / through tiles only solid tiles can stop the hook
++		float Distance = distance(Pos0, Pos1);
++		int End(Distance + 1);
++		vec2 Last = Pos0;
++		if(pTeleNr)
++			*pTeleNr = 0;
++		for(int i = 0; i <= End; i++)
++		{
++			float a = i / (float)End;
++			vec2 Pos = mix(Pos0, Pos1, a);
++			int ix = round_to_int(Pos.x);
++			int iy = round_to_int(Pos.y);
++			if(FastSolidAt(ix, iy))
++			{
++				if(pOutCollision)
++					*pOutCollision = Pos;
++				if(pOutBeforeCollision)
++					*pOutBeforeCollision = Last;
++				return GetTile(ix, iy);
++			}
++			Last = Pos;
++		}
++		if(pOutCollision)
++			*pOutCollision = Pos1;
++		if(pOutBeforeCollision)
++			*pOutBeforeCollision = Pos1;
++		return 0;
++	}
+ 	float Distance = distance(Pos0, Pos1);
+ 	int End(Distance + 1);
+ 	vec2 Last = Pos0;
+@@ -504,6 +547,9 @@
+ bool CCollision::TestBox(vec2 Pos, vec2 Size) const
+ {
+ 	Size *= 0.5f;
++	if(m_FastOk && ms_FastPaths)
++		return FastCheckPoint(Pos.x - Size.x, Pos.y - Size.y) || FastCheckPoint(Pos.x + Size.x, Pos.y - Size.y) ||
++		       FastCheckPoint(Pos.x - Size.x, Pos.y + Size.y) || FastCheckPoint(Pos.x + Size.x, Pos.y + Size.y);
+ 	if(CheckPoint(Pos.x - Size.x, Pos.y - Size.y))
+ 		return true;
+ 	if(CheckPoint(Pos.x + Size.x, Pos.y - Size.y))
+@@ -517,6 +563,8 @@
+ 
+ bool CCollision::IsOnGround(vec2 Pos, float Size) const
+ {
++	if(m_FastOk && ms_FastPaths)
++		return FastCheckPoint(Pos.x + Size / 2, Pos.y + Size / 2 + 5) || FastCheckPoint(Pos.x - Size / 2, Pos.y + Size / 2 + 5);
+ 	if(CheckPoint(Pos.x + Size / 2, Pos.y + Size / 2 + 5))
+ 		return true;
+ 	if(CheckPoint(Pos.x - Size / 2, Pos.y + Size / 2 + 5))
+@@ -540,6 +588,14 @@
+ 		float ElasticityX = std::clamp(Elasticity.x, -1.0f, 1.0f);
+ 		float ElasticityY = std::clamp(Elasticity.y, -1.0f, 1.0f);
+ 
++		// TAS fast path: no solid tile anywhere near the swept box -> no TestBox can hit, only the position steps remain
++		bool Free = false;
++		if(m_FastOk && ms_FastPaths)
++		{
++			vec2 End = Pos + Vel;
++			float Hx = Size.x * 0.5f + 2.0f, Hy = Size.y * 0.5f + 2.0f;
++			Free = !FastAnySolid(std::min(Pos.x, End.x) - Hx, std::min(Pos.y, End.y) - Hy, std::max(Pos.x, End.x) + Hx, std::max(Pos.y, End.y) + Hy);
++		}
+ 		for(int i = 0; i <= Max; i++)
+ 		{
+ 			// Early break as optimization to stop checking for collisions for
+@@ -551,6 +607,13 @@
+ 			}
+ 
+ 			vec2 NewPos = Pos + Vel * Fraction; // TODO: this row is not nice
++			if(Free)
++			{
++				if(NewPos == Pos)
++					break;
++				Pos = NewPos;
++				continue;
++			}
+ 
+ 			// Fraction can be very small and thus the calculation has no effect, no
+ 			// reason to continue calculating.
+@@ -1323,3 +1386,40 @@
+ 		Total += m_TeleOthers[Number].size();
+ 	return Total;
+ }
++
++bool CCollision::ms_FastPaths = false;
++
++void CCollision::InitFast()
++{
++	m_FastOk = false;
++	if(!m_pTiles || m_pFront || m_pTele || m_pSpeedup || m_pSwitch || m_pTune || m_pDoor)
++		return;
++	const int N = m_Width * m_Height;
++	m_vFastSolid.assign(N, 0);
++	for(int i = 0; i < N; i++)
++	{
++		int T = m_pTiles[i].m_Index;
++		// tiles that would make MoveRestrictions, hook rays or IsThrough behave differently
++		if(T == TILE_STOP || T == TILE_STOPS || T == TILE_STOPA || T == TILE_THROUGH_ALL || T == TILE_THROUGH_DIR || T == TILE_THROUGH || T == TILE_THROUGH_CUT)
++			return;
++		m_vFastSolid[i] = (T == TILE_SOLID || T == TILE_NOHOOK) ? 1 : 0;
++	}
++	m_vFastSum.assign((m_Width + 1) * (m_Height + 1), 0);
++	for(int y = 0; y < m_Height; y++)
++		for(int x = 0; x < m_Width; x++)
++			m_vFastSum[(y + 1) * (m_Width + 1) + x + 1] = m_vFastSolid[y * m_Width + x] + m_vFastSum[y * (m_Width + 1) + x + 1] +
++								     m_vFastSum[(y + 1) * (m_Width + 1) + x] - m_vFastSum[y * (m_Width + 1) + x];
++	m_FastOk = true;
++}
++
++bool CCollision::FastAnySolid(float x0, float y0, float x1, float y1) const
++{
++	// conservative: pixel coordinates are widened by 2 before taking tiles, the same clamp as GetTile
++	int tx0 = std::clamp((int)std::floor((x0 - 2.0f) / 32.0f), 0, m_Width - 1);
++	int ty0 = std::clamp((int)std::floor((y0 - 2.0f) / 32.0f), 0, m_Height - 1);
++	int tx1 = std::clamp((int)std::floor((x1 + 2.0f) / 32.0f), 0, m_Width - 1);
++	int ty1 = std::clamp((int)std::floor((y1 + 2.0f) / 32.0f), 0, m_Height - 1);
++	const int W = m_Width + 1;
++	int Sum = m_vFastSum[(ty1 + 1) * W + tx1 + 1] - m_vFastSum[ty0 * W + tx1 + 1] - m_vFastSum[(ty1 + 1) * W + tx0] + m_vFastSum[ty0 * W + tx0];
++	return Sum > 0;
++}
+--- a/ddnet/src/game/collision.h
++++ b/ddnet/src/game/collision.h
+@@ -7,6 +7,8 @@
+ 
+ #include <engine/shared/protocol.h>
+ 
++#include <algorithm>
++#include <cstdint>
+ #include <map>
+ #include <vector>
+ 
+@@ -34,6 +36,22 @@
+ class CCollision
+ {
+ public:
++	// TAS: exact fast paths (precomputed solid table + broad-phase rectangle checks, ideas from ddnet_physics).
++	// Only active on maps where they are provably identical (InitFast() checks the layers).
++	static bool ms_FastPaths;
++	void InitFast();
++	bool m_FastOk = false;
++	std::vector<uint8_t> m_vFastSolid; // per tile: 1 if TILE_SOLID or TILE_NOHOOK
++	std::vector<int> m_vFastSum; // 2D prefix sums of m_vFastSolid, (W+1) x (H+1)
++	bool FastAnySolid(float x0, float y0, float x1, float y1) const; // any solid tile intersecting the rectangle (inclusive, conservative)
++	bool FastSolidAt(int x, int y) const
++	{
++		int Nx = std::clamp(x / 32, 0, m_Width - 1);
++		int Ny = std::clamp(y / 32, 0, m_Height - 1);
++		return m_vFastSolid[Ny * m_Width + Nx];
++	}
++	bool FastCheckPoint(float x, float y) const { return FastSolidAt(round_to_int(x), round_to_int(y)); }
++
+ 	CCollision();
+ 	~CCollision();
+ 
 --- a/ddnet/src/tas/sim.h
 +++ b/ddnet/src/tas/sim.h
 @@ -93,6 +93,11 @@
@@ -174,7 +380,19 @@
  	int m_StartTick = -1;
 --- a/ddnet/src/tas/sim.cpp
 +++ b/ddnet/src/tas/sim.cpp
-@@ -202,6 +202,12 @@
+@@ -58,6 +58,11 @@
+ 	gs_pCollision = new CCollision();
+ 	gs_pCollision->Init(gs_pLayers);
+ 	CCollision::ms_TileExistsCache = getenv("TAS_NOCACHE") == nullptr;
++	if(!getenv("TAS_NOFAST"))
++	{
++		gs_pCollision->InitFast(); // only enables itself on maps where the fast paths are exact
++		CCollision::ms_FastPaths = true;
++	}
+ 
+ 	// same as CGameContext::OnInit with default settings
+ 	for(auto &Tuning : gs_aTuning)
+@@ -202,6 +207,12 @@
  	m_CommitIn = Other.m_CommitIn;
  	m_LastJump = Other.m_LastJump;
  	m_HookLoss = Other.m_HookLoss;
@@ -259,7 +477,7 @@
  }
 --- a/tas-work/NOTES.md
 +++ b/tas-work/NOTES.md
-@@ -84,3 +84,465 @@
+@@ -84,3 +84,487 @@
  - Corridor 1 from a Teero-like crossing (900,465,25,-13 spent): 294-296 (Teero 298). Our pre-start crossing gives ~306.
  - TileExists lookup cache in CCollision (opt-in flag, TAS only): step 1.54 -> 1.20 us, identical replays.
  - chain.py: segment chain over distance gates with several configs (gains ~1-2 ticks/gate; slow).
@@ -725,3 +943,25 @@
 +  braked pickup rt 971, y<=2290 ~983.8, pre-fire 985, point-blank 1010 -> x>=5671 at rt 1024, exit vx 30.2)** and
 +  F1011B (same-step double kick, vx 30.73, x>=5671 at 1025). Server-verified. Teero ~1033 -> we are ~9 ticks ahead of
 +  him at the exit. Chains f1 (F1010 cut rt 1012) and f2 (F1011B cut rt 1012), p8 vidx 0-5. (n1/n2 from E stopped.)
++- **segf (new build target): seg on the exact grenade fast stepper.** fastg.{h,cpp} (CFastG: CFast + grenade fire /
++  reload / weapon switch / projectiles / explosions, checked tick by tick against CTasGame by fastgcheck: identical
++  on the 53.86 run, 0 mismatches in 1000 fuzz trials) + tasfast.h (CTasFast: CFastG with the CTasGame interface seg
++  uses). seg.cpp uses `CGameT` (CTasFast with -DSEG_FAST, else CTasGame); prefix replay, SEG_DUMP and commitk stay on
++  CTasGame. Also: the collision fast paths were never active (CCollision::ms_FastPaths defaults to false; only the
++  other agent's tools set it) -> now set in sim.cpp after InitFast (TAS_NOFAST=1 disables); exact broad-phase skips in
++  KickPotential / RotHookAims / HookTargets (no solid tile in reach -> nothing to compute) and trig tables.
++  Window test (F1011B -> k1120, beam 2000): seg 84 s -> segf 28 s (~3x), output byte-identical. rh.py / multi.py /
++  lnsinc.py use segf (SEGBIN overrides).
++- seg `inc=FILE` (incumbent, new): the given run's own continuation is kept in the beam every step (so gate=finish
++  can only match or beat it); `SEG_TRACK=FILE` dumps a run as a reference track (k = rt + 3). mapk.py maps Teero's sink
++  ticks onto another track. Test cut 2450 -> finish (beam 5000): own-run reference and Teero reference both 2693
++  (= incumbent; that stretch was already LNS-optimized). lnsinc.py: incumbent LNS (random cut, ref own/teero mix).
++- seg `kfut=W [kfutn]` (new, off): credit for the kick available where a ballistic flight puts the tee when the
++  reload is back. f1 window (F1011B -> k1174, latpen 0.2 setup): kfut 1/2 -> 1173-1177 vs 1167-1168 without. Worse.
++- Where the 2693 run loses to Teero (vcmp.py / dcmp.py, same place): steadily ~1 tick per 10 in the corridors
++  (lead -10 at rt 1200 -> -33 at 1460 -> -85 at 2000 -> -153 at the end); U-turn apexes cost little; S-bend
++  (rt 2000-2100, up the shaft at x~4100) -20. In corridor 3 Teero's displacement speed is 3-5 px/t higher throughout.
++  Our post-kick peaks are high (55-68) but decay fast; Teero accelerates out of U-turns with frequent well-aligned kicks
++  (k1158-1217: 4 kicks, 17 -> ~55 |v|; ours 3 kicks, 19 -> 47).
++- f1 step 1 (F1010 -> k1174), p8: non-quota variants 1167-1168, quota variants 1176-1182 -> vset p9 (5 seeds each of
++  latpen 0.2/24 and 0.1/32, + 2 quota setups). Chain g1 = f1 resumed after step 1 with p9 on segf. f2 stopped.

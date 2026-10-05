@@ -546,3 +546,25 @@ Teero played the **KoG** version of AiP-Gores (user, from Teero). Our runs so fa
   braked pickup rt 971, y<=2290 ~983.8, pre-fire 985, point-blank 1010 -> x>=5671 at rt 1024, exit vx 30.2)** and
   F1011B (same-step double kick, vx 30.73, x>=5671 at 1025). Server-verified. Teero ~1033 -> we are ~9 ticks ahead of
   him at the exit. Chains f1 (F1010 cut rt 1012) and f2 (F1011B cut rt 1012), p8 vidx 0-5. (n1/n2 from E stopped.)
+- **segf (new build target): seg on the exact grenade fast stepper.** fastg.{h,cpp} (CFastG: CFast + grenade fire /
+  reload / weapon switch / projectiles / explosions, checked tick by tick against CTasGame by fastgcheck: identical
+  on the 53.86 run, 0 mismatches in 1000 fuzz trials) + tasfast.h (CTasFast: CFastG with the CTasGame interface seg
+  uses). seg.cpp uses `CGameT` (CTasFast with -DSEG_FAST, else CTasGame); prefix replay, SEG_DUMP and commitk stay on
+  CTasGame. Also: the collision fast paths were never active (CCollision::ms_FastPaths defaults to false; only the
+  other agent's tools set it) -> now set in sim.cpp after InitFast (TAS_NOFAST=1 disables); exact broad-phase skips in
+  KickPotential / RotHookAims / HookTargets (no solid tile in reach -> nothing to compute) and trig tables.
+  Window test (F1011B -> k1120, beam 2000): seg 84 s -> segf 28 s (~3x), output byte-identical. rh.py / multi.py /
+  lnsinc.py use segf (SEGBIN overrides).
+- seg `inc=FILE` (incumbent, new): the given run's own continuation is kept in the beam every step (so gate=finish
+  can only match or beat it); `SEG_TRACK=FILE` dumps a run as a reference track (k = rt + 3). mapk.py maps Teero's sink
+  ticks onto another track. Test cut 2450 -> finish (beam 5000): own-run reference and Teero reference both 2693
+  (= incumbent; that stretch was already LNS-optimized). lnsinc.py: incumbent LNS (random cut, ref own/teero mix).
+- seg `kfut=W [kfutn]` (new, off): credit for the kick available where a ballistic flight puts the tee when the
+  reload is back. f1 window (F1011B -> k1174, latpen 0.2 setup): kfut 1/2 -> 1173-1177 vs 1167-1168 without. Worse.
+- Where the 2693 run loses to Teero (vcmp.py / dcmp.py, same place): steadily ~1 tick per 10 in the corridors
+  (lead -10 at rt 1200 -> -33 at 1460 -> -85 at 2000 -> -153 at the end); U-turn apexes cost little; S-bend
+  (rt 2000-2100, up the shaft at x~4100) -20. In corridor 3 Teero's displacement speed is 3-5 px/t higher throughout.
+  Our post-kick peaks are high (55-68) but decay fast; Teero accelerates out of U-turns with frequent well-aligned kicks
+  (k1158-1217: 4 kicks, 17 -> ~55 |v|; ours 3 kicks, 19 -> 47).
+- f1 step 1 (F1010 -> k1174), p8: non-quota variants 1167-1168, quota variants 1176-1182 -> vset p9 (5 seeds each of
+  latpen 0.2/24 and 0.1/32, + 2 quota setups). Chain g1 = f1 resumed after step 1 with p9 on segf. f2 stopped.

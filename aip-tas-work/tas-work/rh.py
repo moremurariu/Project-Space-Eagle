@@ -16,7 +16,7 @@ from concurrent.futures import ThreadPoolExecutor
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 os.chdir(HERE)
-SEG = '../ddnet/build-sim/seg'
+SEG = os.environ.get('SEGBIN', '../ddnet/build-sim/segf')
 MAP = 'AiP-Gores.map'
 FINISH_K = 2536
 SINKS = '315,550,725,900'
@@ -210,6 +210,25 @@ if args.get('vset') == 'p8':
         f'{SV} {G3} kcredit=2 kready=10 {RQ} latpen=0.1 latdz=32',
     ]
     POST = [f'{b} jitter=1 seed={sd}' for sd in (1, 2, 3) for b in BASE]
+    WIDE = [
+        f'beam=20000 survevery=1 survive=40 {G3} {RQ} latpen=0.1 latdz=32 quota=6',
+        f'beam=20000 survevery=2 survive=30 ghost=3 hnow=600 ghoste=0.0 sinks={PS2} brake=2 {RQ} latpen=0.2 latdz=24 quota=3',
+        f'beam=10000 survevery=1 survive=50 ghost=1 hnow=300 ghoste=0.01 {RQ} latpen=0.1 latdz=32 quota=6',
+        f'beam=20000 survevery=2 survive=40 {G3} {RQ} latpen=0.05 latdz=48 quota=10',
+    ]
+    NVAR = int(args.get('nvar', 12))
+if args.get('vset') == 'p9':
+    # p8 weighted to the non-quota setups that win early windows (f1 step 1: 1167-1168 vs quota 1176-1182), more seeds
+    PS2 = '1156,1285,1443,1793,2143,2465'
+    SV = 'beam=10000 survevery=2 survive=30'
+    RQ = 'rothook=1 quant=1'
+    G3 = f'ghost=3 hnow=1000 ghoste=0.02 sinks={PS2} ghostsink=1500'
+    B1 = f'{SV} {G3} kcredit=2 kready=10 {RQ} latpen=0.2 latdz=24'
+    B3 = f'{SV} {G3} kcredit=2 kready=10 {RQ} latpen=0.1 latdz=32'
+    B0 = f'{SV} {G3} kcredit=2 kready=10 {RQ} latpen=0.1 latdz=32 quota=6'
+    B2 = f'{SV} ghost=3 hnow=600 ghoste=0.0 sinks={PS2} brake=2 kcredit=2 kready=10 {RQ} latpen=0.1 latdz=32 quota=4'
+    POST = [f'{B1} jitter=1 seed={sd}' for sd in range(1, 6)] + [f'{B3} jitter=1 seed={sd}' for sd in range(1, 6)] + \
+           [f'{B0} jitter=1 seed=1', f'{B2} jitter=1 seed=1']
     WIDE = [
         f'beam=20000 survevery=1 survive=40 {G3} {RQ} latpen=0.1 latdz=32 quota=6',
         f'beam=20000 survevery=2 survive=30 ghost=3 hnow=600 ghoste=0.0 sinks={PS2} brake=2 {RQ} latpen=0.2 latdz=24 quota=3',

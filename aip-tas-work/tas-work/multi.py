@@ -4,7 +4,7 @@ JOBFILE lines: TAG PREFIX GATE seg-options...   -> OUTDIR/TAG_0.txt, summary in 
 import subprocess, sys, os, re, time
 from concurrent.futures import ThreadPoolExecutor
 HERE = os.path.dirname(os.path.abspath(__file__)); os.chdir(HERE)
-SEG = '../ddnet/build-sim/seg'
+SEG = os.environ.get('SEGBIN', '../ddnet/build-sim/segf')
 jobs = [l.split() for l in open(sys.argv[1]) if l.strip() and not l.startswith('#')]
 D = sys.argv[2]; os.makedirs(D, exist_ok=True)
 NW = int(sys.argv[3]) if len(sys.argv) > 3 else 4
