@@ -197,6 +197,26 @@ if args.get('vset') == 'p7':
         f'beam=20000 survevery=2 survive=40 {G3} {RQ} latpen=0.05 latdz=48 quota=10',
     ]
     NVAR = int(args.get('nvar', 4))
+if args.get('vset') == 'p8':
+    # p7 x 3 jitter seeds (stochastic beam, best of 12 per window)
+    PS2 = '1156,1285,1443,1793,2143,2465'
+    SV = 'beam=10000 survevery=2 survive=30'
+    RQ = 'rothook=1 quant=1'
+    G3 = f'ghost=3 hnow=1000 ghoste=0.02 sinks={PS2} ghostsink=1500'
+    BASE = [
+        f'{SV} {G3} kcredit=2 kready=10 {RQ} latpen=0.1 latdz=32 quota=6',
+        f'{SV} {G3} kcredit=2 kready=10 {RQ} latpen=0.2 latdz=24',
+        f'{SV} ghost=3 hnow=600 ghoste=0.0 sinks={PS2} brake=2 kcredit=2 kready=10 {RQ} latpen=0.1 latdz=32 quota=4',
+        f'{SV} {G3} kcredit=2 kready=10 {RQ} latpen=0.1 latdz=32',
+    ]
+    POST = [f'{b} jitter=1 seed={sd}' for sd in (1, 2, 3) for b in BASE]
+    WIDE = [
+        f'beam=20000 survevery=1 survive=40 {G3} {RQ} latpen=0.1 latdz=32 quota=6',
+        f'beam=20000 survevery=2 survive=30 ghost=3 hnow=600 ghoste=0.0 sinks={PS2} brake=2 {RQ} latpen=0.2 latdz=24 quota=3',
+        f'beam=10000 survevery=1 survive=50 ghost=1 hnow=300 ghoste=0.01 {RQ} latpen=0.1 latdz=32 quota=6',
+        f'beam=20000 survevery=2 survive=40 {G3} {RQ} latpen=0.05 latdz=48 quota=10',
+    ]
+    NVAR = int(args.get('nvar', 12))
 STOP_K = int(args.get('stopk', 99999))
 GREN_K = 990
 WIDE_R = [
@@ -269,11 +289,17 @@ def main():
         variants = [variants[int(i)] for i in args['vidx'].split(',')] if args.get('vidx') and not wide else variants[:NVAR]
         if args.get('teeroplan'):
             # shot plan from Teero's schedule, shifted by our lag at the window start (+ drift per window)
-            lag = rt0 - (k0 - 3)
             pf = f'{D}/s{step + 1}.plan'
-            subprocess.run(['python3', 'teero_plan.py', prefix, str(rt0), str(rt0 + maxticks), pf, f'lag={lag}',
-                            f"win={args.get('planwin', 2)}"], capture_output=True, text=True)
-            variants = [v + f' prefire=1 padtop=300 plan={pf}' for v in variants]
+            if args.get('teeroplan') == 'ref':
+                # position-indexed: shots where Teero fired (his track ticks), flight times relative
+                subprocess.run(['python3', 'teero_plan.py', prefix, str(k0 - 5), str(k0 + WINDOW + 40), pf, 'ref=1',
+                                f"win={args.get('planwin', 3)}"], capture_output=True, text=True)
+                variants = [v + f' prefire=1 padtop=300 planref=1 plan={pf}' for v in variants]
+            else:
+                lag = rt0 - (k0 - 3)
+                subprocess.run(['python3', 'teero_plan.py', prefix, str(rt0), str(rt0 + maxticks), pf, f'lag={lag}',
+                                f"win={args.get('planwin', 2)}"], capture_output=True, text=True)
+                variants = [v + f' prefire=1 padtop=300 plan={pf}' for v in variants]
         step += 1
         with ThreadPoolExecutor(len(variants)) as ex:
             res = list(ex.map(lambda iv: run_variant(prefix, gate, commitk, iv[1], f's{step}v{iv[0]}', maxticks), enumerate(variants)))

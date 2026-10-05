@@ -30,7 +30,7 @@ for ei in range(1, len(expl)):
         fi += 1
 # our lag at each of his positions, from the reference run (nearest track point search as in lagtrack.py), or a
 # constant lag (lag=L, ref ignored)
-CONST = int(a['lag']) if 'lag' in a else None
+CONST = int(a['lag']) if 'lag' in a else (0 if a.get('ref') == '1' else None)
 out = '' if CONST is not None else subprocess.run(['../ddnet/build-sim/lab', 'AiP-Gores.map', 'replay ' + ref], capture_output=True, text=True).stdout
 X = {}
 for l in out.splitlines():
@@ -56,6 +56,15 @@ lines = [f'# from Teero fires/explosions, ref {ref}, window {rt0}-{rt1}']
 for fi, f in enumerate(fires):
     if fi not in pairs: continue
     te, ex, ey = expl[pairs[fi]]
+    if a.get('ref') == '1':
+        # position-indexed plan (seg planref=1): window in Teero track ticks where he fired, te = flight time
+        L = 3; ft = round(f + 3); et = max(0, round(te - f))
+        if ft < rt0 or ft > rt1: continue
+        if te - f <= 3 and PB == 'free':
+            lines.append(f'{ft - WIN} {ft + WIN} free   # fire {fi + 1} at {f:.1f} (track {ft}) point-blank')
+        else:
+            lines.append(f'{ft - WIN} {ft + WIN} {ex:.0f} {ey:.0f} {R:.0f} {et} {TOL}   # fire {fi + 1} at {f:.1f} (track {ft}) -> +{te - f:.1f} at {ex:.0f},{ey:.0f}')
+        continue
     L = lag_at(f)
     ft = round(f + L); et = round(te + L)
     if ft < rt0 or ft > rt1: continue

@@ -24,7 +24,12 @@
 //     explodes within r px of (ex,ey); exact aims, pre-fires included) or "t0 t1 free" (point-blank shots allowed);
 //     no other shots; planforce drops states that skipped a target shot (use with prefire=1, padtop for the states);
 //     optional explosion race tick: "t0 t1 ex ey r te tol"; planrv=W [planacc=1.5]: credit up to 4W ticks for a grenade
-//     in flight whose explosion point the tee can still reach (rendezvous)
+//     in flight whose explosion point the tee can still reach (rendezvous); planref=1: t0 t1 are Teero ticks on the
+//     reference line (the shot is allowed where he fired), te is the flight time in ticks; planfree=1 [planlock=25]:
+//     ordinary point-blank shots also outside the plan windows, except in the planlock ticks before a target shot
+//   jitter=J seed=N: +-J ticks of deterministic per-state score noise (different seeds = different searches)
+//   crashw=W [crashn=8]: penalty W ticks per unit of v^2 lost against solid tiles over the next N ticks (current
+//     inputs, hook released)
 //   firealign=c: only grenade shots whose kick (opposite to the aim) has cos >= c with the line direction
 //   quota=Q [qcell=32 qvel=6]: beam diversity, at most Q states per coarse position/velocity cell first, then the best
 //     of the rest (keeps the beam alive in maze sections; physlab4)
@@ -116,6 +121,10 @@ struct SParams
 	int m_FireAllDirs = 0;
 	std::string m_Plan; // shot plan file
 	int m_PlanForce = 0;
+	int m_PlanRef = 0;
+	float m_Jitter = 0; int m_Seed = 0; // jitter=J seed=N: uniform +-J ticks of score noise (stochastic beam)
+	float m_CrashW = 0; int m_CrashN = 8; // crashw=W crashn=N: W ticks per unit of v^2 lost to collisions in the next N ticks
+	int m_PlanFree = 0, m_PlanLock = 25; // planfree=1: point-blank shots also outside the plan, except planlock ticks before a target shot // planref=1: plan windows in Teero ticks on the reference line, te = flight time
 	float m_PlanRv = 0, m_PlanAcc = 1.5f; // rendezvous credit for grenades in flight (planrv=, planacc=)
 	float m_FireAlign = -2; // firealign=c: only shots whose kick has cos >= c with the line direction (-2 = off) // shots with every direction input (default: only towards the line)
 	int m_PendLook = 1; // judge every state with a grenade in flight after its explosion (pre-fired shots)
@@ -1177,7 +1186,11 @@ static void PlanAims(const CTasGame &G, const SPlanEntry &P, std::vector<std::pa
 			return 1e9f;
 		float D = distance(E, P.m_E);
 		if(P.m_Te >= 0)
-			D += 8.0f * std::max(0, std::abs(T - G.m_StartTick - P.m_Te) - P.m_Tol);
+		{
+			// planref: m_Te is the flight time (explosion tick - fire tick); else the explosion race tick
+			const int Want = gs_P.m_PlanRef ? G.m_Tick + 1 + P.m_Te : G.m_StartTick + P.m_Te;
+			D += 8.0f * std::max(0, std::abs(T - Want) - P.m_Tol);
+		}
 		return D;
 	};
 	const int N = 72;
@@ -1239,7 +1252,8 @@ static void GenActions(const CTasGame &G, const STasInput &Prev, std::vector<STa
 		s_vFire.clear();
 		if(CanFire)
 		{
-			const int Rt = G.m_Tick + 1 - G.m_StartTick;
+			// planref: windows are Teero ticks on the reference line (where he fired), else our race ticks
+			const int Rt = gs_P.m_PlanRef ? (int)std::lround(gs_Ref.m_vK[std::clamp(G.m_RefIdx, 0, (int)gs_Ref.m_vK.size() - 1)]) : G.m_Tick + 1 - G.m_StartTick;
 			bool Free = false;
 			static thread_local std::vector<std::pair<int16_t, int16_t>> s_vPA;
 			for(const auto &P : gs_vPlanE)
@@ -1256,6 +1270,19 @@ static void GenActions(const CTasGame &G, const STasInput &Prev, std::vector<STa
 								s_vFire.push_back(q);
 					}
 				}
+			if(!Free && gs_P.m_PlanFree)
+			{
+				// hybrid: ordinary shots anywhere except in the planlock ticks before a planned target shot
+				bool Active = false, Locked = false;
+				for(const auto &P : gs_vPlanE)
+				{
+					if(Rt >= P.m_T0 && Rt <= P.m_T1)
+						Active = true;
+					if(!P.m_Free && Rt < P.m_T0 && Rt >= P.m_T0 - gs_P.m_PlanLock)
+						Locked = true;
+				}
+				Free = !Active && !Locked;
+			}
 			if(Free)
 			{
 				s_vPA.clear();
@@ -1501,6 +1528,13 @@ int main(int argc, const char **argv)
 		else if(K == "plan") gs_P.m_Plan = V;
 		else if(K == "planrv") gs_P.m_PlanRv = std::stof(V);
 		else if(K == "planacc") gs_P.m_PlanAcc = std::stof(V);
+		else if(K == "planfree") gs_P.m_PlanFree = std::stoi(V);
+		else if(K == "planlock") gs_P.m_PlanLock = std::stoi(V);
+		else if(K == "jitter") gs_P.m_Jitter = std::stof(V);
+		else if(K == "seed") gs_P.m_Seed = std::stoi(V);
+		else if(K == "crashw") gs_P.m_CrashW = std::stof(V);
+		else if(K == "crashn") gs_P.m_CrashN = std::stoi(V);
+		else if(K == "planref") gs_P.m_PlanRef = std::stoi(V);
 		else if(K == "planforce") gs_P.m_PlanForce = std::stoi(V);
 		else if(K == "firealign") gs_P.m_FireAlign = std::stof(V);
 		else if(K == "firealldirs") gs_P.m_FireAllDirs = std::stoi(V);
@@ -1851,6 +1885,17 @@ int main(int argc, const char **argv)
 						else
 							S += gs_P.m_HookIdle;
 					}
+					if(gs_P.m_Jitter > 0)
+					{
+						// stochastic beam: deterministic per (seed, state) noise on the score
+						uint64_t h = Tmp.Hash() ^ (0x9E3779B97F4A7C15ull * (uint64_t)(gs_P.m_Seed + 1));
+						h ^= h >> 33;
+						h *= 0xff51afd7ed558ccdull;
+						h ^= h >> 33;
+						S += gs_P.m_Jitter * ((h & 0xffffff) / (float)0xffffff - 0.5f) * 2.0f;
+					}
+					if(gs_P.m_CrashW > 0)
+						S += gs_P.m_CrashW * Tmp.CrashLoss(gs_P.m_CrashN); // v^2 about to be lost against walls/ceilings
 					if(gs_P.m_PlanRv > 0 && Tmp.NumProjectiles() > 0)
 					{
 						// rendezvous credit: a grenade in flight is worth up to 4 x planrv ticks if the tee can still be

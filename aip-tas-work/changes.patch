@@ -259,7 +259,7 @@
  }
 --- a/tas-work/NOTES.md
 +++ b/tas-work/NOTES.md
-@@ -84,3 +84,435 @@
+@@ -84,3 +84,446 @@
  - Corridor 1 from a Teero-like crossing (900,465,25,-13 spent): 294-296 (Teero 298). Our pre-start crossing gives ~306.
  - TileExists lookup cache in CCollision (opt-in flag, TAS only): step 1.54 -> 1.20 us, identical replays.
  - chain.py: segment chain over distance gates with several configs (gains ~1-2 ticks/gate; slow).
@@ -695,3 +695,14 @@
 +  next to the tee at 1163 + corner point-blank at 1171 (lag +3/+4 through the hairpin). Catalog-only plans (guessed
 +  fire windows) were much worse (1245-1276). rh.py teeroplan=1 [planwin=3]: per-window plan with the current lag.
 +  Chain t1 (vset=p7 + teeroplan) from runs/plan1/pc0 cut at rt 1215.
++- Plan-mode follow-ups on exit -> k1215 (each a single run, run-to-run noise +-3-5): no plan 1226/1228/1230; full Teero
++  schedule (time-indexed, per-shot lag) 1223/1226/1232 -> not systematically better (the 1223 was a good draw);
++  hybrid (his pre-fires only + free point-blanks, planfree/planlock) 1242-1244 (worse); position-indexed (planref) full
++  1230-1232, next window k1208 -> 1358: plan 1392 vs no plan 1375 (seg's own kick at 1250, +1226, beats his slot).
++  Chain t1 with time-indexed plans broke when our lag drifted inside a window (only 3 shots fired). Stopped.
++  => Teero's shot timing alone is not what we lack.
++- seg crashw=W [crashn=8] (new): penalty for v^2 about to be lost against solids (CTasGame::CrashLoss) - testing.
++- crashw (v^2-loss penalty) on exit -> k1215: 1228/1228/1229 (n8), 1239 (n15) vs 1226-1230. No gain.
++- seg jitter=J seed=N (new, stochastic beam): exit -> k1215 with 8 seeds: 1227-1231. Window distribution over ~20 runs
++  ~1226-1230 (rare 1223) -> best-of-N sampling worth ~1-3 ticks per window. Chain b12 (vset=p8: 4 setups x 3 seeds,
++  best of 12 per window) from runs/ex/e1025.txt to the finish.
