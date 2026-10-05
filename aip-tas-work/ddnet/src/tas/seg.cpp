@@ -186,6 +186,7 @@ struct SParams
 	float m_QCell = 32, m_QVel = 6;
 	float m_KCredit = 0; // energy credit for the point-blank kick available when the grenade is (nearly) loaded
 	int m_KReady = 4;
+	float m_BoxE = 0; // boxe=L: box gate value = race tick - L x (v^2 - y) (L large: most energy at the box)
 	float m_ERel = 0; // erel=1: ghost energy credit relative to the reference's own energy at the matched point
 	int m_FireMax = -1; // firemax=N: drop states that keep a loaded grenade for more than N ticks
 	float m_KFut = 0; // kfut=W: credit W x the kick available where the tee flies to by the time the reload is back
@@ -1687,6 +1688,7 @@ int main(int argc, const char **argv)
 		else if(K == "kfut") gs_P.m_KFut = std::stof(V);
 		else if(K == "firemax") gs_P.m_FireMax = std::stoi(V);
 		else if(K == "erel") gs_P.m_ERel = std::stof(V);
+		else if(K == "boxe") gs_P.m_BoxE = std::stof(V);
 		else if(K == "kfutn") gs_P.m_KFutN = std::stoi(V);
 		else if(K == "tp") std::sscanf(V.c_str(), "%f,%f,%f,%f", &gs_P.m_TpPos.x, &gs_P.m_TpPos.y, &gs_P.m_TpVel.x, &gs_P.m_TpVel.y);
 		else if(K == "latdz") gs_P.m_LatDz = std::stof(V);
@@ -1985,7 +1987,7 @@ int main(int argc, const char **argv)
 						float Ee;
 						float V = gs_P.m_Gate == "finish" ? (float)(Tmp.m_FinishTick - Tmp.m_StartTick) : EstTotal(Tmp, &Ee);
 						if(gs_Box)
-							V = (float)Rt + 0.01f * Tmp.Vel().y;
+							V = (float)Rt + 0.01f * Tmp.Vel().y - gs_P.m_BoxE * (dot(Tmp.Vel(), Tmp.Vel()) - Tmp.Pos().y);
 						// (EstTotal includes the time model's horizon beyond the gate, so energy at the gate counts)
 						if(gs_P.m_Gate == "finish")
 							Ee = EffEnergy(Tmp);

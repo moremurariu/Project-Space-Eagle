@@ -479,7 +479,7 @@
  }
 --- a/tas-work/NOTES.md
 +++ b/tas-work/NOTES.md
-@@ -84,3 +84,505 @@
+@@ -84,3 +84,525 @@
  - Corridor 1 from a Teero-like crossing (900,465,25,-13 spent): 294-296 (Teero 298). Our pre-start crossing gives ~306.
  - TileExists lookup cache in CCollision (opt-in flag, TAS only): step 1.54 -> 1.20 us, identical replays.
  - chain.py: segment chain over distance gates with several configs (gains ~1-2 ticks/gate; slow).
@@ -985,3 +985,23 @@
 +  Teero instead turns with kicks at bends (e.g. S-bend k1945: a braking/turning kick) and arrives slower.
 +- Chain g1 step 2 (k1174 -> k1249, first right U-turn): best 1250 = 4 behind Teero (was 4 ahead at k1174): Teero's
 +  pre-fire + point-blank pair at the apex (k1158/k1165) and kicks at k1192/k1217 vs our 1158/1183 then a 45-tick gap.
++- More window tests: gcred (loaded-grenade reservation value) 200/500: U-turn-1 1251/1249 [1251], U-turn-4 1917/1946
++  [1915] -> off. Taut reference line (tautref.py: Teero's track pulled tight with >= 40/60 px clearance, k labels kept):
++  exit window 1185/1170 [1172], corridor 3 (cut 1300 -> k1400) 1437/1433 [1430] -> off. beam 40000: 1171 [1172],
++  corridor 3 identical path to beam 10000 -> beam width is not the limit; cpos=8 cvel=1: 1428 [1430]. latpen 0.05/48
++  with the apex plan: NOGATE / 1260 [1248-1251] -> strong line following stays.
++- **Kick spots match Teero's.** In corridor 2 / U-turn 1 our kicks land on the same blocks as his (5990 vs 5937,
++  6857 vs 6931, 7583 vs 7567, 9279 vs 9324, 8463 vs 8504, 7578 vs 7629) with the same strength: the catalog's
++  velocities are per 60-fps video frame (x1.2 = per tick: his 41.3 vs our 41.4 after the first block). Teero's U-turn-1
++  structure: no kick on the approach after k1096, a pre-fire at rt ~1137 at the far right wall (extracted aim reads
++  -177, 180 deg off) exploding at the apex k1158, point-blank k1165. Plan with that structure (apex.plan: shots only
++  1126-1142 at the apex wall, then free): 1251/1248/1251 [chain best 1250]. Box gate with an energy objective (new
++  seg `boxe=L`): best |v| 48 at x 7685 rt 1227; Teero ~56 there ~12 ticks earlier. The time goes between kicks: e.g.
++  after the column kick (1087) the descent to the U-turn should add +330 v^2 but hook line-following eats it.
++- Recurring loss: a kick that accelerates right before a bend, then hook braking (step 4: kick 1242 to |v| 62, then
++  -3200 v^2 of braking into the dip at x~5800; Teero's kick there (k1256) points him down into the dip instead).
++  ghostsink 3000 (energy devalued from further before sinks) on that window: 1407/1409 [1410/1409] (small).
++- Chain g2: step 3 (k1174 -> k1324) 1331, step 4 (-> k1399) 1409, step 5 (-> k1474) 1487 (16 behind Teero).
++  Winning setups: always latpen 0.2/24 (vcap 1.25 or 1.1); quota / brake=2 / Teero-plan variants never win in the
++  corridors -> vset p11 (B1 x seeds, vcap 1.1 / 1.0+bp10, ghostsink 3000, one quota for the maze). Resumed after step 5.
++- Map settings: only `sv_kog_map_quests Q_NO_HAMMER,Q_NO_PLATFORM,Q_TEAM_15` (no tune commands).
