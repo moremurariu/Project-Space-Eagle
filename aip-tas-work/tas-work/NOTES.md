@@ -559,3 +559,10 @@ Teero played the **KoG** version of AiP-Gores (user, from Teero). Our runs so fa
   Its line shows a real gain though: no ceiling bump at rt 884 (+224 E) and ~2 ticks ahead through the dive.
 - **977 (viable)**: anchored seg from rt 790, ghoste=0.08 (energy weighted higher), gatejump=1, beam 20000 ->
   t* 975.80; climb reaches the shaft at 1006. `pre_grenade_kog/kog_pregren_977.txt`.
+- **976 (viable)**: from the 977 LNS state (t* 975.53), anchored seg from rt 690 with `latpen=0.1 latdz=8` against a
+  reference built from the anchor itself (mktrack.py) + ghoste=0.06, beam 20000 -> t* 974.71, deviation from rt ~779,
+  climb reaches the shaft at 1007. Strong line penalties keep deviations on the anchor's polished line, so their
+  continuations stay good (latpen=0.3 latdz=4: no gain). lns3.py: `latstrong=P` (share of jobs with latpen 0.05-0.3,
+  latdz 4-16), `reftrack=FILE` (rebuilt from the best run after every improvement).
+- Replaying a run's own inputs from a state perturbed by 1-2 px / 0.1 px/t freezes in almost every case (`perturb`):
+  the line is knife-edge, so gains can't be carried by replay; time-indexed tracking (track=, ancinjt=) also fails.

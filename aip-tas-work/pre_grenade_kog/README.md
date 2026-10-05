@@ -1,6 +1,11 @@
 # KoG AiP-Gores: pre-grenade runs
 
-## Current best: grenade pickup at race tick 977 (`kog_pregren_977.txt`, 1045 inputs)
+## Current best: grenade pickup at race tick 976 (`kog_pregren_976.txt`, 1044 inputs)
+Server-identical (start 68, pickup at input 1044), no freeze; climbs to the upper shaft at race tick 1007. Found by
+anchored seg from rt 690 with a strong line penalty against the current best (latpen=0.1 latdz=8, ghoste=0.06);
+deviates from the 977 run at rt ~779.
+
+## Previous: grenade pickup at race tick 977 (`kog_pregren_977.txt`, 1045 inputs)
 Same format as below (spawn 144,208, race starts at input 68). Server-identical over all 1045 ticks (TasReplay on
 upstream DDNet 470eead4a, see ../setup_upstream.sh), no freeze, no double start. Post-pickup viability: the tee still
 has its air jump at the pickup and a search from the pickup reaches the upper shaft (x 5150-5420, y 1900-2200) at

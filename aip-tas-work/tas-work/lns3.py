@@ -19,9 +19,10 @@ D = sys.argv[2]; os.makedirs(D, exist_ok=True)
 args = dict(a.split('=', 1) for a in sys.argv[3:])
 MIN = float(args.get('minutes', 120)); WORK = int(args.get('workers', 4)); CUTMIN = int(args.get('cutmin', 0))
 CUTMAX = int(args['cutmax']) if 'cutmax' in args else None
-REF = args.get('ref', 'own_track.txt'); LATE = float(args.get('late', 0.3))
+REF = args.get('reftrack', args.get('ref', 'own_track.txt')); LATE = float(args.get('late', 0.3))
 BEAMS = [int(b) for b in args.get('beams', '3000,5000,5000,8000').split(',')]
 GHOSTE = [float(b) for b in args.get('ghoste', '0.01,0.02,0.02,0.03').split(',')]
+LATSTRONG = float(args.get('latstrong', 0.0))
 best_file = f'{D}/best.txt'; log_file = f'{D}/lns.log'; lock = threading.Lock()
 SINKS = '315,550,725,900'
 
@@ -76,7 +77,11 @@ def variant(rng):
         v['cpos'] = 8; v['cvel'] = 1
     if rng.random() < 0.3:
         v['pjc'] = 250; v['pgc'] = 250
-    if rng.random() < 0.35:
+    r = rng.random()
+    if r < LATSTRONG:
+        # stay on the anchor's own line (reference = the current best): deviations keep its polished continuation
+        v['latpen'] = rng.choice([0.05, 0.1, 0.1, 0.2, 0.3]); v['latdz'] = rng.choice([4, 8, 8, 16])
+    elif r < LATSTRONG + 0.2:
         v['latpen'] = rng.choice([0.03, 0.05, 0.05]); v['latdz'] = rng.choice([24, 32])
     if rng.random() < 0.5:
         v['jitter'] = rng.choice([0.3, 0.6, 1.0, 1.5]); v['seed'] = rng.randrange(1 << 30)
@@ -144,6 +149,10 @@ def job(seed):
                 open(f'{D}/best_t', 'w').write(f'{s[0]:.4f}')
                 open(f'{D}/best_{s[1]}_{s[0]:.3f}.txt', 'w').write(open(best_file).read())
                 msg += f'  ** NEW BEST (was t* {cur:.3f})'
+                if args.get('reftrack'):
+                    # keep the reference line = the current best (lag is measured against the anchor itself)
+                    subprocess.run(['./mktrack.py', best_file, f'{D}/track_tmp.txt'], capture_output=True)
+                    os.replace(f'{D}/track_tmp.txt', args['reftrack'])
     if os.path.exists(out):
         os.remove(out)
     log(msg)

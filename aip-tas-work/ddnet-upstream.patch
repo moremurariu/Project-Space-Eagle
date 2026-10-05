@@ -1,5 +1,5 @@
 diff --git a/CMakeLists.txt b/CMakeLists.txt
-index 10942e071..7d69a6464 100644
+index 10942e071..60416471f 100644
 --- a/CMakeLists.txt
 +++ b/CMakeLists.txt
 @@ -3486,6 +3486,7 @@ if((GTEST_FOUND OR DOWNLOAD_GTEST) AND SERVER)
@@ -22,7 +22,7 @@ index 10942e071..7d69a6464 100644
 +  # sources also makes ninja generate them before compiling the prediction code that includes the header
 +  list(APPEND TAS_EXTRA_SRC ${PROJECT_BINARY_DIR}/src/generated/server_data.cpp ${PROJECT_BINARY_DIR}/src/generated/server_data.h
 +    ${PROJECT_BINARY_DIR}/src/generated/client_data.h)
-+  foreach(TAS_TOOL mapdump tas lab tas2 polish nest pre seg pf match bench polish2)
++  foreach(TAS_TOOL mapdump tas lab tas2 polish nest pre seg pf match bench polish2 perturb)
 +    if(EXISTS ${PROJECT_SOURCE_DIR}/src/tas/${TAS_TOOL}.cpp)
 +      add_executable(${TAS_TOOL} EXCLUDE_FROM_ALL
 +        src/tas/${TAS_TOOL}.cpp
