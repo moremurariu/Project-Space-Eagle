@@ -1,0 +1,2429 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index 10942e0..fb0d711 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -3486,6 +3486,7 @@ if((GTEST_FOUND OR DOWNLOAD_GTEST) AND SERVER)
+     snapshot_test.cpp
+     str_test.cpp
+     swap_endian_test.cpp
++    tas_server_test.cpp
+     teehistorian_test.cpp
+     test.cpp
+     test.h
+@@ -3514,6 +3515,20 @@ if((GTEST_FOUND OR DOWNLOAD_GTEST) AND SERVER)
+     # tidy-alphabetical-end
+   )
+ 
++  file(GLOB TAS_EXTRA_SRC src/game/client/prediction/*.cpp src/game/client/prediction/entities/*.cpp
++    src/game/client/laser_data.cpp src/game/client/pickup_data.cpp src/game/client/projectile_data.cpp
++    src/tas/sim.cpp src/tas/fast.cpp)
++  list(APPEND TAS_EXTRA_SRC ${PROJECT_BINARY_DIR}/src/generated/client_data.cpp ${PROJECT_BINARY_DIR}/src/generated/client_data.h)
++  foreach(TAS_TOOL replay fastcheck eacct ddsearch)
++    if(EXISTS ${PROJECT_SOURCE_DIR}/src/tas/${TAS_TOOL}.cpp)
++      add_executable(${TAS_TOOL} EXCLUDE_FROM_ALL src/tas/${TAS_TOOL}.cpp ${TAS_EXTRA_SRC}
++        $<TARGET_OBJECTS:engine-shared> $<TARGET_OBJECTS:game-shared> $<TARGET_OBJECTS:rust-bridge-shared> ${DEPS})
++      target_link_libraries(${TAS_TOOL} ${LIBS})
++      list(APPEND TARGETS_OWN ${TAS_TOOL})
++      list(APPEND TARGETS_LINK ${TAS_TOOL})
++    endif()
++  endforeach()
++
+   set(TARGET_TESTRUNNER testrunner)
+   add_executable(${TARGET_TESTRUNNER} EXCLUDE_FROM_ALL
+     ${TESTS}
+diff --git a/src/game/collision.cpp b/src/game/collision.cpp
+index bf35639..182acf3 100644
+--- a/src/game/collision.cpp
++++ b/src/game/collision.cpp
+@@ -269,6 +269,8 @@ int CCollision::GetMoveRestrictions(CALLBACK_SWITCHACTIVE pfnSwitchActive, void
+ 			vec2(-1, 0),
+ 			vec2(0, -1)};
+ 	dbg_assert(0.0f <= Distance && Distance <= 32.0f, "Invalid Distance: %f", Distance);
++	if(m_FastOk && ms_FastPaths)
++		return 0; // InitFast() only enables the fast paths on maps without stoppers, doors, front or switch layers
+ 	int Restrictions = 0;
+ 	for(int d = 0; d < NUM_MR_DIRS; d++)
+ 	{
+@@ -356,6 +358,47 @@ int CCollision::IntersectLine(vec2 Pos0, vec2 Pos1, vec2 *pOutCollision, vec2 *p
+ 
+ int CCollision::IntersectLineTeleHook(vec2 Pos0, vec2 Pos1, vec2 *pOutCollision, vec2 *pOutBeforeCollision, int *pTeleNr) const
+ {
++	if(m_FastOk && ms_FastPaths && !FastAnySolid(std::min(Pos0.x, Pos1.x), std::min(Pos0.y, Pos1.y), std::max(Pos0.x, Pos1.x), std::max(Pos0.y, Pos1.y)))
++	{
++		// no tele layer, no through tiles, no solid tile in the segment's box: the per-pixel loop finds nothing
++		if(pTeleNr)
++			*pTeleNr = 0;
++		if(pOutCollision)
++			*pOutCollision = Pos1;
++		if(pOutBeforeCollision)
++			*pOutBeforeCollision = Pos1;
++		return 0;
++	}
++	if(m_FastOk && ms_FastPaths)
++	{
++		// same sampling as below; without tele / through tiles only solid tiles can stop the hook
++		float Distance = distance(Pos0, Pos1);
++		int End(Distance + 1);
++		vec2 Last = Pos0;
++		if(pTeleNr)
++			*pTeleNr = 0;
++		for(int i = 0; i <= End; i++)
++		{
++			float a = i / (float)End;
++			vec2 Pos = mix(Pos0, Pos1, a);
++			int ix = round_to_int(Pos.x);
++			int iy = round_to_int(Pos.y);
++			if(FastSolidAt(ix, iy))
++			{
++				if(pOutCollision)
++					*pOutCollision = Pos;
++				if(pOutBeforeCollision)
++					*pOutBeforeCollision = Last;
++				return GetTile(ix, iy);
++			}
++			Last = Pos;
++		}
++		if(pOutCollision)
++			*pOutCollision = Pos1;
++		if(pOutBeforeCollision)
++			*pOutBeforeCollision = Pos1;
++		return 0;
++	}
+ 	float Distance = distance(Pos0, Pos1);
+ 	int End(Distance + 1);
+ 	vec2 Last = Pos0;
+@@ -504,6 +547,9 @@ void CCollision::MovePoint(vec2 *pInoutPos, vec2 *pInoutVel, float Elasticity, i
+ bool CCollision::TestBox(vec2 Pos, vec2 Size) const
+ {
+ 	Size *= 0.5f;
++	if(m_FastOk && ms_FastPaths)
++		return FastCheckPoint(Pos.x - Size.x, Pos.y - Size.y) || FastCheckPoint(Pos.x + Size.x, Pos.y - Size.y) ||
++		       FastCheckPoint(Pos.x - Size.x, Pos.y + Size.y) || FastCheckPoint(Pos.x + Size.x, Pos.y + Size.y);
+ 	if(CheckPoint(Pos.x - Size.x, Pos.y - Size.y))
+ 		return true;
+ 	if(CheckPoint(Pos.x + Size.x, Pos.y - Size.y))
+@@ -517,6 +563,8 @@ bool CCollision::TestBox(vec2 Pos, vec2 Size) const
+ 
+ bool CCollision::IsOnGround(vec2 Pos, float Size) const
+ {
++	if(m_FastOk && ms_FastPaths)
++		return FastCheckPoint(Pos.x + Size / 2, Pos.y + Size / 2 + 5) || FastCheckPoint(Pos.x - Size / 2, Pos.y + Size / 2 + 5);
+ 	if(CheckPoint(Pos.x + Size / 2, Pos.y + Size / 2 + 5))
+ 		return true;
+ 	if(CheckPoint(Pos.x - Size / 2, Pos.y + Size / 2 + 5))
+@@ -540,6 +588,14 @@ void CCollision::MoveBox(vec2 *pInoutPos, vec2 *pInoutVel, vec2 Size, vec2 Elast
+ 		float ElasticityX = std::clamp(Elasticity.x, -1.0f, 1.0f);
+ 		float ElasticityY = std::clamp(Elasticity.y, -1.0f, 1.0f);
+ 
++		// TAS fast path: no solid tile anywhere near the swept box -> no TestBox can hit, only the position steps remain
++		bool Free = false;
++		if(m_FastOk && ms_FastPaths)
++		{
++			vec2 End = Pos + Vel;
++			float Hx = Size.x * 0.5f + 2.0f, Hy = Size.y * 0.5f + 2.0f;
++			Free = !FastAnySolid(std::min(Pos.x, End.x) - Hx, std::min(Pos.y, End.y) - Hy, std::max(Pos.x, End.x) + Hx, std::max(Pos.y, End.y) + Hy);
++		}
+ 		for(int i = 0; i <= Max; i++)
+ 		{
+ 			// Early break as optimization to stop checking for collisions for
+@@ -551,6 +607,13 @@ void CCollision::MoveBox(vec2 *pInoutPos, vec2 *pInoutVel, vec2 Size, vec2 Elast
+ 			}
+ 
+ 			vec2 NewPos = Pos + Vel * Fraction; // TODO: this row is not nice
++			if(Free)
++			{
++				if(NewPos == Pos)
++					break;
++				Pos = NewPos;
++				continue;
++			}
+ 
+ 			// Fraction can be very small and thus the calculation has no effect, no
+ 			// reason to continue calculating.
+@@ -1304,3 +1367,40 @@ size_t CCollision::TeleAllSize(int Number)
+ 		Total += m_TeleOthers[Number].size();
+ 	return Total;
+ }
++
++bool CCollision::ms_FastPaths = false;
++
++void CCollision::InitFast()
++{
++	m_FastOk = false;
++	if(!m_pTiles || m_pFront || m_pTele || m_pSpeedup || m_pSwitch || m_pTune || m_pDoor)
++		return;
++	const int N = m_Width * m_Height;
++	m_vFastSolid.assign(N, 0);
++	for(int i = 0; i < N; i++)
++	{
++		int T = m_pTiles[i].m_Index;
++		// tiles that would make MoveRestrictions, hook rays or IsThrough behave differently
++		if(T == TILE_STOP || T == TILE_STOPS || T == TILE_STOPA || T == TILE_THROUGH_ALL || T == TILE_THROUGH_DIR || T == TILE_THROUGH || T == TILE_THROUGH_CUT)
++			return;
++		m_vFastSolid[i] = (T == TILE_SOLID || T == TILE_NOHOOK) ? 1 : 0;
++	}
++	m_vFastSum.assign((m_Width + 1) * (m_Height + 1), 0);
++	for(int y = 0; y < m_Height; y++)
++		for(int x = 0; x < m_Width; x++)
++			m_vFastSum[(y + 1) * (m_Width + 1) + x + 1] = m_vFastSolid[y * m_Width + x] + m_vFastSum[y * (m_Width + 1) + x + 1] +
++								     m_vFastSum[(y + 1) * (m_Width + 1) + x] - m_vFastSum[y * (m_Width + 1) + x];
++	m_FastOk = true;
++}
++
++bool CCollision::FastAnySolid(float x0, float y0, float x1, float y1) const
++{
++	// conservative: pixel coordinates are widened by 2 before taking tiles, the same clamp as GetTile
++	int tx0 = std::clamp((int)std::floor((x0 - 2.0f) / 32.0f), 0, m_Width - 1);
++	int ty0 = std::clamp((int)std::floor((y0 - 2.0f) / 32.0f), 0, m_Height - 1);
++	int tx1 = std::clamp((int)std::floor((x1 + 2.0f) / 32.0f), 0, m_Width - 1);
++	int ty1 = std::clamp((int)std::floor((y1 + 2.0f) / 32.0f), 0, m_Height - 1);
++	const int W = m_Width + 1;
++	int Sum = m_vFastSum[(ty1 + 1) * W + tx1 + 1] - m_vFastSum[ty0 * W + tx1 + 1] - m_vFastSum[(ty1 + 1) * W + tx0] + m_vFastSum[ty0 * W + tx0];
++	return Sum > 0;
++}
+diff --git a/src/game/collision.h b/src/game/collision.h
+index 18019f5..49e23bd 100644
+--- a/src/game/collision.h
++++ b/src/game/collision.h
+@@ -7,6 +7,8 @@
+ 
+ #include <engine/shared/protocol.h>
+ 
++#include <algorithm>
++#include <cstdint>
+ #include <map>
+ #include <vector>
+ 
+@@ -34,6 +36,22 @@ struct CAntibotMapData;
+ class CCollision
+ {
+ public:
++	// TAS: exact fast paths (precomputed solid table + broad-phase rectangle checks, ideas from ddnet_physics).
++	// Only active on maps where they are provably identical (InitFast() checks the layers).
++	static bool ms_FastPaths;
++	void InitFast();
++	bool m_FastOk = false;
++	std::vector<uint8_t> m_vFastSolid; // per tile: 1 if TILE_SOLID or TILE_NOHOOK
++	std::vector<int> m_vFastSum; // 2D prefix sums of m_vFastSolid, (W+1) x (H+1)
++	bool FastAnySolid(float x0, float y0, float x1, float y1) const; // any solid tile intersecting the rectangle (inclusive, conservative)
++	bool FastSolidAt(int x, int y) const
++	{
++		int Nx = std::clamp(x / 32, 0, m_Width - 1);
++		int Ny = std::clamp(y / 32, 0, m_Height - 1);
++		return m_vFastSolid[Ny * m_Width + Nx];
++	}
++	bool FastCheckPoint(float x, float y) const { return FastSolidAt(round_to_int(x), round_to_int(y)); }
++
+ 	CCollision();
+ 	~CCollision();
+ 
+diff --git a/src/tas/ddsearch.cpp b/src/tas/ddsearch.cpp
+new file mode 100644
+index 0000000..c63a716
+--- /dev/null
++++ b/src/tas/ddsearch.cpp
+@@ -0,0 +1,729 @@
++// ddsearch: beam search to the grenade pickup on the exact fast stepper (CFast).
++//
++//   ddsearch MAP best=FILE cut=RT [key=value ...]
++//
++// Starts from the state of the best run (inputs from spawn) at race tick RT (negative: before the start line) and
++// searches to the grenade pickup. The best run's own continuation always stays in the beam (incumbent), so a search
++// can only find an earlier pickup or nothing. States are ranked by a time model against the best run (reference):
++//   est = rt + (T_ref - t_match) + hnow * (1/v_tan - 1/v_ref) - ge * (E - E_ref) + lp * max(0, lat - latdz)
++// t_match: fractional reference tick of the nearest reference point (tracked forward), v_tan: displacement per tick
++// along the reference tangent (x scaled by the velocity ramp), E = |v|^2 - y.
++// A kept state must survive `survive` ticks under at least one simple continuation (dir, hook kept/released, jump).
++// Hook aims: `angles` evenly spaced, plus rotation-pulse aims (rothook=1: +-30 deg around the velocity normals in
++// 3 deg steps; rothook=2: the exact edge of the region where the hook pull is accepted above the speed limit,
++// found by bisection, and 4 aims slightly inside it).
++// Keys: beam angles hnow ge lp latdz threads seed jitter out cellpos cellvel abort rothook survive incumbent
++// Writes OUT (inputs from spawn to the pickup) when it finds an earlier pickup, verified on CTasGame with the fast
++// collision paths off (plain DDNet prediction code).
++#define private public
++#define protected public
++#include <game/client/prediction/entities/character.h>
++#undef private
++#undef protected
++
++#include "fast.h"
++#include "tasio.h"
++
++#include <game/collision.h>
++#include <game/gamecore.h>
++
++#include <algorithm>
++#include <atomic>
++#include <chrono>
++#include <cmath>
++#include <cstdio>
++#include <cstdlib>
++#include <cstring>
++#include <mutex>
++#include <random>
++#include <string>
++#include <thread>
++#include <unordered_map>
++#include <vector>
++
++struct SRefPt
++{
++	vec2 m_Pos;
++	vec2 m_Vel;
++	float m_E;
++	float m_VTan; // displacement per tick along the tangent
++	vec2 m_Tan;
++};
++
++static std::vector<SRefPt> gs_vRef; // index = race tick of the reference run
++static int gs_RefEnd; // reference pickup race tick
++static int gs_RefStart; // reference start tick (reference index i = race tick i + 1 - start)
++
++static int gs_Beam = 8000;
++static int gs_Angles = 64;
++static float gs_HNow = 600.0f;
++static float gs_Ge = 0.02f;
++static float gs_Lp = 0.0f;
++static float gs_LatDz = 24.0f;
++static int gs_Threads = 1;
++static float gs_Jitter = 0.0f;
++static float gs_CellPos = 8.0f;
++static float gs_CellVel = 1.0f;
++static float gs_Abort = 25.0f; // give up when the best estimate is this many ticks behind the reference
++static int gs_RotHook = 1; // add rotation-pulse hook aims (towards the reference tangent)
++
++static float RampScale(vec2 Vel)
++{
++	return VelocityRamp(length(Vel) * 50, CTuningParams::DEFAULT.m_VelrampStart, CTuningParams::DEFAULT.m_VelrampRange, CTuningParams::DEFAULT.m_VelrampCurvature);
++}
++
++struct SNode
++{
++	int m_Parent;
++	STasInput m_In;
++};
++
++struct SState
++{
++	CFast m_F;
++	int m_Node; // index into the node array of its layer
++	int m_RefIdx; // tracked reference index
++	float m_Score;
++	int m_LastHook;
++	int m_LastJump;
++};
++
++static float Score(SState &S, std::mt19937 *pRng)
++{
++	const CFast &F = S.m_F;
++	vec2 P = F.m_Core.m_Pos, V = F.m_Core.m_Vel;
++	int N = (int)gs_vRef.size();
++	int Lo = std::max(0, S.m_RefIdx - 8), Hi = std::min(N - 2, S.m_RefIdx + 60);
++	float BestD = 1e18f;
++	float BestT = S.m_RefIdx;
++	int BestI = S.m_RefIdx;
++	for(int i = Lo; i <= Hi; i++)
++	{
++		vec2 A = gs_vRef[i].m_Pos, B = gs_vRef[i + 1].m_Pos;
++		vec2 AB = B - A;
++		float L2 = dot(AB, AB);
++		float u = L2 > 0 ? std::clamp(dot(P - A, AB) / L2, 0.0f, 1.0f) : 0.0f;
++		vec2 Q = A + AB * u;
++		float D = dot(P - Q, P - Q);
++		if(D < BestD)
++		{
++			BestD = D;
++			BestT = i + u;
++			BestI = i;
++		}
++	}
++	S.m_RefIdx = BestI;
++	const SRefPt &R = gs_vRef[BestI];
++	float Lat = std::sqrt(BestD);
++	float Ramp = RampScale(V);
++	float VTan = V.x * Ramp * R.m_Tan.x + V.y * R.m_Tan.y;
++	float E = dot(V, V) - P.y;
++	float Rt = (float)F.RaceTick();
++	float Est = Rt + (gs_RefEnd - (BestT + 1 - gs_RefStart));
++	Est += gs_HNow * (1.0f / std::max(VTan, 1.0f) - 1.0f / std::max(R.m_VTan, 1.0f));
++	Est -= gs_Ge * (E - R.m_E);
++	if(gs_Lp > 0 && Lat > gs_LatDz)
++		Est += gs_Lp * (Lat - gs_LatDz);
++	if(pRng && gs_Jitter > 0)
++		Est += std::uniform_real_distribution<float>(-gs_Jitter, gs_Jitter)(*pRng);
++	return Est;
++}
++
++static uint64_t CellKey(const SState &S)
++{
++	const CCharacterCore &C = S.m_F.m_Core;
++	int64_t px = (int64_t)std::floor(C.m_Pos.x / gs_CellPos), py = (int64_t)std::floor(C.m_Pos.y / gs_CellPos);
++	int64_t vx = (int64_t)std::floor(C.m_Vel.x / gs_CellVel), vy = (int64_t)std::floor(C.m_Vel.y / gs_CellVel);
++	int64_t hs = C.m_HookState + 2;
++	int64_t hx = 0, hy = 0;
++	if(C.m_HookState == HOOK_GRABBED || C.m_HookState == HOOK_FLYING)
++	{
++		hx = (int64_t)std::floor(C.m_HookPos.x / 16);
++		hy = (int64_t)std::floor(C.m_HookPos.y / 16);
++	}
++	uint64_t h = 1469598103934665603ull;
++	auto Mix = [&](int64_t v) { h = (h ^ (uint64_t)v) * 1099511628211ull; };
++	Mix(px);
++	Mix(py);
++	Mix(vx);
++	Mix(vy);
++	Mix(hs);
++	Mix(hx);
++	Mix(hy);
++	Mix(C.m_Jumped);
++	Mix(S.m_LastJump);
++	Mix(S.m_LastHook);
++	return h;
++}
++
++static int gs_Incumbent = 1;
++static int gs_Survive = 8; // ticks a kept state must survive under at least one simple continuation (0 = off)
++
++// true if some simple continuation (dir -1/0/1, hook kept or released, optional immediate jump) survives Ticks ticks
++static bool Survives(const SState &S, int Ticks)
++{
++	if(Ticks <= 0)
++		return true;
++	const CCharacterCore &C = S.m_F.m_Core;
++	for(int J = 0; J <= 1; J++)
++		for(int H = (S.m_LastHook ? 1 : 0); H >= 0; H--)
++			for(int Dir : {0, 1, -1})
++			{
++				if(J && ((C.m_Jumped & 1) && S.m_LastJump))
++					continue;
++				CFast F = S.m_F;
++				bool Ok = true;
++				for(int t = 0; t < Ticks; t++)
++				{
++					STasInput In;
++					In.m_Dir = Dir;
++					In.m_Jump = (J && t == 0) ? 1 : 0;
++					In.m_Hook = H;
++					In.m_Fire = 0;
++					In.m_Weapon = -1;
++					In.m_TX = 0;
++					In.m_TY = -1;
++					F.Step(In);
++					if(F.m_Dead)
++					{
++						Ok = false;
++						break;
++					}
++					if(F.m_Got)
++						break;
++				}
++				if(Ok)
++					return true;
++			}
++	return false;
++}
++
++int main(int argc, const char **argv)
++{
++	if(argc < 2)
++	{
++		std::printf("usage: ddsearch MAP best=FILE cut=RT [beam= angles= hnow= ge= lp= latdz= threads= seed= jitter= out= cellpos= cellvel= abort= rothook=]\n");
++		return 1;
++	}
++	std::string BestFile, Out = "ddsearch_out.txt";
++	int Cut = 100;
++	unsigned Seed = 1;
++	for(int i = 2; i < argc; i++)
++	{
++		std::string A = argv[i];
++		size_t Eq = A.find('=');
++		if(Eq == std::string::npos)
++			continue;
++		std::string K = A.substr(0, Eq), V = A.substr(Eq + 1);
++		const char *v = V.c_str();
++		if(K == "best")
++			BestFile = V;
++		else if(K == "cut")
++			Cut = atoi(v);
++		else if(K == "beam")
++			gs_Beam = atoi(v);
++		else if(K == "angles")
++			gs_Angles = atoi(v);
++		else if(K == "hnow")
++			gs_HNow = atof(v);
++		else if(K == "ge")
++			gs_Ge = atof(v);
++		else if(K == "lp")
++			gs_Lp = atof(v);
++		else if(K == "latdz")
++			gs_LatDz = atof(v);
++		else if(K == "threads")
++			gs_Threads = atoi(v);
++		else if(K == "seed")
++			Seed = atoi(v);
++		else if(K == "jitter")
++			gs_Jitter = atof(v);
++		else if(K == "out")
++			Out = V;
++		else if(K == "cellpos")
++			gs_CellPos = atof(v);
++		else if(K == "cellvel")
++			gs_CellVel = atof(v);
++		else if(K == "abort")
++			gs_Abort = atof(v);
++		else if(K == "rothook")
++			gs_RotHook = atoi(v);
++		else if(K == "incumbent")
++			gs_Incumbent = atoi(v);
++		else if(K == "survive")
++			gs_Survive = atoi(v);
++		else
++		{
++			std::printf("unknown key %s\n", K.c_str());
++			return 1;
++		}
++	}
++	if(!CTasGame::LoadMap(argv[1]))
++		return 1;
++	CFast::Init();
++	CCollision::ms_FastPaths = true;
++	std::vector<STasInput> vBest = ReadInputs(BestFile.c_str());
++	if(vBest.empty())
++	{
++		std::printf("no inputs in %s\n", BestFile.c_str());
++		return 1;
++	}
++
++	// replay the reference: states after every input, its start tick and pickup
++	CTasGame G;
++	G.Spawn(CTasGame::Map().m_vSpawns[0]);
++	CFast F;
++	F.FromGame(G);
++	std::vector<CFast> vStates; // state after input i
++	std::vector<int> vLastHook, vLastJump;
++	for(size_t i = 0; i < vBest.size(); i++)
++	{
++		F.Step(vBest[i]);
++		vStates.push_back(F);
++		vLastHook.push_back(vBest[i].m_Hook);
++		vLastJump.push_back(vBest[i].m_Jump);
++		if(F.m_Got)
++			break;
++		if(F.m_Dead)
++		{
++			std::printf("reference run dies at input %d\n", (int)i);
++			return 1;
++		}
++	}
++	if(!F.m_Got)
++	{
++		std::printf("reference run does not reach the grenade\n");
++		return 1;
++	}
++	gs_RefStart = F.m_StartTick;
++	CFast::ms_AssumedStart = gs_RefStart;
++	gs_RefEnd = F.RaceTick();
++	// reference index i = state after input i, race tick i + 1 - start
++	for(size_t i = 0; i < vStates.size(); i++)
++	{
++		SRefPt R;
++		R.m_Pos = vStates[i].m_Core.m_Pos;
++		R.m_Vel = vStates[i].m_Core.m_Vel;
++		R.m_E = dot(R.m_Vel, R.m_Vel) - R.m_Pos.y;
++		gs_vRef.push_back(R);
++	}
++	int CutInput = Cut + gs_RefStart - 1;
++	if(CutInput < 0 || CutInput >= (int)vStates.size() - 1)
++		CutInput = -1;
++	// tangents and tangential speeds (central differences)
++	int N = (int)gs_vRef.size();
++	for(int i = 0; i < N; i++)
++	{
++		vec2 A = gs_vRef[std::max(0, i - 1)].m_Pos, B = gs_vRef[std::min(N - 1, i + 1)].m_Pos;
++		vec2 T = B - A;
++		float L = length(T);
++		gs_vRef[i].m_Tan = L > 0 ? T / L : vec2(1, 0);
++		vec2 V = gs_vRef[i].m_Vel;
++		gs_vRef[i].m_VTan = V.x * RampScale(V) * gs_vRef[i].m_Tan.x + V.y * gs_vRef[i].m_Tan.y;
++	}
++	if(CutInput < 0)
++	{
++		std::printf("cut %d not in the run\n", Cut);
++		return 1;
++	}
++	std::printf("reference pickup at race tick %d; cut at race tick %d (input %d); beam %d angles %d hnow %.0f ge %.3f lp %.3f seed %u\n",
++		gs_RefEnd, Cut, CutInput + 1, gs_Beam, gs_Angles, gs_HNow, gs_Ge, gs_Lp, Seed);
++	std::fflush(stdout);
++
++	// hook aims: evenly spaced, as integer targets at radius 1000
++	std::vector<std::pair<int, int>> vAims;
++	for(int a = 0; a < gs_Angles; a++)
++	{
++		float Ang = (a + 0.5f) / gs_Angles * 2 * pi;
++		vAims.emplace_back((int)std::lround(std::cos(Ang) * 1000), (int)std::lround(std::sin(Ang) * 1000));
++	}
++
++	std::vector<std::vector<SNode>> vLayers; // kept nodes per search tick
++	std::vector<SState> vBeam(1);
++	vBeam[0].m_F = vStates[CutInput];
++	vBeam[0].m_Node = -1;
++	vBeam[0].m_RefIdx = CutInput;
++	vBeam[0].m_LastHook = vLastHook[CutInput];
++	vBeam[0].m_LastJump = vLastJump[CutInput];
++	vBeam[0].m_Score = Score(vBeam[0], nullptr);
++
++	struct SCand
++	{
++		float m_Score;
++		uint64_t m_Key;
++		int m_Parent; // beam index
++		int m_RefIdx;
++		STasInput m_In;
++	};
++
++	auto T0 = std::chrono::steady_clock::now();
++	int IncNode = -1; // node of the incumbent in the previous layer
++	int FoundRt = -1;
++	SState Found;
++	for(int Step = 0;; Step++)
++	{
++		int RtNow = vBeam[0].m_F.RaceTick() + 1;
++		if(RtNow >= gs_RefEnd)
++		{
++			std::printf("RESULT none (no pickup before race tick %d)\n", gs_RefEnd);
++			return 2;
++		}
++		std::vector<std::vector<SCand>> vCand(gs_Threads);
++		std::atomic<int> Next(0);
++		std::mutex GotMutex;
++		int GotRt = 1 << 30;
++		float GotScore = 1e30f;
++		SState GotState;
++		auto Worker = [&](int Th) {
++			std::mt19937 TRng(Seed * 7919 + Step * 104729 + Th);
++			auto &Cand = vCand[Th];
++			std::vector<STasInput> vIn;
++			for(;;)
++			{
++				int i = Next.fetch_add(1);
++				if(i >= (int)vBeam.size())
++					break;
++				const SState &S = vBeam[i];
++				const CCharacterCore &C = S.m_F.m_Core;
++				bool Grounded = CTasGame::Collision()->IsOnGround(C.m_Pos, CCharacterCore::PhysicalSize());
++				bool CanJump = !(C.m_Jumped & 1) && (Grounded || !(C.m_Jumped & 2));
++				vIn.clear();
++				for(int Dir = -1; Dir <= 1; Dir++)
++					for(int J = 0; J <= (CanJump ? 1 : 0); J++)
++					{
++						STasInput In;
++						In.m_Dir = Dir;
++						In.m_Jump = J;
++						In.m_Fire = 0;
++						In.m_Weapon = -1;
++						In.m_TX = 0;
++						In.m_TY = -1;
++						if(S.m_LastHook)
++						{
++							In.m_Hook = 1;
++							vIn.push_back(In);
++							In.m_Hook = 0;
++							vIn.push_back(In);
++						}
++						else
++						{
++							In.m_Hook = 0;
++							vIn.push_back(In);
++							In.m_Hook = 1;
++							for(auto &A : vAims)
++							{
++								In.m_TX = A.first;
++								In.m_TY = A.second;
++								vIn.push_back(In);
++							}
++							if(gs_RotHook == 2)
++							{
++								// rotation pulses: aims at the edge of the region where the pull is accepted
++								// (|v + dv| < |v| above the hook speed limit), and a few slightly inside it
++								vec2 V = C.m_Vel;
++								float Sp = length(V);
++								auto Accepted = [&](float Ang) {
++									vec2 Hv(std::cos(Ang) * 3.0f, std::sin(Ang) * 3.0f);
++									if(Hv.y > 0)
++										Hv.y *= 0.3f;
++									if((Hv.x < 0 && Dir < 0) || (Hv.x > 0 && Dir > 0))
++										Hv.x *= 0.95f;
++									else
++										Hv.x *= 0.75f;
++									float L = length(V + Hv);
++									return L < 15.0f || L < Sp;
++								};
++								float Base = std::atan2(V.y, V.x);
++								if(Sp > 13.0f)
++									for(int sg = -1; sg <= 1; sg += 2)
++									{
++										// from the normal (accepted only by chance) towards the back (accepted): find the edge
++										float A0 = Base + sg * (pi / 2 - 0.6f), A1 = Base + sg * (pi - 0.05f);
++										if(Accepted(A0) || !Accepted(A1))
++											continue;
++										for(int it = 0; it < 30; it++)
++										{
++											float M = (A0 + A1) / 2;
++											if(Accepted(M))
++												A1 = M;
++											else
++												A0 = M;
++										}
++										for(float Off : {0.0005f, 0.003f, 0.01f, 0.03f, 0.08f})
++										{
++											float Ang = A1 + sg * Off;
++											// integer aims at radius 10000 resolve ~0.006 degrees
++											In.m_TX = (int)std::lround(std::cos(Ang) * 10000);
++											In.m_TY = (int)std::lround(std::sin(Ang) * 10000);
++											vIn.push_back(In);
++										}
++									}
++							}
++							else if(gs_RotHook)
++							{
++								// fine aims near the normals of the velocity (rotation pulses): +-30 degrees in 3 degree steps
++								vec2 V = C.m_Vel;
++								float Base = std::atan2(V.y, V.x);
++								for(int sg = -1; sg <= 1; sg += 2)
++									for(int k = -10; k <= 10; k++)
++									{
++										float Ang = Base + sg * pi / 2 + k * pi / 60;
++										In.m_TX = (int)std::lround(std::cos(Ang) * 1000);
++										In.m_TY = (int)std::lround(std::sin(Ang) * 1000);
++										vIn.push_back(In);
++									}
++							}
++						}
++					}
++				for(const STasInput &In : vIn)
++				{
++					SState N2;
++					N2.m_F = S.m_F;
++					N2.m_F.Step(In);
++					if(N2.m_F.m_Dead)
++						continue;
++					N2.m_RefIdx = S.m_RefIdx;
++					N2.m_LastHook = In.m_Hook;
++					N2.m_LastJump = In.m_Jump;
++					N2.m_Node = -1;
++					float Sc = Score(N2, &TRng);
++					if(N2.m_F.m_Got)
++					{
++						std::lock_guard<std::mutex> Lock(GotMutex);
++						int Rt = N2.m_F.RaceTick();
++						if(Rt < GotRt || (Rt == GotRt && Sc < GotScore))
++						{
++							GotRt = Rt;
++							GotScore = Sc;
++							GotState = N2;
++							GotState.m_Node = i; // parent beam index for now
++							GotState.m_Score = Sc;
++						}
++						continue;
++					}
++					SCand Cd;
++					Cd.m_Score = Sc;
++					Cd.m_Key = CellKey(N2);
++					Cd.m_Parent = i;
++					Cd.m_RefIdx = N2.m_RefIdx;
++					Cd.m_In = In;
++					Cand.push_back(Cd);
++				}
++			}
++		};
++		std::vector<std::thread> vTh;
++		for(int t = 0; t < gs_Threads; t++)
++			vTh.emplace_back(Worker, t);
++		for(auto &T : vTh)
++			T.join();
++		if(GotRt < (1 << 30))
++		{
++			FoundRt = GotRt;
++			Found = GotState;
++			// the input that picked it up: recover by re-stepping candidates of the parent (cheap)
++			const SState &P = vBeam[Found.m_Node];
++			// store the final input as a node layer of its own
++			std::vector<STasInput> vTry;
++			// brute force the parent's expansions again to find the matching input
++			bool Ok = false;
++			for(int Dir = -1; Dir <= 1 && !Ok; Dir++)
++				for(int J = 0; J <= 1 && !Ok; J++)
++					for(int H = 0; H <= 1 && !Ok; H++)
++					{
++						std::vector<std::pair<int, int>> vA = vAims;
++						vA.emplace_back(0, -1);
++						vec2 V = P.m_F.m_Core.m_Vel;
++						float Base = std::atan2(V.y, V.x);
++						for(int sg = -1; sg <= 1; sg += 2)
++							for(int k = -10; k <= 10; k++)
++							{
++								float Ang = Base + sg * pi / 2 + k * pi / 60;
++								vA.emplace_back((int)std::lround(std::cos(Ang) * 1000), (int)std::lround(std::sin(Ang) * 1000));
++							}
++						for(auto &A : vA)
++						{
++							STasInput In;
++							In.m_Dir = Dir;
++							In.m_Jump = J;
++							In.m_Hook = H;
++							In.m_Fire = 0;
++							In.m_Weapon = -1;
++							In.m_TX = A.first;
++							In.m_TY = A.second;
++							CFast T = P.m_F;
++							T.Step(In);
++							if(T.m_Got && !T.m_Dead && T.RaceTick() == FoundRt)
++							{
++								SNode Nd;
++								Nd.m_Parent = P.m_Node;
++								Nd.m_In = In;
++								vLayers.push_back({Nd});
++								Found.m_Node = 0;
++								Ok = true;
++								break;
++							}
++						}
++					}
++			if(!Ok)
++			{
++				std::printf("RESULT error (could not recover the pickup input)\n");
++				return 3;
++			}
++			break;
++		}
++		std::vector<SCand> vAll;
++		size_t Total = 0;
++		for(auto &C : vCand)
++			Total += C.size();
++		if(!Total)
++		{
++			std::printf("RESULT none (beam died at step %d)\n", Step);
++			return 2;
++		}
++		vAll.reserve(Total);
++		for(auto &C : vCand)
++			vAll.insert(vAll.end(), C.begin(), C.end());
++		vCand.clear();
++		// dedup by cell, keep the best score per cell
++		std::unordered_map<uint64_t, int> Cell;
++		Cell.reserve(Total * 2);
++		std::vector<int> vKeep;
++		for(int i = 0; i < (int)vAll.size(); i++)
++		{
++			auto It = Cell.find(vAll[i].m_Key);
++			if(It == Cell.end())
++			{
++				Cell[vAll[i].m_Key] = (int)vKeep.size();
++				vKeep.push_back(i);
++			}
++			else if(vAll[i].m_Score < vAll[vKeep[It->second]].m_Score)
++				vKeep[It->second] = i;
++		}
++		size_t Cells = vKeep.size();
++		int Pool = std::min((int)vKeep.size(), gs_Survive > 0 ? 2 * gs_Beam : gs_Beam);
++		std::partial_sort(vKeep.begin(), vKeep.begin() + Pool, vKeep.end(), [&](int a, int b) { return vAll[a].m_Score < vAll[b].m_Score; });
++		// re-simulate the best candidates and check survival
++		std::vector<SState> vNew(Pool);
++		std::vector<SNode> Layer(Pool);
++		std::vector<uint8_t> vAlive(Pool, 1);
++		std::atomic<int> Next2(0);
++		auto Worker2 = [&](int) {
++			for(;;)
++			{
++				int k = Next2.fetch_add(1);
++				if(k >= Pool)
++					break;
++				const SCand &Cd = vAll[vKeep[k]];
++				const SState &P = vBeam[Cd.m_Parent];
++				SState &N2 = vNew[k];
++				N2.m_F = P.m_F;
++				N2.m_F.Step(Cd.m_In);
++				N2.m_RefIdx = Cd.m_RefIdx;
++				N2.m_LastHook = Cd.m_In.m_Hook;
++				N2.m_LastJump = Cd.m_In.m_Jump;
++				N2.m_Score = Cd.m_Score;
++				N2.m_Node = k;
++				Layer[k].m_Parent = P.m_Node;
++				Layer[k].m_In = Cd.m_In;
++				vAlive[k] = Survives(N2, gs_Survive);
++			}
++		};
++		vTh.clear();
++		for(int t = 0; t < gs_Threads; t++)
++			vTh.emplace_back(Worker2, t);
++		for(auto &T : vTh)
++			T.join();
++		// keep the best gs_Beam survivors (doomed ones only if nothing else is left)
++		std::vector<SState> vSel;
++		std::vector<SNode> LayerSel;
++		for(int k = 0; k < Pool && (int)vSel.size() < gs_Beam; k++)
++			if(vAlive[k])
++			{
++				vNew[k].m_Node = (int)vSel.size();
++				LayerSel.push_back(Layer[k]);
++				vSel.push_back(vNew[k]);
++			}
++		// incumbent: the reference run's own continuation always stays in the beam
++		if(gs_Incumbent)
++		{
++			int RefIn = CutInput + Step + 1;
++			if(RefIn < (int)vStates.size() && !vStates[RefIn].m_Got)
++			{
++				SState R;
++				R.m_F = vStates[RefIn];
++				R.m_RefIdx = std::min((int)gs_vRef.size() - 2, RefIn);
++				R.m_LastHook = vBest[RefIn].m_Hook;
++				R.m_LastJump = vBest[RefIn].m_Jump;
++				R.m_Score = Score(R, nullptr);
++				SNode Nd;
++				Nd.m_Parent = IncNode;
++				Nd.m_In = vBest[RefIn];
++				R.m_Node = (int)vSel.size();
++				IncNode = R.m_Node;
++				LayerSel.push_back(Nd);
++				vSel.push_back(R);
++			}
++		}
++		if(vSel.empty())
++		{
++			std::printf("RESULT none (no surviving state at step %d)\n", Step);
++			return 2;
++		}
++		vLayers.push_back(std::move(LayerSel));
++		vBeam.swap(vSel);
++		const SState &B = vBeam[0];
++		if(Step % 25 == 0)
++		{
++			double Sec = std::chrono::duration<double>(std::chrono::steady_clock::now() - T0).count();
++			std::printf("rt %d best est %.2f (ref idx %d) pos %.0f %.0f |v| %.1f cand %zu cells %zu [%.0fs]\n", B.m_F.RaceTick(), B.m_Score, B.m_RefIdx,
++				B.m_F.m_Core.m_Pos.x, B.m_F.m_Core.m_Pos.y, length(B.m_F.m_Core.m_Vel), Total, Cells, Sec);
++			std::fflush(stdout);
++		}
++		if(B.m_Score > gs_RefEnd + gs_Abort)
++		{
++			std::printf("RESULT none (abort: best estimate %.1f at rt %d)\n", B.m_Score, B.m_F.RaceTick());
++			return 2;
++		}
++	}
++
++	// reconstruct inputs
++	std::vector<STasInput> vPath;
++	int Node = Found.m_Node;
++	for(int L = (int)vLayers.size() - 1; L >= 0 && Node >= 0; L--)
++	{
++		vPath.push_back(vLayers[L][Node].m_In);
++		Node = vLayers[L][Node].m_Parent;
++	}
++	std::reverse(vPath.begin(), vPath.end());
++	std::vector<STasInput> vOut(vBest.begin(), vBest.begin() + CutInput + 1);
++	vOut.insert(vOut.end(), vPath.begin(), vPath.end());
++
++	// verify on the plain DDNet prediction code (fast collision paths off)
++	CCollision::ms_FastPaths = false;
++	CTasGame V;
++	V.Spawn(CTasGame::Map().m_vSpawns[0]);
++	int VerRt = -1;
++	bool Bad = false;
++	for(size_t i = 0; i < vOut.size(); i++)
++	{
++		V.Step(vOut[i]);
++		if(V.Frozen() || V.EnteredFreeze() || V.m_StartTick == -2)
++		{
++			Bad = true;
++			break;
++		}
++		if(V.HasGrenade())
++		{
++			VerRt = V.m_Tick - V.m_StartTick;
++			break;
++		}
++	}
++	double Sec = std::chrono::duration<double>(std::chrono::steady_clock::now() - T0).count();
++	std::printf("RESULT %d verified %d (bad %d) cut %d [%.0fs]\n", FoundRt, VerRt, Bad, Cut, Sec);
++	if(!Bad && VerRt == FoundRt && FoundRt < gs_RefEnd)
++	{
++		WriteInputs(Out.c_str(), vOut);
++		std::printf("wrote %s\n", Out.c_str());
++	}
++	return 0;
++}
+diff --git a/src/tas/eacct.cpp b/src/tas/eacct.cpp
+new file mode 100644
+index 0000000..72f69f1
+--- /dev/null
++++ b/src/tas/eacct.cpp
+@@ -0,0 +1,73 @@
++// Per-tick energy accounting of a pre-grenade run with CFast: E = |v|^2 - y (gravity 0.5/tick^2 conserves it in free flight).
++#include "fast.h"
++#include "tasio.h"
++#include <game/collision.h>
++#include <cmath>
++#include <cstdio>
++#include <cstdlib>
++
++int main(int argc, const char **argv)
++{
++	if(argc < 3)
++		return 1;
++	if(!CTasGame::LoadMap(argv[1]))
++		return 1;
++	CFast::Init();
++	CCollision::ms_FastPaths = true;
++	std::vector<STasInput> vIn = ReadInputs(argv[2]);
++	CTasGame G;
++	G.Spawn(CTasGame::Map().m_vSpawns[0]);
++	CFast F;
++	F.FromGame(G);
++	double Sum[8] = {0};
++	const char *apName[] = {"jump", "hook<15", "hookbrake", "collide", "dir0/against", "ground", "other", ""};
++	for(size_t i = 0; i < vIn.size(); i++)
++	{
++		vec2 V0 = F.m_Core.m_Vel, P0 = F.m_Core.m_Pos;
++		int J0 = F.m_Core.m_Jumped;
++		bool Gr = CTasGame::Collision()->IsOnGround(P0, 28.0f);
++		CFast Pre = F;
++		F.Step(vIn[i]);
++		// velocity right after the core tick (before Move) is not kept; recompute: core-tick-only copy
++		CCharacterCore C = Pre.m_Core;
++		CNetObj_PlayerInput In = {};
++		In.m_Direction = vIn[i].m_Dir;
++		In.m_TargetX = vIn[i].m_TX;
++		In.m_TargetY = vIn[i].m_TY;
++		if(!In.m_TargetX && !In.m_TargetY)
++			In.m_TargetY = -1;
++		In.m_Jump = vIn[i].m_Jump;
++		In.m_Hook = vIn[i].m_Hook;
++		C.m_Input = In;
++		C.Tick(true, true);
++		vec2 VT = C.m_Vel; // after input/gravity/hook
++		vec2 V1 = F.m_Core.m_Vel, P1 = F.m_Core.m_Pos;
++		float E0 = dot(V0, V0) - P0.y, E1 = dot(V1, V1) - P1.y;
++		// split: core tick change (minus gravity's conserved part) and move change
++		float dTick = dot(VT, VT) - dot(V0, V0) - (VT.y + V0.y) * 0.5f * 0; // gravity term handled via y below
++		float dMove = dot(V1, V1) - dot(VT, VT);
++		int Cause = 6;
++		bool Jumped = (F.m_Core.m_Jumped & 1) && !(J0 & 1);
++		bool Hooked = Pre.m_Core.m_HookState == HOOK_GRABBED || C.m_HookState == HOOK_GRABBED;
++		if(Jumped)
++			Cause = 0;
++		else if(Hooked)
++			Cause = length(VT) < 15.0f ? 1 : 2;
++		else if(Gr)
++			Cause = 5;
++		else if(vIn[i].m_Dir == 0 || vIn[i].m_Dir * V0.x < 0)
++			Cause = 4;
++		float dE = E1 - E0;
++		float dCol = dMove;
++		Sum[3] += dCol;
++		Sum[Cause] += dE - dCol;
++		int rt = F.m_Tick - (F.m_StartTick >= 0 ? F.m_StartTick : F.m_Tick);
++		if(argc > 3 || std::fabs(dE) > 30)
++			std::printf("rt %4d pos %6.0f %6.0f |v| %5.2f E %7.1f dE %7.1f (move %7.1f) in %2d %d %d %4d %4d cause %s%s\n", rt, P1.x, P1.y, length(V1), E1, dE, dCol,
++				vIn[i].m_Dir, vIn[i].m_Jump, vIn[i].m_Hook, vIn[i].m_TX, vIn[i].m_TY, apName[Cause], Gr ? " grounded" : "");
++		(void)dTick;
++	}
++	for(int k = 0; k < 7; k++)
++		std::printf("total %-12s %9.1f\n", apName[k], Sum[k]);
++	return 0;
++}
+diff --git a/src/tas/fast.cpp b/src/tas/fast.cpp
+new file mode 100644
+index 0000000..61ef682
+--- /dev/null
++++ b/src/tas/fast.cpp
+@@ -0,0 +1,183 @@
++#define private public
++#define protected public
++#include <game/client/prediction/entities/character.h>
++#include <game/client/prediction/gameworld.h>
++#undef private
++#undef protected
++
++#include "fast.h"
++
++#include <game/collision.h>
++#include <game/mapitems.h>
++
++#include <algorithm>
++#include <cstdio>
++#include <cstdlib>
++
++CTeamsCore CFast::ms_Teams;
++int CFast::ms_AssumedStart = 0;
++
++enum
++{
++	FL_FREEZE = 1,
++	FL_START = 2,
++	FL_FINISH = 4,
++};
++static std::vector<uint8_t> gs_vFlags;
++static std::vector<vec2> gs_vGrenades;
++static int gs_W, gs_H;
++
++void CFast::Init()
++{
++	const SMapInfo &M = CTasGame::Map();
++	gs_W = M.m_W;
++	gs_H = M.m_H;
++	gs_vFlags.assign(gs_W * gs_H, 0);
++	for(int y = 0; y < gs_H; y++)
++		for(int x = 0; x < gs_W; x++)
++		{
++			int T = M.Tile(x, y), F = M.Front(x, y);
++			uint8_t &Fl = gs_vFlags[y * gs_W + x];
++			if(T == TILE_FREEZE || F == TILE_FREEZE)
++				Fl |= FL_FREEZE;
++			if(T == TILE_START || F == TILE_START)
++				Fl |= FL_START;
++			if(T == TILE_FINISH || F == TILE_FINISH)
++				Fl |= FL_FINISH;
++			if(T == ENTITY_OFFSET + ENTITY_WEAPON_GRENADE)
++				gs_vGrenades.emplace_back(x * 32.0f + 16.0f, y * 32.0f + 16.0f);
++			// the fast stepper only knows these tiles; anything else must not exist in the game layer
++			if(T != 0 && T != TILE_SOLID && T != TILE_NOHOOK && T != TILE_FREEZE && T != TILE_START && T != TILE_FINISH && T < ENTITY_OFFSET)
++			{
++				std::printf("CFast: unsupported tile %d at %d,%d\n", T, x, y);
++				std::exit(1);
++			}
++		}
++	if(!M.m_vFront.empty())
++	{
++		std::printf("CFast: maps with a front layer are not supported\n");
++		std::exit(1);
++	}
++}
++
++void CFast::FromGame(const CTasGame &G)
++{
++	m_Core = G.Chr()->m_Core;
++	m_Core.SetCoreWorld(nullptr, CTasGame::Collision(), &ms_Teams);
++	m_Pos = G.Chr()->m_Pos;
++	m_PrevPos = G.Chr()->m_PrevPos;
++	m_Tick = G.m_Tick;
++	m_StartTick = G.m_StartTick;
++	m_Started = G.m_Started;
++	m_Got = G.HasGrenade();
++	m_Dead = G.Frozen();
++	m_Fire = G.m_Fire;
++}
++
++static inline int TileAt(float x, float y)
++{
++	int Nx = std::clamp((int)x / 32, 0, gs_W - 1);
++	int Ny = std::clamp((int)y / 32, 0, gs_H - 1);
++	return Ny * gs_W + Nx;
++}
++
++// flags of all tiles CCollision::GetMapIndices(PrevPos, Pos) visits (same sampling), or of the tile at Pos if none
++static inline uint8_t MoveFlags(vec2 PrevPos, vec2 Pos)
++{
++	float d = distance(PrevPos, Pos);
++	if(!d)
++		return gs_vFlags[TileAt(Pos.x, Pos.y)];
++	int End(d + 1);
++	uint8_t Fl = 0;
++	for(int i = 0; i < End; i++)
++	{
++		float a = i / d;
++		vec2 Tmp = mix(PrevPos, Pos, a);
++		Fl |= gs_vFlags[TileAt(Tmp.x, Tmp.y)];
++	}
++	return Fl;
++}
++
++static inline int PureIndex(float x, float y)
++{
++	int Nx = std::clamp(round_to_int(x) / 32, 0, gs_W - 1);
++	int Ny = std::clamp(round_to_int(y) / 32, 0, gs_H - 1);
++	return Ny * gs_W + Nx;
++}
++
++void CFast::CheckRace()
++{
++	// same as CTasGame::CheckRace (start line along the previous move + the four sensitivity points)
++	uint8_t Move = MoveFlags(m_PrevPos, m_Pos);
++	float R = CCharacterCore::PhysicalSize() / 3.f;
++	vec2 P = m_Pos;
++	uint8_t Sens = gs_vFlags[PureIndex(P.x + R, P.y - R)] | gs_vFlags[PureIndex(P.x + R, P.y + R)] |
++		       gs_vFlags[PureIndex(P.x - R, P.y - R)] | gs_vFlags[PureIndex(P.x - R, P.y + R)];
++	// CTasGame::CheckRace iterates over the existing tiles along the move (on this map: exactly the flagged
++	// ones), or the tile at the position if there are none; the sensitivity points only count inside that loop
++	uint8_t Here = gs_vFlags[TileAt(P.x, P.y)];
++	bool Any = Move != 0 || Here != 0;
++	uint8_t Iter = Move != 0 ? Move : Here;
++	bool Start = Any && ((Iter & FL_START) || (Sens & FL_START));
++	if(Start)
++	{
++		if(m_Started && m_StartTick >= 0 && m_Tick - m_StartTick > 1)
++			m_StartTick = -2;
++		else if(m_StartTick != -2)
++		{
++			m_Started = true;
++			m_StartTick = m_Tick;
++		}
++	}
++}
++
++void CFast::Step(const STasInput &In)
++{
++	// OnDirectInput: weapons are not handled here (the segment before the grenade never fires)
++	if((m_Fire & 1) != (In.m_Fire ? 1 : 0))
++		m_Fire++;
++	m_Tick++;
++	CNetObj_PlayerInput Input = {};
++	Input.m_Direction = In.m_Dir;
++	Input.m_TargetX = In.m_TX;
++	Input.m_TargetY = In.m_TY;
++	Input.m_Jump = In.m_Jump;
++	Input.m_Fire = m_Fire;
++	Input.m_Hook = In.m_Hook;
++	Input.m_WantedWeapon = In.m_Weapon >= 0 ? In.m_Weapon + 1 : 0;
++	Input.m_PlayerFlags = PLAYERFLAG_PLAYING;
++	if(Input.m_TargetX == 0 && Input.m_TargetY == 0)
++		Input.m_TargetY = -1;
++	CheckRace();
++
++	// pickups tick before the character: distance to the tee's position after its last move
++	for(const vec2 &G : gs_vGrenades)
++		if(distance(G, m_Pos) < 20.0f + CCharacterCore::PhysicalSize())
++			m_Got = true;
++
++	// CCharacter::Tick -> PreTick
++	m_Core.m_Input = Input;
++	m_Core.Tick(true, true);
++	// DDRacePostCoreTick: jump rules
++	if(m_Core.m_Jumps == -1 || m_Core.m_Jumps == 0)
++		m_Core.m_Jumped |= 2;
++	else if(m_Core.m_Jumps == 1 && m_Core.m_Jumped > 0)
++		m_Core.m_Jumped |= 2;
++	else if(m_Core.m_JumpedTotal < m_Core.m_Jumps - 1 && m_Core.m_Jumped > 1)
++		m_Core.m_Jumped = 1;
++	if((m_Core.m_Super || m_Core.m_EndlessJump) && m_Core.m_Jumped > 1)
++		m_Core.m_Jumped = 1;
++	m_PrevPos = m_Core.m_Pos;
++	// TickDeferred
++	m_Core.Move();
++	m_Core.Quantize();
++	m_Pos = m_Core.m_Pos;
++	// HandleTiles: the existing tiles along the move, or the tile at the new position if there are none
++	uint8_t Move = MoveFlags(m_PrevPos, m_Pos);
++	if(!Move)
++		Move = gs_vFlags[TileAt(m_Pos.x, m_Pos.y)];
++	if(Move & FL_FREEZE)
++		m_Dead = true;
++	if(m_StartTick == -2)
++		m_Dead = true;
++}
+diff --git a/src/tas/fast.h b/src/tas/fast.h
+new file mode 100644
+index 0000000..d8321e7
+--- /dev/null
++++ b/src/tas/fast.h
+@@ -0,0 +1,44 @@
++// Fast exact single-tee stepper for the segment before the grenade pickup (no weapons fired, no other entities).
++// Idea from ddnet_physics: keep the whole state in one small copyable struct and replace per-tick
++// allocations / entity scans by precomputed per-tile flags. The physics itself is DDNet's CCharacterCore,
++// so results are identical to CTasGame (checked by `fastcheck`).
++#ifndef TAS_FAST_H
++#define TAS_FAST_H
++
++#include "sim.h"
++
++#include <game/gamecore.h>
++
++#include <cstdint>
++#include <vector>
++
++class CTasGame;
++
++class CFast
++{
++public:
++	// call after CTasGame::LoadMap
++	static void Init();
++	static CTeamsCore ms_Teams;
++
++	CCharacterCore m_Core;
++	vec2 m_Pos = vec2(0, 0); // CCharacter::m_Pos (position after the last move)
++	vec2 m_PrevPos = vec2(0, 0); // CCharacter::m_PrevPos (position before the last move)
++	int m_Tick = 0;
++	int m_StartTick = -1;
++	bool m_Started = false;
++	bool m_Got = false; // grenade picked up
++	bool m_Dead = false; // last move touched freeze (or double start)
++	int m_Fire = 0;
++
++	void FromGame(const CTasGame &G);
++	void Step(const STasInput &In);
++	// race tick; before the start line it counts from ms_AssumedStart (a reference run's start tick)
++	static int ms_AssumedStart;
++	int RaceTick() const { return m_StartTick >= 0 ? m_Tick - m_StartTick : m_Tick - ms_AssumedStart; }
++
++private:
++	void CheckRace();
++};
++
++#endif
+diff --git a/src/tas/fastcheck.cpp b/src/tas/fastcheck.cpp
+new file mode 100644
+index 0000000..d6b9a61
+--- /dev/null
++++ b/src/tas/fastcheck.cpp
+@@ -0,0 +1,169 @@
++// Checks CFast against CTasGame (tick-by-tick equality) and measures both step rates.
++#define private public
++#define protected public
++#include <game/client/prediction/entities/character.h>
++#undef private
++#undef protected
++#include "fast.h"
++#include "tasio.h"
++#include <game/collision.h>
++
++#include <chrono>
++#include <cmath>
++#include <cstdio>
++#include <cstdlib>
++#include <cstring>
++#include <random>
++
++static bool Same(const CTasGame &G, const CFast &F, int t, bool Verbose)
++{
++	const CCharacterCore &A = G.Chr()->m_Core, &B = F.m_Core;
++	bool Ok = A.m_Pos == B.m_Pos && A.m_Vel == B.m_Vel && A.m_HookState == B.m_HookState && A.m_HookPos == B.m_HookPos &&
++		  A.m_HookDir == B.m_HookDir && A.m_HookTick == B.m_HookTick && A.m_Jumped == B.m_Jumped && A.m_JumpedTotal == B.m_JumpedTotal &&
++		  G.m_StartTick == F.m_StartTick && G.HasGrenade() == F.m_Got;
++	bool DeadG = G.Frozen() || G.EnteredFreeze() || G.m_StartTick == -2;
++	Ok = Ok && DeadG == F.m_Dead;
++	if(!Ok && Verbose)
++		std::printf("detail: G frozen %d entered %d freezetime %d prevpos %.2f %.2f pos %.2f %.2f | F prevpos %.2f %.2f pos %.2f %.2f\n", G.Frozen(), G.EnteredFreeze(), G.Chr()->m_FreezeTime,
++			G.Chr()->m_PrevPos.x, G.Chr()->m_PrevPos.y, G.Chr()->m_Pos.x, G.Chr()->m_Pos.y, F.m_PrevPos.x, F.m_PrevPos.y, F.m_Pos.x, F.m_Pos.y);
++	if(!Ok && Verbose)
++		std::printf("MISMATCH t %d: G pos %.2f %.2f vel %.5f %.5f hook %d jumped %d start %d got %d dead %d | F pos %.2f %.2f vel %.5f %.5f hook %d jumped %d start %d got %d dead %d\n",
++			t, A.m_Pos.x, A.m_Pos.y, A.m_Vel.x, A.m_Vel.y, A.m_HookState, A.m_Jumped, G.m_StartTick, G.HasGrenade(), DeadG,
++			B.m_Pos.x, B.m_Pos.y, B.m_Vel.x, B.m_Vel.y, B.m_HookState, B.m_Jumped, F.m_StartTick, F.m_Got, F.m_Dead);
++	return Ok;
++}
++
++int main(int argc, const char **argv)
++{
++	if(argc < 3)
++	{
++		std::printf("usage: fastcheck MAP INPUTS [trials]\n");
++		return 1;
++	}
++	int Trials = argc > 3 ? std::atoi(argv[3]) : 2000;
++	if(!CTasGame::LoadMap(argv[1]))
++		return 1;
++	CFast::Init();
++	std::vector<STasInput> vIn = ReadInputs(argv[2]);
++	const SMapInfo &M = CTasGame::Map();
++
++	// 1. the run itself
++	{
++		CTasGame G;
++		G.Spawn(M.m_vSpawns[0]);
++		CFast F;
++		F.FromGame(G);
++		for(size_t i = 0; i < vIn.size(); i++)
++		{
++			CCollision::ms_FastPaths = false;
++			G.Step(vIn[i]);
++			CCollision::ms_FastPaths = true;
++			F.Step(vIn[i]);
++			if(!Same(G, F, i + 1, true))
++				return 1;
++		}
++		std::printf("run: identical over %d ticks, pickup %d at race tick %d\n", (int)vIn.size(), F.m_Got, F.RaceTick());
++	}
++
++	// 2. random mutations from random cut points (both continue from the same prefix state)
++	std::mt19937 Rng(12345);
++	std::vector<CTasGame *> vPrefix; // states every 50 ticks
++	{
++		CTasGame G;
++		G.Spawn(M.m_vSpawns[0]);
++		for(size_t i = 0; i < vIn.size(); i++)
++		{
++			if(i % 50 == 0)
++			{
++				CTasGame *p = new CTasGame();
++				p->CopyFrom(G);
++				vPrefix.push_back(p);
++			}
++			G.Step(vIn[i]);
++		}
++	}
++	long Ticks = 0;
++	int Bad = 0;
++	for(int Tr = 0; Tr < Trials; Tr++)
++	{
++		int Pi = Rng() % vPrefix.size();
++		CTasGame G;
++		G.CopyFrom(*vPrefix[Pi]);
++		CFast F;
++		F.FromGame(G);
++		int Len = 20 + Rng() % 200;
++		int Mode = Rng() % 3;
++		for(int k = 0; k < Len; k++)
++		{
++			size_t i = Pi * 50 + k;
++			STasInput In = i < vIn.size() ? vIn[i] : vIn.back();
++			if(Mode == 0 || (Rng() % 4 == 0))
++			{
++				// random input
++				In.m_Dir = (int)(Rng() % 3) - 1;
++				In.m_Jump = Rng() % 4 == 0;
++				In.m_Hook = Rng() % 2;
++				float A = (Rng() % 3600) / 3600.0f * 2 * 3.14159265f;
++				In.m_TX = (int)(std::cos(A) * 300);
++				In.m_TY = (int)(std::sin(A) * 300);
++			}
++			CCollision::ms_FastPaths = false;
++			G.Step(In);
++			CCollision::ms_FastPaths = true;
++			F.Step(In);
++			Ticks++;
++			if(!Same(G, F, k, Bad < 5))
++			{
++				Bad++;
++				break;
++			}
++			if(F.m_Dead || F.m_Got)
++				break;
++		}
++	}
++	std::printf("fuzz: %d trials, %ld ticks, %d mismatches\n", Trials, Ticks, Bad);
++
++	// 3. speed
++	{
++		CCollision::ms_FastPaths = false;
++		auto T0 = std::chrono::steady_clock::now();
++		int Reps = getenv("REPS") ? atoi(getenv("REPS")) : 200;
++		for(int r = 0; r < Reps; r++)
++		{
++			CTasGame G;
++			G.Spawn(M.m_vSpawns[0]);
++			for(const auto &In : vIn)
++				G.Step(In);
++		}
++		double SG = std::chrono::duration<double>(std::chrono::steady_clock::now() - T0).count();
++		CTasGame G0;
++		G0.Spawn(M.m_vSpawns[0]);
++		CFast F0;
++		F0.FromGame(G0);
++		CCollision::ms_FastPaths = true;
++		std::printf("fast paths available: %d\n", CTasGame::Collision()->m_FastOk);
++		T0 = std::chrono::steady_clock::now();
++		int RepsF = getenv("REPSF") ? atoi(getenv("REPSF")) : 2000;
++		for(int r = 0; r < RepsF; r++)
++		{
++			CFast F = F0;
++			for(const auto &In : vIn)
++				F.Step(In);
++		}
++		double SF = std::chrono::duration<double>(std::chrono::steady_clock::now() - T0).count();
++		CCollision::ms_FastPaths = true;
++		T0 = std::chrono::steady_clock::now();
++		for(int r = 0; r < Reps; r++)
++		{
++			CTasGame G;
++			G.Spawn(M.m_vSpawns[0]);
++			for(const auto &In : vIn)
++				G.Step(In);
++		}
++		double SG2 = std::chrono::duration<double>(std::chrono::steady_clock::now() - T0).count();
++		std::printf("speed: CTasGame with fast collision %.0f ticks/s\n", Reps * vIn.size() / SG2);
++		double RG = Reps * vIn.size() / SG, RF = RepsF * vIn.size() / SF;
++		std::printf("speed: CTasGame %.0f ticks/s, CFast %.0f ticks/s (x%.1f); state copy %d bytes\n", RG, RF, RF / RG, (int)sizeof(CFast));
++	}
++	return Bad ? 1 : 0;
++}
+diff --git a/src/tas/replay.cpp b/src/tas/replay.cpp
+new file mode 100644
+index 0000000..e35ab27
+--- /dev/null
++++ b/src/tas/replay.cpp
+@@ -0,0 +1,72 @@
++// Replay an input file (one line per tick from spawn: dir jump hook fire tx ty weapon) on DDNet's prediction code.
++#include "sim.h"
++#include <cstdio>
++#include <cstdlib>
++#include <string>
++#include <vector>
++
++int main(int argc, const char **argv)
++{
++	if(argc < 3)
++	{
++		std::printf("usage: replay MAP INPUTS [every]\n");
++		return 1;
++	}
++	int Every = argc > 3 ? std::atoi(argv[3]) : 1;
++	if(!CTasGame::LoadMap(argv[1]))
++	{
++		std::printf("map load failed\n");
++		return 1;
++	}
++	const SMapInfo &M = CTasGame::Map();
++	std::printf("map %dx%d spawns %d\n", M.m_W, M.m_H, (int)M.m_vSpawns.size());
++	if(std::string(argv[2]) == "dump")
++	{
++		// game layer as text: one row per tile row, tile index as a char ('0'+index for small ones)
++		for(int y = 0; y < M.m_H; y++)
++		{
++			for(int x = 0; x < M.m_W; x++)
++			{
++				int T = M.Tile(x, y), F = M.Front(x, y);
++				char c = '.';
++				if(T == 1) c = '#';
++				else if(T == 3) c = 'N';
++				else if(T == 9 || F == 9) c = 'f';
++				else if(T == 12 || F == 12) c = 'D';
++				else if(T == 11 || F == 11) c = 'u';
++				else if(T == 33 || F == 33) c = 'S';
++				else if(T == 34 || F == 34) c = 'F';
++				else if(T >= 192) c = 'E';
++				else if(T != 0) c = 'o';
++				std::putchar(c);
++			}
++			std::putchar('\n');
++		}
++		return 0;
++	}
++	CTasGame G;
++	G.Spawn(M.m_vSpawns[0]);
++	FILE *f = std::fopen(argv[2], "r");
++	int d, j, h, fi, tx, ty, w, t = 0;
++	bool Got = false;
++	while(std::fscanf(f, "%d %d %d %d %d %d %d", &d, &j, &h, &fi, &tx, &ty, &w) == 7)
++	{
++		STasInput In;
++		In.m_Dir = d;
++		In.m_Jump = j;
++		In.m_Hook = h;
++		In.m_Fire = fi;
++		In.m_TX = tx;
++		In.m_TY = ty;
++		In.m_Weapon = w;
++		G.Step(In);
++		t++;
++		if(G.HasGrenade() && !Got)
++			std::printf("GRENADE at input %d (tick %d, start %d, race tick %d)\n", t, G.m_Tick, G.m_StartTick, G.m_Tick - G.m_StartTick);
++		Got = G.HasGrenade();
++		if(t % Every == 0 || G.Frozen())
++			std::printf("t %d pos %.2f %.2f vel %.5f %.5f hook %d jumped %d frz %d start %d\n", t, G.Pos().x, G.Pos().y, G.Vel().x, G.Vel().y, G.HookState(), G.Jumped(), G.Frozen(), G.m_StartTick);
++	}
++	std::printf("end t %d start %d\n", t, G.m_StartTick);
++	return 0;
++}
+diff --git a/src/tas/sim.cpp b/src/tas/sim.cpp
+new file mode 100644
+index 0000000..73b6a6a
+--- /dev/null
++++ b/src/tas/sim.cpp
+@@ -0,0 +1,489 @@
++#define private public
++#define protected public
++#include <game/client/pickup_data.h>
++#include <game/client/prediction/entities/character.h>
++#include <game/client/prediction/entities/pickup.h>
++#include <game/client/prediction/entities/projectile.h>
++#include <game/client/prediction/gameworld.h>
++#undef private
++#undef protected
++
++#include "sim.h"
++
++#include <cstdlib>
++
++#include <base/str.h>
++#include <engine/shared/config.h>
++#include <engine/shared/map.h>
++#include <engine/storage.h>
++
++#include <game/collision.h>
++#include <game/layers.h>
++#include <game/mapbugs.h>
++#include <game/mapitems.h>
++#include <game/tuning.h>
++
++#include <generated/protocol.h>
++
++static CMap *gs_pMap;
++static CLayers *gs_pLayers;
++static CCollision *gs_pCollision;
++static CTuningParams gs_aTuning[TuneZone::NUM];
++static CMapBugs gs_MapBugs;
++static SMapInfo gs_MapInfo;
++static std::vector<CPickupData> gs_vPickups;
++
++static void SetConfigDefaults()
++{
++	// this tool has no config manager, so set the variables' defaults directly
++#define MACRO_CONFIG_INT(Name, ScriptName, Def, Min, Max, Flags, Desc) g_Config.m_##Name = Def;
++#define MACRO_CONFIG_COL(Name, ScriptName, Def, Flags, Desc) g_Config.m_##Name = Def;
++#define MACRO_CONFIG_STR(Name, ScriptName, Len, Def, Flags, Desc) str_copy(g_Config.m_##Name, Def, Len);
++#include <engine/shared/config_variables.h>
++#undef MACRO_CONFIG_INT
++#undef MACRO_CONFIG_COL
++#undef MACRO_CONFIG_STR
++}
++
++bool CTasGame::LoadMap(const char *pPath)
++{
++	SetConfigDefaults();
++	const char *apArgs[] = {"tas"};
++	IStorage *pStorage = CreateStorage(IStorage::EInitializationType::BASIC, 1, apArgs);
++	gs_pMap = new CMap();
++	if(!gs_pMap->Load(pPath, pStorage, pPath, IStorage::TYPE_ABSOLUTE))
++		return false;
++	gs_pLayers = new CLayers();
++	gs_pLayers->Init(gs_pMap, false, false);
++	gs_pCollision = new CCollision();
++	gs_pCollision->Init(gs_pLayers);
++	gs_pCollision->InitFast();
++
++
++	// same as CGameContext::OnInit with default settings
++	for(auto &Tuning : gs_aTuning)
++	{
++		Tuning = CTuningParams::DEFAULT;
++		Tuning.Set("gun_curvature", 0);
++		Tuning.Set("gun_speed", 1400);
++		Tuning.Set("shotgun_curvature", 0);
++		Tuning.Set("shotgun_speed", 500);
++		Tuning.Set("shotgun_speeddiff", 0);
++		// a lone tee never meets another player; this only skips CCharacterCore's per-pixel
++		// loops over all player slots (identical results, much faster)
++		Tuning.Set("player_collision", 0);
++		Tuning.Set("player_hooking", 0);
++	}
++
++	SMapInfo &M = gs_MapInfo;
++	M.m_W = gs_pCollision->GetWidth();
++	M.m_H = gs_pCollision->GetHeight();
++	M.m_vGame.resize(M.m_W * M.m_H);
++	if(gs_pCollision->FrontLayer())
++		M.m_vFront.resize(M.m_W * M.m_H);
++	for(int i = 0; i < M.m_W * M.m_H; i++)
++	{
++		int T = gs_pCollision->GameLayer()[i].m_Index;
++		M.m_vGame[i] = T;
++		if(!M.m_vFront.empty())
++			M.m_vFront[i] = gs_pCollision->FrontLayer()[i].m_Index;
++		vec2 Center((i % M.m_W) * 32.0f + 16.0f, (i / M.m_W) * 32.0f + 16.0f);
++		if(T == ENTITY_OFFSET + ENTITY_SPAWN)
++			M.m_vSpawns.push_back(Center);
++		if(T == ENTITY_OFFSET + ENTITY_WEAPON_GRENADE)
++		{
++			CPickupData Data;
++			Data.m_Pos = Center;
++			Data.m_Type = POWERUP_WEAPON;
++			Data.m_Subtype = WEAPON_GRENADE;
++			Data.m_SwitchNumber = 0;
++			gs_vPickups.push_back(Data);
++		}
++	}
++	return true;
++}
++
++const SMapInfo &CTasGame::Map() { return gs_MapInfo; }
++CCollision *CTasGame::Collision() { return gs_pCollision; }
++
++CTasGame::CTasGame() :
++	m_pWorld(std::make_unique<CGameWorld>())
++{
++	m_pWorld->Init(gs_pCollision, gs_aTuning, &gs_MapBugs);
++	auto &C = m_pWorld->m_WorldConfig;
++	C.m_IsDDRace = true;
++	C.m_IsVanilla = false;
++	C.m_IsFNG = false;
++	C.m_InfiniteAmmo = true;
++	C.m_PredictTiles = true;
++	C.m_PredictFreeze = 1;
++	C.m_PredictWeapons = true;
++	C.m_PredictDDRace = true;
++	C.m_IsSolo = false;
++	C.m_UseTuneZones = false;
++	C.m_BugDDRaceInput = false;
++	C.m_NoWeakHookAndBounce = false;
++	C.m_PredictEvents = false;
++	C.m_OldLaser = false;
++	m_pWorld->m_IsValidCopy = true;
++	m_pWorld->m_LocalClientId = 0;
++}
++
++CTasGame::~CTasGame() = default;
++
++void CTasGame::Spawn(vec2 Pos)
++{
++	CNetObj_Character Char = {};
++	Char.m_X = round_to_int(Pos.x);
++	Char.m_Y = round_to_int(Pos.y);
++	Char.m_Weapon = WEAPON_GUN;
++	Char.m_HookState = HOOK_IDLE;
++	Char.m_HookedPlayer = -1;
++	Char.m_Direction = 0;
++	Char.m_Tick = m_Tick;
++	CNetObj_DDNetCharacter Ext = {};
++	Ext.m_Flags = CHARACTERFLAG_WEAPON_HAMMER | CHARACTERFLAG_WEAPON_GUN;
++	Ext.m_FreezeEnd = 0;
++	Ext.m_Jumps = 2;
++	Ext.m_TeleCheckpoint = 0;
++	Ext.m_StrongWeakId = 0;
++	Ext.m_JumpedTotal = 0;
++	Ext.m_NinjaActivationTick = -500;
++	Ext.m_FreezeStart = 0;
++	Ext.m_TargetX = 0;
++	Ext.m_TargetY = -1;
++	Ext.m_TuneZoneOverride = TuneZone::OVERRIDE_NONE;
++	CCharacter *pChr = new CCharacter(m_pWorld.get(), 0, &Char, &Ext);
++	pChr->m_Core.m_Pos = Pos;
++	pChr->m_Pos = pChr->m_PrevPos = pChr->m_PrevPrevPos = Pos;
++	pChr->m_Core.m_Vel = vec2(0, 0);
++	pChr->m_Core.m_ActiveWeapon = WEAPON_GUN;
++	pChr->m_Core.m_aWeapons[WEAPON_HAMMER].m_Ammo = -1;
++	pChr->m_Core.m_aWeapons[WEAPON_GUN].m_Ammo = -1;
++	pChr->m_LastWeapon = WEAPON_HAMMER;
++	pChr->m_Core.m_Tuning = gs_aTuning[0];
++	pChr->m_IsLocal = true;
++	m_pWorld->InsertEntity(pChr);
++	m_pWorld->m_apCharacters[0] = pChr;
++	m_pWorld->m_Core.m_apCharacters[0] = &pChr->m_Core;
++
++	int Id = 1;
++	for(const auto &Data : gs_vPickups)
++		m_pWorld->InsertEntity(new CPickup(m_pWorld.get(), Id++, &Data));
++}
++
++static void Unlink(CGameWorld *pWorld)
++{
++	pWorld->m_pParent = nullptr;
++	pWorld->m_pChild = nullptr;
++	for(int Type = 0; Type < CGameWorld::NUM_ENTTYPES; Type++)
++		for(CEntity *pEnt = pWorld->FindFirst(Type); pEnt; pEnt = pEnt->TypeNext())
++		{
++			pEnt->m_pParent = nullptr;
++			pEnt->m_pChild = nullptr;
++		}
++}
++
++void CTasGame::CopyFrom(const CTasGame &Other)
++{
++	CGameWorld *pFrom = Other.m_pWorld.get();
++	m_pWorld->CopyWorld(pFrom);
++	Unlink(pFrom);
++	Unlink(m_pWorld.get());
++	m_pWorld->m_IsValidCopy = true;
++	m_pWorld->m_LocalClientId = 0;
++	m_Tick = Other.m_Tick;
++	m_StartTick = Other.m_StartTick;
++	m_FinishTick = Other.m_FinishTick;
++	m_Started = Other.m_Started;
++	m_Fire = Other.m_Fire;
++	m_LastHook = Other.m_LastHook;
++	m_RefIdx = Other.m_RefIdx;
++	m_CommitLeft = Other.m_CommitLeft;
++	m_CommitIn = Other.m_CommitIn;
++	m_LastJump = Other.m_LastJump;
++	m_HookLoss = Other.m_HookLoss;
++	m_TrackCost = Other.m_TrackCost;
++	m_Bonus = Other.m_Bonus;
++	m_LastShot = Other.m_LastShot;
++	m_PendE = Other.m_PendE;
++	m_PendT = Other.m_PendT;
++	m_PendFire = Other.m_PendFire;
++}
++
++void CTasGame::SetState(vec2 Pos, vec2 Vel)
++{
++	CCharacter *pChr = Chr();
++	pChr->m_Core.m_Pos = Pos;
++	pChr->m_Core.m_Vel = Vel;
++	pChr->m_Pos = pChr->m_PrevPos = pChr->m_PrevPrevPos = Pos;
++}
++
++CCharacter *CTasGame::Chr() const { return m_pWorld->m_apCharacters[0]; }
++vec2 CTasGame::Pos() const { return Chr()->m_Core.m_Pos; }
++vec2 CTasGame::Vel() const { return Chr()->m_Core.m_Vel; }
++bool CTasGame::Frozen() const { return Chr()->m_FreezeTime > 0 || Chr()->m_Core.m_DeepFrozen; }
++
++int CTasGame::HookState() const { return Chr()->m_Core.m_HookState; }
++vec2 CTasGame::HookPos() const { return Chr()->m_Core.m_HookPos; }
++int CTasGame::ReloadTimer() const { return Chr()->m_ReloadTimer; }
++int CTasGame::ActiveWeapon() const { return Chr()->m_Core.m_ActiveWeapon; }
++bool CTasGame::HasGrenade() const { return Chr()->m_Core.m_aWeapons[WEAPON_GRENADE].m_Got; }
++int CTasGame::Jumped() const { return Chr()->m_Core.m_Jumped; }
++bool CTasGame::Grounded() const { return Chr()->IsGrounded(); }
++
++bool CTasGame::EnteredFreeze() const
++{
++	CCharacter *pChr = Chr();
++	std::vector<int> vIndices = gs_pCollision->GetMapIndices(pChr->m_PrevPos, pChr->m_Pos);
++	if(vIndices.empty())
++		vIndices.push_back(gs_pCollision->GetMapIndex(pChr->m_Pos));
++	for(int Index : vIndices)
++	{
++		if(Index < 0)
++			continue;
++		if(gs_pCollision->GetTileIndex(Index) == TILE_FREEZE || gs_pCollision->GetFrontTileIndex(Index) == TILE_FREEZE)
++			return true;
++	}
++	return false;
++}
++
++int CTasGame::NumProjectiles() const
++{
++	int n = 0;
++	for(CEntity *pEnt = m_pWorld->FindFirst(CGameWorld::ENTTYPE_PROJECTILE); pEnt; pEnt = pEnt->TypeNext())
++		n++;
++	return n;
++}
++
++bool CTasGame::NextExplosion(vec2 &Pos, int &Tick) const
++{
++	bool Found = false;
++	for(CEntity *pEnt = m_pWorld->FindFirst(CGameWorld::ENTTYPE_PROJECTILE); pEnt; pEnt = pEnt->TypeNext())
++	{
++		CProjectile *pProj = (CProjectile *)pEnt;
++		if(!pProj->m_Explosive)
++			continue;
++		int Life = pProj->m_LifeSpan;
++		for(int T = m_Tick + 1; T < m_Tick + 200; T++)
++		{
++			float Pt = (T - pProj->m_StartTick - 1) / (float)SERVER_TICK_SPEED;
++			float Ct = (T - pProj->m_StartTick) / (float)SERVER_TICK_SPEED;
++			vec2 PrevPos = pProj->GetPos(Pt), CurPos = pProj->GetPos(Ct), ColPos, NewPos;
++			int Collide = gs_pCollision->IntersectLine(PrevPos, CurPos, &ColPos, &NewPos);
++			if(Life > -1)
++				Life--;
++			bool Clipped = CurPos.x < -200 || CurPos.y < -200 || CurPos.x > gs_MapInfo.m_W * 32 + 200 || CurPos.y > gs_MapInfo.m_H * 32 + 200;
++			if(Collide || Clipped || Life == -1)
++			{
++				if(!Found || T < Tick)
++				{
++					Found = true;
++					Tick = T;
++					Pos = ColPos;
++				}
++				break;
++			}
++		}
++	}
++	return Found;
++}
++
++uint64_t CTasGame::Hash() const
++{
++	// exact physical state (for removing duplicate branches)
++	const CCharacterCore &C = Chr()->m_Core;
++	uint64_t h = 1469598103934665603ull;
++	auto Mix = [&](const void *p, size_t n) {
++		const unsigned char *b = (const unsigned char *)p;
++		for(size_t i = 0; i < n; i++)
++			h = (h ^ b[i]) * 1099511628211ull;
++	};
++	Mix(&C.m_Pos, sizeof(C.m_Pos));
++	Mix(&C.m_Vel, sizeof(C.m_Vel));
++	Mix(&C.m_HookPos, sizeof(C.m_HookPos));
++	Mix(&C.m_HookDir, sizeof(C.m_HookDir));
++	Mix(&C.m_HookState, sizeof(C.m_HookState));
++	Mix(&C.m_HookTick, sizeof(C.m_HookTick));
++	Mix(&C.m_Jumped, sizeof(C.m_Jumped));
++	Mix(&C.m_JumpedTotal, sizeof(C.m_JumpedTotal));
++	Mix(&C.m_ActiveWeapon, sizeof(C.m_ActiveWeapon));
++	Mix(&Chr()->m_ReloadTimer, sizeof(int));
++	Mix(&m_LastHook, sizeof(int));
++	Mix(&m_LastJump, sizeof(int));
++	Mix(&m_StartTick, sizeof(int));
++	Mix(&m_Fire, sizeof(int));
++	Mix(&m_CommitLeft, sizeof(int));
++	bool G = C.m_aWeapons[WEAPON_GRENADE].m_Got;
++	Mix(&G, 1);
++	for(CEntity *pEnt = m_pWorld->FindFirst(CGameWorld::ENTTYPE_PROJECTILE); pEnt; pEnt = pEnt->TypeNext())
++	{
++		Mix(&pEnt->m_Pos, sizeof(vec2));
++		Mix(&((CProjectile *)pEnt)->m_StartTick, sizeof(int));
++		Mix(&((CProjectile *)pEnt)->m_Direction, sizeof(vec2));
++	}
++	return h;
++}
++
++static bool SegmentHitsFreeze(vec2 A, vec2 B)
++{
++	const SMapInfo &M = gs_MapInfo;
++	float L = distance(A, B);
++	int N = (int)(L / 4.0f) + 1;
++	for(int i = 1; i <= N; i++)
++	{
++		vec2 P = mix(A, B, (float)i / N);
++		int x = (int)P.x / 32, y = (int)P.y / 32;
++		if(M.Tile(x, y) == TILE_FREEZE || M.Front(x, y) == TILE_FREEZE)
++			return true;
++	}
++	return false;
++}
++
++int CTasGame::RolloutHook(int Ticks, int Dir, int TX, int TY, vec2 *pPositions) const
++{
++	CCharacterCore Core = Chr()->m_Core;
++	Core.SetCoreWorld(nullptr, gs_pCollision, &Chr()->GameWorld()->m_Teams);
++	CNetObj_PlayerInput In = Chr()->m_Input;
++	In.m_Direction = Dir;
++	In.m_Jump = m_LastJump;
++	In.m_Fire = 0;
++	In.m_TargetX = TX;
++	In.m_TargetY = TY;
++	int Hook = m_LastHook;
++	for(int t = 0; t < Ticks; t++)
++	{
++		// release first if the hook is held, then press
++		Hook = Hook ? (t == 0 ? 0 : 1) : 1;
++		In.m_Hook = Hook;
++		Core.m_Input = In;
++		vec2 Prev = Core.m_Pos;
++		Core.Tick(true);
++		Core.Move();
++		Core.Quantize();
++		if(SegmentHitsFreeze(Prev, Core.m_Pos))
++			return t;
++		pPositions[t] = Core.m_Pos;
++	}
++	return Ticks;
++}
++
++float CTasGame::CrashLoss(int Ticks) const
++{
++	CCharacterCore Core = Chr()->m_Core;
++	Core.SetCoreWorld(nullptr, gs_pCollision, &Chr()->GameWorld()->m_Teams);
++	CNetObj_PlayerInput In = Chr()->m_Input;
++	In.m_Jump = m_LastJump;
++	In.m_Hook = 0;
++	In.m_Fire = 0;
++	float Loss = 0;
++	for(int t = 0; t < Ticks; t++)
++	{
++		Core.m_Input = In;
++		Core.Tick(true);
++		vec2 Before = Core.m_Vel;
++		Core.Move();
++		vec2 After = Core.m_Vel;
++		Loss += std::max(0.0f, dot(Before, Before) - dot(After, After));
++		Core.Quantize();
++	}
++	return Loss;
++}
++
++int CTasGame::Rollout(int Ticks, int Dir, bool KeepHook, vec2 *pPositions) const
++{
++	CCharacterCore Core = Chr()->m_Core;
++	Core.SetCoreWorld(nullptr, gs_pCollision, &Chr()->GameWorld()->m_Teams);
++	CNetObj_PlayerInput In = Chr()->m_Input;
++	In.m_Direction = Dir;
++	In.m_Jump = m_LastJump;
++	In.m_Hook = KeepHook ? m_LastHook : 0;
++	In.m_Fire = 0;
++	for(int t = 0; t < Ticks; t++)
++	{
++		Core.m_Input = In;
++		vec2 Prev = Core.m_Pos;
++		Core.Tick(true);
++		Core.Move();
++		Core.Quantize();
++		if(SegmentHitsFreeze(Prev, Core.m_Pos))
++			return t;
++		pPositions[t] = Core.m_Pos;
++	}
++	return Ticks;
++}
++
++void CTasGame::CheckRace()
++{
++	// Mirrors CCharacter::DDRacePostCoreTick + CGameControllerDDNet::HandleCharacterTiles on the server:
++	// the tiles along the previous move plus the four sensitivity points around the current position.
++	CCharacter *pChr = Chr();
++	CCollision *pCol = gs_pCollision;
++	std::vector<int> vIndices = pCol->GetMapIndices(pChr->m_PrevPos, pChr->m_Pos);
++	if(vIndices.empty())
++		vIndices.push_back(pCol->GetMapIndex(pChr->m_Pos));
++	float R = pChr->GetProximityRadius() / 3.f;
++	vec2 P = pChr->m_Pos;
++	int aS[4] = {
++		pCol->GetPureMapIndex(vec2(P.x + R, P.y - R)),
++		pCol->GetPureMapIndex(vec2(P.x + R, P.y + R)),
++		pCol->GetPureMapIndex(vec2(P.x - R, P.y - R)),
++		pCol->GetPureMapIndex(vec2(P.x - R, P.y + R))};
++	bool Sens[2] = {false, false};
++	for(int S : aS)
++	{
++		int T = pCol->GetTileIndex(S), F = pCol->GetFrontTileIndex(S);
++		Sens[0] |= T == TILE_START || F == TILE_START;
++		Sens[1] |= T == TILE_FINISH || F == TILE_FINISH;
++	}
++	for(int Index : vIndices)
++	{
++		if(Index < 0)
++			continue;
++		int T = pCol->GetTileIndex(Index), F = pCol->GetFrontTileIndex(Index);
++		bool Start = Sens[0] || T == TILE_START || F == TILE_START;
++		bool Finish = Sens[1] || T == TILE_FINISH || F == TILE_FINISH;
++		if(Start)
++		{
++			// staying on the start line keeps restarting the timer (normal); coming back to it later is
++			// double start abuse, which we don't allow
++			if(m_Started && m_StartTick >= 0 && m_Tick - m_StartTick > 1)
++				m_StartTick = -2;
++			else if(m_StartTick != -2)
++			{
++				m_Started = true;
++				m_StartTick = m_Tick;
++			}
++		}
++		if(Finish && m_Started && m_FinishTick < 0 && m_StartTick >= 0 && m_Tick > m_StartTick)
++			m_FinishTick = m_Tick;
++	}
++}
++
++void CTasGame::Step(const STasInput &In)
++{
++	CCharacter *pChr = Chr();
++	CNetObj_PlayerInput Input = {};
++	Input.m_Direction = In.m_Dir;
++	Input.m_TargetX = In.m_TX;
++	Input.m_TargetY = In.m_TY;
++	Input.m_Jump = In.m_Jump;
++	if((m_Fire & 1) != (In.m_Fire ? 1 : 0))
++		m_Fire++;
++	Input.m_Fire = m_Fire;
++	Input.m_Hook = In.m_Hook;
++	Input.m_WantedWeapon = In.m_Weapon >= 0 ? In.m_Weapon + 1 : 0;
++	Input.m_PlayerFlags = PLAYERFLAG_PLAYING;
++
++	// server order: early input (weapon fire) at the old tick, then the new tick
++	m_pWorld->m_GameTick = m_Tick;
++	pChr->OnDirectInput(&Input);
++	m_Tick++;
++	m_pWorld->m_GameTick = m_Tick;
++	pChr->OnPredictedInput(&Input);
++	// the server's DDRacePostCoreTick checks the previous move during this tick
++	CheckRace();
++	m_pWorld->Tick();
++	m_LastHook = In.m_Hook;
++	m_LastJump = In.m_Jump;
++}
+diff --git a/src/tas/sim.h b/src/tas/sim.h
+new file mode 100644
+index 0000000..39294b5
+--- /dev/null
++++ b/src/tas/sim.h
+@@ -0,0 +1,113 @@
++// Fast, copyable DDRace simulation for TAS search, built on the client prediction world.
++#ifndef TAS_SIM_H
++#define TAS_SIM_H
++
++#include <base/vmath.h>
++
++#include <cstdint>
++#include <memory>
++#include <string>
++#include <vector>
++
++class CGameWorld;
++class CCharacter;
++class CCollision;
++
++struct STasInput
++{
++	int8_t m_Dir = 0;
++	uint8_t m_Jump = 0;
++	uint8_t m_Hook = 0;
++	uint8_t m_Fire = 0; // held
++	int16_t m_TX = 0;
++	int16_t m_TY = -1;
++	int8_t m_Weapon = -1; // wanted weapon (0 based), -1 = keep
++	uint8_t m_Commit = 0; // search only: hold this input for this many ticks (macro move)
++};
++
++struct SMapInfo
++{
++	int m_W = 0, m_H = 0;
++	std::vector<uint8_t> m_vGame; // game layer tile index
++	std::vector<uint8_t> m_vFront;
++	std::vector<vec2> m_vSpawns;
++	int Tile(int x, int y) const
++	{
++		if(x < 0 || y < 0 || x >= m_W || y >= m_H)
++			return 1;
++		return m_vGame[y * m_W + x];
++	}
++	int Front(int x, int y) const
++	{
++		if(x < 0 || y < 0 || x >= m_W || y >= m_H || m_vFront.empty())
++			return 0;
++		return m_vFront[y * m_W + x];
++	}
++};
++
++// One simulated world with a single tee.
++class CTasGame
++{
++public:
++	static bool LoadMap(const char *pPath);
++	static const SMapInfo &Map();
++	static CCollision *Collision();
++
++	CTasGame();
++	~CTasGame();
++	CTasGame(const CTasGame &) = delete;
++	CTasGame &operator=(const CTasGame &) = delete;
++
++	void Spawn(vec2 Pos);
++	void CopyFrom(const CTasGame &Other);
++	void SetState(vec2 Pos, vec2 Vel); // experiments only: teleport the tee
++	void Step(const STasInput &In);
++
++	CCharacter *Chr() const;
++	vec2 Pos() const;
++	vec2 Vel() const;
++	bool Frozen() const;
++	int HookState() const;
++	vec2 HookPos() const;
++	int ReloadTimer() const;
++	int ActiveWeapon() const;
++	bool HasGrenade() const;
++	int Jumped() const;
++	bool Grounded() const;
++	uint64_t Hash() const;
++	int NumProjectiles() const;
++	// earliest upcoming explosion of a projectile in flight (deterministic in solo: projectiles ignore the tee)
++	bool NextExplosion(vec2 &Pos, int &Tick) const;
++	// the last move entered freeze (the freeze itself only applies on the next tick)
++	bool EnteredFreeze() const;
++	// cheap core-only continuation (no weapons/entities); writes positions, returns number of
++	// ticks before the tee would touch freeze (== Ticks if never)
++	int Rollout(int Ticks, int Dir, bool KeepHook, vec2 *pPositions) const;
++	// v^2 lost to collisions with solid tiles over a short continuation (current direction, hook released)
++	float CrashLoss(int Ticks) const;
++	// same, but (re)fires the hook towards (TX, TY) as early as possible
++	int RolloutHook(int Ticks, int Dir, int TX, int TY, vec2 *pPositions) const;
++	int m_LastHook = 0;
++	int m_RefIdx = 0; // index on the search's reference path (tracked by the search)
++	int m_CommitLeft = 0; // search only: ticks left of a committed macro move
++	STasInput m_CommitIn;
++	int m_LastJump = 0;
++	float m_HookLoss = 0; // search only: accumulated v^2 lost while hooked above the hook speed limit
++	float m_TrackCost = 0; // search only: accumulated deviation from a reference trajectory
++	float m_Bonus = 0; // search only: accumulated bonus (ticks)
++	int m_LastShot = -1; // search only: last matched reference shot
++	vec2 m_PendE = vec2(0, 0); // search only: cached next explosion of a projectile in flight
++	int m_PendT = -1, m_PendFire = -1;
++
++	int m_Tick = 0; // server tick of the last simulated step
++	int m_StartTick = -1;
++	int m_FinishTick = -1;
++	bool m_Started = false;
++	int m_Fire = 0; // input fire counter
++
++private:
++	void CheckRace();
++	std::unique_ptr<CGameWorld> m_pWorld;
++};
++
++#endif
+diff --git a/src/tas/tasio.h b/src/tas/tasio.h
+new file mode 100644
+index 0000000..d0f0091
+--- /dev/null
++++ b/src/tas/tasio.h
+@@ -0,0 +1,38 @@
++#ifndef TAS_TASIO_H
++#define TAS_TASIO_H
++#include "sim.h"
++#include <cstdio>
++#include <vector>
++inline std::vector<STasInput> ReadInputs(const char *pPath)
++{
++	std::vector<STasInput> v;
++	FILE *f = std::fopen(pPath, "r");
++	if(!f)
++		return v;
++	int d, j, h, fi, tx, ty, w;
++	while(std::fscanf(f, "%d %d %d %d %d %d %d", &d, &j, &h, &fi, &tx, &ty, &w) == 7)
++	{
++		STasInput In;
++		In.m_Dir = d;
++		In.m_Jump = j;
++		In.m_Hook = h;
++		In.m_Fire = fi;
++		In.m_TX = tx;
++		In.m_TY = ty;
++		In.m_Weapon = w;
++		v.push_back(In);
++	}
++	std::fclose(f);
++	return v;
++}
++inline bool WriteInputs(const char *pPath, const std::vector<STasInput> &v)
++{
++	FILE *f = std::fopen(pPath, "w");
++	if(!f)
++		return false;
++	for(const STasInput &In : v)
++		std::fprintf(f, "%d %d %d %d %d %d %d\n", In.m_Dir, In.m_Jump, In.m_Hook, In.m_Fire, In.m_TX, In.m_TY, In.m_Weapon);
++	std::fclose(f);
++	return true;
++}
++#endif
+diff --git a/src/test/tas_server_test.cpp b/src/test/tas_server_test.cpp
+new file mode 100644
+index 0000000..26466ac
+--- /dev/null
++++ b/src/test/tas_server_test.cpp
+@@ -0,0 +1,240 @@
++// TAS replay on the real server code (CServer + CGameContext), adapted from the AiP-Gores TAS work (TasReplay).
++//   TAS_MAP=<map file> TAS_INPUTS=<inputs file> [TAS_TRACE=1] testrunner --gtest_filter='TasServer.*'
++// inputs: one line per tick "dir jump hook fire tx ty weapon" (fire = held, weapon 0-based or -1).
++// Prints the start tick, the race tick of the grenade pickup and whether the tee was ever frozen or double started.
++#define private public
++#define protected public
++#include <engine/server/server.h>
++#include <game/server/entities/character.h>
++#include <game/server/gamecontext.h>
++#include <game/server/gamecontroller.h>
++#include <game/server/player.h>
++#undef private
++#undef protected
++
++#include "test.h"
++
++#include <base/logger.h>
++#include <base/io.h>
++#include <engine/engine.h>
++#include <engine/http.h>
++#include <engine/kernel.h>
++#include <engine/server/antibot.h>
++#include <engine/server/databases/connection_pool.h>
++#include <engine/shared/config.h>
++#include <engine/storage.h>
++#include <engine/console.h>
++#include <game/version.h>
++#include <generated/protocol.h>
++
++#include <gtest/gtest.h>
++
++#include <array>
++#include <cstdio>
++#include <cstdlib>
++#include <memory>
++#include <vector>
++
++namespace {
++class CNullLoggerTas : public ILogger
++{
++public:
++	void Log(const CLogMessage *pMessage) override {}
++};
++CNullLoggerTas gs_NullLogger;
++}
++
++class TasServer : public ::testing::Test // NOLINT(readability-identifier-naming)
++{
++public:
++	IGameServer *m_pGameServer = nullptr;
++	CServer *m_pServer = nullptr;
++	std::unique_ptr<IKernel> m_pKernel;
++	CTestInfo m_TestInfo;
++	std::unique_ptr<IStorage> m_pStorage;
++	CConfig m_ConfigBackup;
++	bool m_Ok = false;
++
++	CGameContext *GameServer() { return (CGameContext *)m_pGameServer; }
++
++	static void SetUpTestSuite() { CNetBase::Init(); }
++
++	TasServer()
++	{
++		const char *pMap = getenv("TAS_MAP");
++		if(!pMap)
++			return;
++		m_ConfigBackup = g_Config;
++		CServer *pServer = CreateServer();
++		m_pServer = pServer;
++		m_pKernel = std::unique_ptr<IKernel>(IKernel::Create());
++		m_pKernel->RegisterInterface(m_pServer);
++		IEngine *pEngine = CreateTestEngine(GAME_NAME);
++		m_pKernel->RegisterInterface(pEngine);
++		m_TestInfo.m_DeleteTestStorageFilesOnSuccess = true;
++		m_pStorage = m_TestInfo.CreateTestStorage();
++		m_pKernel->RegisterInterface(m_pStorage.get(), false);
++		IConsole *pConsole = CreateConsole(CFGFLAG_SERVER | CFGFLAG_ECON).release();
++		m_pKernel->RegisterInterface(pConsole);
++		IConfigManager *pConfigManager = CreateConfigManager();
++		m_pKernel->RegisterInterface(pConfigManager);
++		IEngineHttp *pEngineHttp = CreateEngineHttp();
++		m_pKernel->RegisterInterface(pEngineHttp);
++		m_pKernel->RegisterInterface(static_cast<IHttp *>(pEngineHttp), false);
++		IEngineAntibot *pEngineAntibot = CreateEngineAntibot();
++		m_pKernel->RegisterInterface(pEngineAntibot);
++		m_pKernel->RegisterInterface(static_cast<IAntibot *>(pEngineAntibot), false);
++		m_pGameServer = CreateGameServer();
++		m_pKernel->RegisterInterface(m_pGameServer);
++		pEngine->Init();
++		pConsole->Init();
++		pConfigManager->Init();
++		m_pServer->RegisterCommands();
++
++		// copy the map into the test storage
++		FILE *f = fopen(pMap, "rb");
++		if(!f)
++			return;
++		std::vector<unsigned char> vData;
++		unsigned char aBuf[4096];
++		size_t n;
++		while((n = fread(aBuf, 1, sizeof(aBuf), f)) > 0)
++			vData.insert(vData.end(), aBuf, aBuf + n);
++		fclose(f);
++		m_pStorage->CreateFolder("maps", IStorage::TYPE_SAVE);
++		IOHANDLE File = m_pStorage->OpenFile("maps/tasmap.map", IOFLAG_WRITE, IStorage::TYPE_SAVE);
++		if(!File)
++			return;
++		io_write(File, vData.data(), vData.size());
++		io_close(File);
++
++		EXPECT_NE(m_pServer->LoadMap("tasmap"), 0);
++		m_pServer->m_RunServer = CServer::RUNNING;
++		m_pServer->m_AuthManager.Init();
++		{
++			int Size = GameServer()->PersistentClientDataSize();
++			for(auto &Client : m_pServer->m_aClients)
++			{
++				Client.m_HasPersistentData = false;
++				Client.m_pPersistentData = malloc(Size);
++			}
++		}
++		m_pServer->m_pPersistentData = malloc(GameServer()->PersistentDataSize());
++		EXPECT_NE(m_pServer->LoadMap("tasmap"), 0);
++		EXPECT_TRUE(pEngineHttp->Init(std::chrono::seconds{2}));
++		pServer->m_NetServer.SetCallbacks(CServer::NewClientCallback, CServer::NewClientNoAuthCallback,
++			CServer::ClientRejoinCallback, CServer::DelClientCallback, pServer);
++		pServer->m_Econ.Init(pServer->Config(), pServer->Console(), &pServer->m_ServerBan);
++		pServer->m_Fifo.Init(pServer->Console(), g_Config.m_SvInputFifo, CFGFLAG_SERVER);
++		m_pServer->Antibot()->Init();
++		GameServer()->OnInit(nullptr);
++		g_Config.m_DbgDummies = 1;
++		m_pServer->UpdateDebugDummies(false);
++		m_Ok = true;
++	}
++
++	~TasServer() override
++	{
++		if(!m_pServer)
++			return;
++		m_pServer->m_Econ.Shutdown();
++		m_pServer->m_Fifo.Shutdown();
++		if(m_Ok)
++			m_pGameServer->OnShutdown(nullptr);
++		m_pServer->DbPool()->OnShutdown();
++		g_Config = m_ConfigBackup;
++	}
++};
++
++TEST_F(TasServer, Run)
++{
++	const char *pInputs = getenv("TAS_INPUTS");
++	if(!getenv("TAS_MAP") || !pInputs)
++		GTEST_SKIP() << "set TAS_MAP and TAS_INPUTS";
++	ASSERT_TRUE(m_Ok);
++	FILE *f = fopen(pInputs, "r");
++	ASSERT_TRUE(f);
++	std::vector<std::array<int, 7>> vIn;
++	std::array<int, 7> a;
++	while(fscanf(f, "%d %d %d %d %d %d %d", &a[0], &a[1], &a[2], &a[3], &a[4], &a[5], &a[6]) == 7)
++		vIn.push_back(a);
++	fclose(f);
++	const bool Trace = getenv("TAS_TRACE") != nullptr;
++
++	// the debug dummy is the only player; respawn it at the first spawn point in map order
++	const int Cid = m_pServer->MaxClients() - 1;
++	CPlayer *p = GameServer()->m_apPlayers[Cid];
++	ASSERT_TRUE(p);
++	vec2 SpawnPos = GameServer()->m_pController->m_avSpawnPoints[0][0];
++	{
++		CLogScope Quiet(&gs_NullLogger);
++		p->KillCharacter(WEAPON_GAME, false);
++		GameServer()->m_World.RemoveEntities();
++		m_pServer->m_IdPool.TimeoutIds();
++		p->ForceSpawn(SpawnPos);
++	}
++	printf("spawn %.1f %.1f\n", SpawnPos.x, SpawnPos.y);
++	CNetObj_PlayerInput In;
++	mem_zero(&In, sizeof(In));
++	int Fire = 0;
++	int StartTick = -1, PickupRt = -1;
++	bool DoubleStart = false, Frozen = false;
++	int Tick0 = m_pServer->Tick();
++	for(size_t i = 0; i < vIn.size(); i++)
++	{
++		In.m_Direction = vIn[i][0];
++		In.m_Jump = vIn[i][1];
++		In.m_Hook = vIn[i][2];
++		if((Fire & 1) != (vIn[i][3] ? 1 : 0))
++			Fire++;
++		In.m_Fire = Fire;
++		In.m_TargetX = vIn[i][4];
++		In.m_TargetY = vIn[i][5];
++		In.m_WantedWeapon = vIn[i][6] >= 0 ? vIn[i][6] + 1 : 0;
++		In.m_PlayerFlags = PLAYERFLAG_PLAYING;
++		{
++			CLogScope Quiet(&gs_NullLogger);
++			if(p->GetCharacter())
++				GameServer()->OnClientPredictedEarlyInput(Cid, &In);
++			m_pServer->m_CurrentGameTick++;
++			if(p->GetCharacter())
++				GameServer()->OnClientPredictedInput(Cid, &In);
++			GameServer()->OnTick();
++			GameServer()->OnPostGlobalSnap();
++		}
++		CCharacter *c = p->GetCharacter();
++		if(!c)
++		{
++			printf("tee died at input %d\n", (int)i + 1);
++			break;
++		}
++		if(c->m_DDRaceState == ERaceState::STARTED)
++		{
++			int Now = c->m_StartTime - Tick0;
++			if(StartTick >= 0 && Now != StartTick && Now - StartTick > 1)
++			{
++				printf("DOUBLE START at input %d (previous start %d)\n", (int)i + 1, StartTick);
++				DoubleStart = true;
++			}
++			StartTick = Now;
++		}
++		if(c->m_FreezeTime > 0 || c->m_Core.m_DeepFrozen)
++		{
++			if(!Frozen)
++				printf("FROZEN at input %d\n", (int)i + 1);
++			Frozen = true;
++		}
++		if(PickupRt < 0 && c->m_Core.m_aWeapons[WEAPON_GRENADE].m_Got)
++		{
++			PickupRt = (m_pServer->Tick() - Tick0) - StartTick;
++			printf("GRENADE at input %d, race tick %d\n", (int)i + 1, PickupRt);
++		}
++		if(Trace)
++			printf("%d %.3f %.3f %.5f %.5f hs=%d jumped=%d\n", (int)i + 1, c->m_Core.m_Pos.x, c->m_Core.m_Pos.y, c->m_Core.m_Vel.x, c->m_Core.m_Vel.y,
++				c->m_Core.m_HookState, c->m_Core.m_Jumped);
++	}
++	printf("RESULT start tick %d pickup race tick %d frozen %d double start %d\n", StartTick, PickupRt, Frozen, DoubleStart);
++	EXPECT_FALSE(DoubleStart);
++	EXPECT_FALSE(Frozen);
++	EXPECT_GE(PickupRt, 0);
++}
