@@ -18,6 +18,8 @@ import time
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROT = [int(x) for x in os.environ.get('LNS_ROT', '0,1,1').split(',')]
+BEAMS = [int(x) for x in os.environ.get('LNS_BEAMS', '4000,8000,8000,16000,30000').split(',')]
+THREADS = os.environ.get('LNS_THREADS', '1')
 TOOL = os.environ.get('LNS_TOOL', os.path.join(HERE, '..', 'ddnet', 'build', 'ddsearch'))
 MAP = os.path.join(HERE, '..', 'kog.map')
 REPLAY = os.path.join(HERE, '..', 'ddnet', 'build', 'replay')
@@ -33,7 +35,7 @@ def pickup_rt(path):
 
 def variant(rng):
 	v = {
-		'beam': rng.choice([4000, 8000, 8000, 16000, 30000]),
+		'beam': rng.choice(BEAMS),
 		'hnow': rng.choice([300, 600, 600, 1000]),
 		'ge': rng.choice([0, 0.01, 0.02, 0.02, 0.04]),
 		'angles': rng.choice([64, 64, 128]),
@@ -91,7 +93,7 @@ def main():
 			out = os.path.join(d, f'out_{wid}.txt')
 			if os.path.exists(out):
 				os.remove(out)
-			args = [TOOL, MAP, f'best={src}', f'cut={cut}', 'threads=1', f'out={out}'] + [f'{k}={x}' for k, x in v.items()]
+			args = [TOOL, MAP, f'best={src}', f'cut={cut}', f'threads={THREADS}', f'out={out}'] + [f'{k}={x}' for k, x in v.items()]
 			t0 = time.time()
 			try:
 				res = subprocess.run(args, capture_output=True, text=True, timeout=3600).stdout
