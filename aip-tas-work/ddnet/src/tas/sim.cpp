@@ -58,6 +58,8 @@ bool CTasGame::LoadMap(const char *pPath)
 	gs_pCollision = new CCollision();
 	gs_pCollision->Init(gs_pLayers);
 	CCollision::ms_TileExistsCache = getenv("TAS_NOCACHE") == nullptr;
+	CCollision::ms_FastPaths = getenv("TAS_NOFAST") == nullptr;
+	CCharacterCore::ms_TasSolo = getenv("TAS_NOFAST") == nullptr;
 
 	// same as CGameContext::OnInit with default settings
 	for(auto &Tuning : gs_aTuning)
@@ -183,12 +185,66 @@ static void Unlink(CGameWorld *pWorld)
 		}
 }
 
+static int CountEntities(CGameWorld *pWorld, int Type)
+{
+	int n = 0;
+	for(CEntity *pEnt = pWorld->FindFirst(Type); pEnt; pEnt = pEnt->TypeNext())
+		n++;
+	return n;
+}
+
+// fast copy: same entity layout (one character, the static pickups, nothing else) -> copy the character in place
+static bool FastCopy(CGameWorld *pTo, CGameWorld *pFrom)
+{
+	static const bool s_Off = getenv("TAS_NOFASTCOPY") != nullptr;
+	if(s_Off)
+		return false;
+	for(int Type = 0; Type < CGameWorld::NUM_ENTTYPES; Type++)
+	{
+		if(Type == CGameWorld::ENTTYPE_CHARACTER || Type == CGameWorld::ENTTYPE_PICKUP)
+			continue;
+		if(pFrom->FindFirst(Type) || pTo->FindFirst(Type))
+			return false;
+	}
+	if(CountEntities(pFrom, CGameWorld::ENTTYPE_CHARACTER) != 1 || CountEntities(pTo, CGameWorld::ENTTYPE_CHARACTER) != 1)
+		return false;
+	if(CountEntities(pFrom, CGameWorld::ENTTYPE_PICKUP) != CountEntities(pTo, CGameWorld::ENTTYPE_PICKUP))
+		return false;
+	CCharacter *pSrc = (CCharacter *)pFrom->FindFirst(CGameWorld::ENTTYPE_CHARACTER);
+	CCharacter *pDst = (CCharacter *)pTo->FindFirst(CGameWorld::ENTTYPE_CHARACTER);
+	if(pSrc->GetCid() != 0 || pDst->GetCid() != 0)
+		return false;
+	pTo->m_GameTick = pFrom->m_GameTick;
+	pTo->m_pCollision = pFrom->m_pCollision;
+	pTo->m_WorldConfig = pFrom->m_WorldConfig;
+	pTo->m_pTuningList = pFrom->m_pTuningList;
+	pTo->m_pMapBugs = pFrom->m_pMapBugs;
+	pTo->m_Teams = pFrom->m_Teams;
+	if(!pFrom->m_Core.m_vSwitchers.empty() || !pTo->m_Core.m_vSwitchers.empty())
+		pTo->m_Core.m_vSwitchers = pFrom->m_Core.m_vSwitchers;
+	pTo->m_PredictedEvents = pFrom->m_PredictedEvents;
+	CEntity *pPrev = pDst->m_pPrevTypeEntity, *pNext = pDst->m_pNextTypeEntity;
+	*pDst = *pSrc;
+	pDst->m_pPrevTypeEntity = pPrev;
+	pDst->m_pNextTypeEntity = pNext;
+	pDst->m_pParent = nullptr;
+	pDst->m_pChild = nullptr;
+	pDst->m_pGameWorld = pTo;
+	pTo->m_apCharacters[0] = pDst;
+	pTo->m_Core.m_apCharacters[0] = &pDst->m_Core;
+	pDst->SetCoreWorld(pTo);
+	return true;
+}
+
 void CTasGame::CopyFrom(const CTasGame &Other)
 {
 	CGameWorld *pFrom = Other.m_pWorld.get();
-	m_pWorld->CopyWorld(pFrom);
-	Unlink(pFrom);
-	Unlink(m_pWorld.get());
+	if(!FastCopy(m_pWorld.get(), pFrom))
+	{
+		m_pWorld->CopyWorld(pFrom);
+		Unlink(pFrom);
+		Unlink(m_pWorld.get());
+	}
 	m_pWorld->m_IsValidCopy = true;
 	m_pWorld->m_LocalClientId = 0;
 	m_Tick = Other.m_Tick;

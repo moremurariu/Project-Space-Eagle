@@ -132,6 +132,14 @@ struct SParams
 	int m_PadTop = 300; // only the best this many beam states get them
 	int m_PadRange = 30; // pre-fired shots may explode up to this many ticks later
 	float m_PadRef = 0; // also keep pre-fire aims exploding within this many px of the reference line ~that many ticks ahead
+	std::string m_Anchor; // anchor=FILE: full input file of a reference run; its lineage is always kept in the beam
+	float m_VPen = 0; // vpen=W: W ticks per px/t of velocity difference to the reference's velocity at the same point
+	float m_VPenDz = 1; // vpendz=D: free band (px/t)
+	int m_AncInjT = 0; // ancinjt=1: also try the anchor run's input of the same tick (time-indexed)
+	int m_AncLin = 1; // anchorlin=0: anchor run only for injection (the prefix may differ from it)
+	int m_AncInj = 0; // ancinj=W: also try the anchor run's input from where it was at the state's reference index (+-W)
+	int m_GateJump = 0; // gatejump=1: a grenade gate needs the air jump available (post-pickup braking)
+	int m_GateT = 0; // gatet=1: grenade gates are ranked by the sub-tick entry time into the pickup circle
 	int m_SurvEvery = 2; // every this many steps, beam states that can't survive `survive` ticks stop breeding (0 = off)
 	int m_FireLook = 12;
 	int m_Survive = 20;
@@ -185,6 +193,7 @@ struct SRef
 	std::vector<vec2> m_vP; // smoothed points
 	std::vector<float> m_vK; // Teero tick of each point
 	std::vector<float> m_vL; // cumulative arc length
+	std::vector<vec2> m_vV; // reference velocity per point (optional columns 4-5 of the track file)
 	int m_GateIdx = 0; // end of the segment (search gate)
 	int m_EndIdx = 0; // end of the time model (gate + horizon)
 	std::vector<int> m_vSinkIdx; // energy sinks (U-turns): energy only counts up to the next one
@@ -196,6 +205,7 @@ struct SRef
 	bool Load(const char *pPath)
 	{
 		std::vector<std::pair<int, vec2>> vRaw;
+		std::vector<vec2> vVel;
 		FILE *f = std::fopen(pPath, "r");
 		if(!f)
 			return false;
@@ -203,9 +213,13 @@ struct SRef
 		while(std::fgets(aLine, sizeof(aLine), f))
 		{
 			int t;
-			float x, y;
-			if(std::sscanf(aLine, "%d %f %f", &t, &x, &y) == 3 && t >= 0)
+			float x, y, vx, vy;
+			int n = std::sscanf(aLine, "%d %f %f %f %f", &t, &x, &y, &vx, &vy);
+			if(n >= 3 && t >= 0)
+			{
 				vRaw.push_back({t, vec2(x, y)});
+				vVel.push_back(n == 5 ? vec2(vx, vy) : vec2(0, 0));
+			}
 		}
 		std::fclose(f);
 		const int N = vRaw.size();
@@ -225,6 +239,7 @@ struct SRef
 		m_vL.assign(N, 0);
 		for(int i = 1; i < N; i++)
 			m_vL[i] = m_vL[i - 1] + distance(m_vP[i - 1], m_vP[i]);
+		m_vV = vVel;
 		return N > 2;
 	}
 	void Build(int GateIdx, int EndIdx)
@@ -453,16 +468,27 @@ static float EffEnergy(const CTasGame &G)
 }
 
 // optional penalty for the distance from the reference line (ticks per px beyond latdz, only between Teero ticks latk0..latk1)
+static float VelPen(const CTasGame &G, int I, float Frac)
+{
+	if(gs_P.m_VPen <= 0 || gs_Ref.m_vV.empty())
+		return 0;
+	const int N = gs_Ref.m_vV.size();
+	vec2 A = gs_Ref.m_vV[std::clamp(I, 0, N - 1)], B = gs_Ref.m_vV[std::clamp(I + 1, 0, N - 1)];
+	float d = distance(G.Vel(), A + (B - A) * Frac);
+	return gs_P.m_VPen * std::max(0.0f, d - gs_P.m_VPenDz);
+}
+
 static float LatPen(const CTasGame &G, int I, float Frac)
 {
+	float VP = VelPen(G, I, Frac);
 	if(gs_P.m_LatPen <= 0)
-		return 0;
+		return VP;
 	const int N = gs_Ref.m_vP.size();
 	if(gs_Ref.m_vK[I] < gs_P.m_LatK0 || gs_Ref.m_vK[I] > gs_P.m_LatK1)
-		return 0;
+		return VP;
 	vec2 A = gs_Ref.m_vP[I], B = gs_Ref.m_vP[std::min(I + 1, N - 1)];
 	float d = distance(G.Pos(), A + (B - A) * Frac);
-	return gs_P.m_LatPen * std::max(0.0f, d - gs_P.m_LatDz);
+	return VP + gs_P.m_LatPen * std::max(0.0f, d - gs_P.m_LatDz);
 }
 
 // reference shots (Teero's catalog): a shot of ours that explodes near one of his explosion points gets a bonus
@@ -1485,8 +1511,71 @@ static bool AtGate(const CTasGame &G)
 	if(gs_P.m_Gate == "finish")
 		return G.m_FinishTick >= 0;
 	if(gs_P.m_Gate == "grenade")
-		return G.HasGrenade();
+		return G.HasGrenade() && (!gs_P.m_GateJump || G.Grounded() || !(G.Jumped() & 2));
 	return G.m_RefIdx >= gs_Ref.m_GateIdx;
+}
+
+// anchor injection: for each reference index, the anchor inputs applied right after the anchor was there
+static std::vector<STasInput> gs_vAncIn;
+static std::vector<std::vector<int>> gs_vRefToAnc;
+
+static bool SameInput(const STasInput &a, const STasInput &b)
+{
+	return a.m_Dir == b.m_Dir && a.m_Jump == b.m_Jump && a.m_Hook == b.m_Hook && a.m_Fire == b.m_Fire && a.m_TX == b.m_TX && a.m_TY == b.m_TY &&
+	       a.m_Weapon == b.m_Weapon;
+}
+
+static void InjectAnchor(const CTasGame &G, std::vector<STasInput> &vActs)
+{
+	if(gs_vRefToAnc.empty() || !G.m_Started)
+		return;
+	const int W = gs_P.m_AncInj;
+	for(int r = G.m_RefIdx - W; r <= G.m_RefIdx + W; r++)
+	{
+		if(r < 0 || r >= (int)gs_vRefToAnc.size())
+			continue;
+		for(int i : gs_vRefToAnc[r])
+		{
+			if(i + 1 >= (int)gs_vAncIn.size())
+				continue;
+			STasInput In = gs_vAncIn[i + 1];
+			if(G.HasGrenade() && In.m_Weapon < 0)
+				In.m_Weapon = 3;
+			bool Dup = false;
+			for(const auto &A : vActs)
+				if(SameInput(A, In))
+				{
+					Dup = true;
+					break;
+				}
+			if(!Dup)
+				vActs.push_back(In);
+		}
+	}
+}
+
+// sub-tick race time at which the tee entered the pickup circle (48 px around the grenade); G is the state of the
+// tick before the pickup tick (its position is inside the circle, its previous position outside)
+static float PickupTime(const CTasGame &G)
+{
+	const SMapInfo &M = CTasGame::Map();
+	vec2 P = G.Pos(), Q = G.Chr()->m_PrevPos;
+	float Best = 1e30f;
+	vec2 C(0, 0);
+	for(int y = 0; y < M.m_H; y++)
+		for(int x = 0; x < M.m_W; x++)
+			if(M.Tile(x, y) == ENTITY_OFFSET + ENTITY_WEAPON_GRENADE)
+			{
+				vec2 Gp(x * 32 + 16, y * 32 + 16);
+				if(distance(Gp, P) < Best)
+				{
+					Best = distance(Gp, P);
+					C = Gp;
+				}
+			}
+	float Dc = distance(P, C), Dp = distance(Q, C);
+	float F = Dp > Dc + 1e-4f ? std::clamp((Dp - 48.0f) / (Dp - Dc), 0.0f, 1.0f) : 1.0f;
+	return (float)(G.m_Tick - 1 - G.m_StartTick) + F;
 }
 
 int main(int argc, const char **argv)
@@ -1540,6 +1629,14 @@ int main(int argc, const char **argv)
 		else if(K == "firealldirs") gs_P.m_FireAllDirs = std::stoi(V);
 		else if(K == "pendlook") gs_P.m_PendLook = std::stoi(V);
 		else if(K == "survevery") gs_P.m_SurvEvery = std::stoi(V);
+		else if(K == "anchor") gs_P.m_Anchor = V;
+		else if(K == "gatet") gs_P.m_GateT = std::stoi(V);
+		else if(K == "gatejump") gs_P.m_GateJump = std::stoi(V);
+		else if(K == "ancinj") gs_P.m_AncInj = std::stoi(V);
+		else if(K == "anchorlin") gs_P.m_AncLin = std::stoi(V);
+		else if(K == "ancinjt") gs_P.m_AncInjT = std::stoi(V);
+		else if(K == "vpen") gs_P.m_VPen = std::stof(V);
+		else if(K == "vpendz") gs_P.m_VPenDz = std::stof(V);
 		else if(K == "padaims") gs_P.m_PadAims = std::stoi(V);
 		else if(K == "padtop") gs_P.m_PadTop = std::stoi(V);
 		else if(K == "padrange") gs_P.m_PadRange = std::stoi(V);
@@ -1716,6 +1813,37 @@ int main(int argc, const char **argv)
 
 	auto t0 = std::chrono::steady_clock::now();
 	std::vector<STasInput> vPrefix = ReadInputs(gs_P.m_Prefix.c_str());
+	std::vector<STasInput> vAnchor;
+	if(!gs_P.m_Anchor.empty())
+	{
+		vAnchor = ReadInputs(gs_P.m_Anchor.c_str());
+		bool Same = vAnchor.size() > vPrefix.size();
+		for(size_t k = 0; Same && k < vPrefix.size(); k++)
+			Same = vAnchor[k].m_Dir == vPrefix[k].m_Dir && vAnchor[k].m_Jump == vPrefix[k].m_Jump && vAnchor[k].m_Hook == vPrefix[k].m_Hook &&
+			       vAnchor[k].m_Fire == vPrefix[k].m_Fire && vAnchor[k].m_TX == vPrefix[k].m_TX && vAnchor[k].m_TY == vPrefix[k].m_TY;
+		if(!Same && gs_P.m_AncLin)
+		{
+			std::printf("anchor: the prefix must be a prefix of the anchor run\n");
+			return 1;
+		}
+	}
+	if(!vAnchor.empty() && gs_P.m_AncInj > 0)
+	{
+		gs_vAncIn = vAnchor;
+		gs_vRefToAnc.assign(gs_Ref.m_vP.size(), {});
+		CTasGame A;
+		A.Spawn(CTasGame::Map().m_vSpawns[0]);
+		for(int i = 0; i < (int)vAnchor.size(); i++)
+		{
+			A.Step(vAnchor[i]);
+			UpdateTrack(A);
+			if(A.m_Started && A.m_RefIdx >= 0 && A.m_RefIdx < (int)gs_vRefToAnc.size())
+				gs_vRefToAnc[A.m_RefIdx].push_back(i);
+		}
+	}
+	int AncIdx = vAnchor.empty() || !gs_P.m_AncLin ? -1 : 0; // beam index of the anchor lineage
+	CTasGame AncG; // the anchor run's own state, advanced exactly
+	bool AncLive = !vAnchor.empty() && gs_P.m_AncLin;
 	std::vector<std::unique_ptr<CTasGame>> vBeam;
 	std::vector<STasInput> vPrev;
 	std::vector<char> vDoomed;
@@ -1767,6 +1895,8 @@ int main(int argc, const char **argv)
 		if(gs_P.m_TrackW > 0)
 			std::printf("tracking: offset %d (teero tick = race tick + offset)\n", gs_P.m_TrackOff);
 		vPrev.push_back(vPrefix.empty() ? STasInput{} : vPrefix.back());
+		if(AncLive)
+			AncG.CopyFrom(*G);
 		vBeam.push_back(std::move(G));
 	}
 	std::vector<std::vector<std::pair<int, STasInput>>> vHist;
@@ -1776,11 +1906,17 @@ int main(int argc, const char **argv)
 	int FirstGateStep = -1;
 	const int NT = std::max(1, gs_P.m_Threads);
 
+	double aProf[6] = {0, 0, 0, 0, 0, 0};
+	const bool Prof = getenv("SEG_PROF") != nullptr;
+	auto Now = [] { return std::chrono::steady_clock::now(); };
+	auto Dt = [](auto a, auto b) { return std::chrono::duration<double>(b - a).count(); };
 	for(int Step = 0; Step < gs_P.m_MaxTicks && !vBeam.empty(); Step++)
 	{
+		auto tp0 = Now();
 		if(FirstGateStep >= 0 && Step > FirstGateStep + gs_P.m_GateWait)
 			break;
 		std::vector<std::vector<SCand>> vTC(NT);
+		std::vector<std::vector<SGate>> vGC(NT);
 		std::atomic<int> Next{0};
 		auto Worker = [&](int T) {
 			CTasGame Tmp, Look;
@@ -1794,6 +1930,23 @@ int main(int argc, const char **argv)
 					continue;
 				const CTasGame &G = *vBeam[i];
 				GenActions(G, vPrev[i], vActs, i < gs_P.m_PadTop);
+				if(gs_P.m_AncInj > 0)
+					InjectAnchor(G, vActs);
+				if(gs_P.m_AncInjT > 0 && vPrefix.size() + Step < vAnchor.size())
+				{
+					STasInput AIn = vAnchor[vPrefix.size() + Step];
+					if(G.HasGrenade() && AIn.m_Weapon < 0)
+						AIn.m_Weapon = 3;
+					bool Dup = false;
+					for(const auto &A : vActs)
+						if(SameInput(A, AIn))
+						{
+							Dup = true;
+							break;
+						}
+					if(!Dup)
+						vActs.push_back(AIn);
+				}
 				for(const auto &In : vActs)
 				{
 					Tmp.CopyFrom(G);
@@ -1821,6 +1974,8 @@ int main(int argc, const char **argv)
 					}
 					if(!Tmp.HasGrenade() && Tmp.m_RefIdx > gs_GrenIdx + 3)
 						continue; // passed the pickup without the grenade
+					if(gs_P.m_Gate == "grenade" && Tmp.HasGrenade() && !AtGate(Tmp))
+						continue; // picked up, but not a valid gate state (gatejump)
 					const int Rt = Tmp.m_Tick - Tmp.m_StartTick;
 					if(AtGate(Tmp))
 					{
@@ -1828,21 +1983,21 @@ int main(int argc, const char **argv)
 						float V = gs_P.m_Gate == "finish" ? (float)(Tmp.m_FinishTick - Tmp.m_StartTick) : EstTotal(Tmp, &Ee);
 						if(gs_Box)
 							V = (float)Rt + 0.01f * Tmp.Vel().y;
+						if(gs_P.m_GateT && gs_P.m_Gate == "grenade")
+							V = PickupTime(G);
 						// (EstTotal includes the time model's horizon beyond the gate, so energy at the gate counts)
 						if(gs_P.m_Gate == "finish")
 							Ee = EffEnergy(Tmp);
-						std::lock_guard<std::mutex> L(GateMx);
-						if(V < BestGate.m_V - 1e-4f && (gs_P.m_Gate == "finish" || Survives(Tmp, gs_P.m_Survive)))
-						{
-							BestGate.m_V = V;
-							BestGate.m_Step = Step;
-							BestGate.m_Parent = i;
-							BestGate.m_In = In;
-							BestGate.m_Rt = gs_P.m_Gate == "finish" ? Tmp.m_FinishTick - Tmp.m_StartTick : Rt;
-							BestGate.m_Ee = Ee;
-							BestGate.m_Pos = Tmp.Pos();
-							BestGate.m_Vel = Tmp.Vel();
-						}
+						SGate C;
+						C.m_V = V;
+						C.m_Step = Step;
+						C.m_Parent = i;
+						C.m_In = In;
+						C.m_Rt = gs_P.m_Gate == "finish" ? Tmp.m_FinishTick - Tmp.m_StartTick : Rt;
+						C.m_Ee = Ee;
+						C.m_Pos = Tmp.Pos();
+						C.m_Vel = Tmp.Vel();
+						vGC[T].push_back(C); // survival is checked best-first after the step
 						continue;
 					}
 					const CTasGame *pEval = &Tmp;
@@ -1929,8 +2084,92 @@ int main(int argc, const char **argv)
 		Worker(0);
 		for(auto &Th : vTh)
 			Th.join();
+		// anchor: the reference run's own next state is always a candidate (and kept in the beam below)
+		SCand AncC;
+		bool AncValid = false;
+		const size_t AncPos = vPrefix.size() + Step;
+		if(AncLive && AncIdx >= 0 && AncPos < vAnchor.size())
+		{
+			STasInput In = vAnchor[AncPos];
+			AncG.Step(In);
+			UpdateTrack(AncG);
+			if(AncG.Frozen() || AncG.EnteredFreeze() || AncG.m_StartTick == -2)
+				AncLive = false;
+			else if(AtGate(AncG))
+			{
+				SGate C;
+				C.m_V = gs_P.m_GateT && gs_P.m_Gate == "grenade" ? PickupTime(*vBeam[AncIdx]) : EstTotal(AncG, &C.m_Ee);
+				C.m_Step = Step;
+				C.m_Parent = AncIdx;
+				C.m_In = In;
+				C.m_Rt = AncG.m_Tick - AncG.m_StartTick;
+				C.m_Pos = AncG.Pos();
+				C.m_Vel = AncG.Vel();
+				vGC[0].push_back(C);
+				AncLive = false;
+			}
+			else
+			{
+				float Ee;
+				float S = EstTotal(AncG, &Ee);
+				AncC = {S, AncIdx, In, CellKey(AncG), AncG.Hash(), Ee, AncG.m_Tick - AncG.m_StartTick, AncG.m_RefIdx, QuotaKey(AncG)};
+				AncValid = true;
+			}
+		}
+		else
+			AncLive = false;
+		{
+			// gate candidates of this step, best first; the first one that survives (checked in parallel batches) wins
+			std::vector<SGate> vG;
+			for(auto &v : vGC)
+				vG.insert(vG.end(), v.begin(), v.end());
+			std::sort(vG.begin(), vG.end(), [](const SGate &a, const SGate &b) { return a.m_V != b.m_V ? a.m_V < b.m_V : a.m_Parent < b.m_Parent; });
+			while(!vG.empty() && vG.back().m_V >= BestGate.m_V - 1e-4f)
+				vG.pop_back();
+			const int Batch = 16 * NT;
+			for(size_t b = 0; b < vG.size(); b += Batch)
+			{
+				const size_t e = std::min(vG.size(), b + Batch);
+				std::vector<char> vOk(e - b, 0);
+				std::atomic<size_t> NextG{b};
+				auto Chk = [&]() {
+					CTasGame S;
+					while(true)
+					{
+						size_t k = NextG.fetch_add(1);
+						if(k >= e)
+							break;
+						if(gs_P.m_Gate == "finish")
+						{
+							vOk[k - b] = 1;
+							continue;
+						}
+						S.CopyFrom(*vBeam[vG[k].m_Parent]);
+						S.Step(vG[k].m_In);
+						vOk[k - b] = Survives(S, gs_P.m_Survive);
+					}
+				};
+				std::vector<std::thread> vThG;
+				for(int T = 1; T < NT; T++)
+					vThG.emplace_back(Chk);
+				Chk();
+				for(auto &Th : vThG)
+					Th.join();
+				bool Found = false;
+				for(size_t k = b; k < e; k++)
+					if(vOk[k - b])
+					{
+						BestGate = vG[k];
+						Found = true;
+						break;
+					}
+				if(Found)
+					break;
+			}
+		}
 		if(BestGate.m_Step >= 0 && FirstGateStep < 0)
 			FirstGateStep = Step;
+		auto tp1 = Now();
 
 		std::vector<SCand> vAll;
 		for(auto &v : vTC)
@@ -1987,6 +2226,28 @@ int main(int argc, const char **argv)
 					vSel.push_back(C);
 				}
 		}
+		int NewAncIdx = -1;
+		if(AncValid)
+		{
+			for(size_t k = 0; k < vSel.size(); k++)
+				if(vSel[k].m_Hash == AncC.m_Hash)
+				{
+					NewAncIdx = (int)k;
+					break;
+				}
+			if(NewAncIdx < 0)
+			{
+				if((int)vSel.size() >= gs_P.m_Beam && !vSel.empty())
+					vSel.back() = AncC;
+				else
+					vSel.push_back(AncC);
+				NewAncIdx = (int)vSel.size() - 1;
+			}
+			// the anchor slot continues the anchor run exactly (same state, its own parent and input)
+			vSel[NewAncIdx].m_Parent = AncC.m_Parent;
+			vSel[NewAncIdx].m_In = AncC.m_In;
+		}
+		auto tp2 = Now();
 		for(const auto &C : vSel)
 		{
 			float &D = Dom.try_emplace(C.m_Key, 1e30f).first->second;
@@ -2020,7 +2281,10 @@ int main(int argc, const char **argv)
 		for(size_t k = 0; k < vSel.size(); k++)
 			H[k] = {vSel[k].m_Parent, vSel[k].m_In};
 		vHist.push_back(std::move(H));
+		AncIdx = NewAncIdx;
+		auto tp3 = Now();
 		vBeam = std::move(vNew);
+		auto tp4 = Now();
 		vPrev = std::move(vNewPrev);
 		vDoomed.assign(vBeam.size(), 0);
 		if(gs_P.m_SurvEvery > 0 && Step % gs_P.m_SurvEvery == 0)
@@ -2032,7 +2296,7 @@ int main(int argc, const char **argv)
 					int k = Next3.fetch_add(1);
 					if(k >= (int)vBeam.size())
 						break;
-					if(!Survives(*vBeam[k], gs_P.m_Survive))
+					if(k != AncIdx && !Survives(*vBeam[k], gs_P.m_Survive))
 					{
 						vDoomed[k] = 1;
 						NDoomed++;
@@ -2048,6 +2312,41 @@ int main(int argc, const char **argv)
 			if(NDoomed.load() == (int)vBeam.size())
 				vDoomed.assign(vBeam.size(), 0); // all doomed: keep searching anyway
 		}
+		if(getenv("SEG_ANCDBG") && AncIdx >= 0 && Step % 5 == 0)
+		{
+			// arc position (px along the reference line) of the anchor and of the furthest other beam state
+			auto Arc = [&](const CTasGame &G) {
+				float Fr;
+				int I = gs_Ref.Track(G.m_RefIdx, G.Pos(), G.Vel(), Fr);
+				const int N = gs_Ref.m_vL.size();
+				return gs_Ref.m_vL[I] + Fr * (gs_Ref.m_vL[std::min(I + 1, N - 1)] - gs_Ref.m_vL[I]);
+			};
+			float A = Arc(*vBeam[AncIdx]);
+			float Best = -1e9f, BestE = 0;
+			int Ahead = 0;
+			for(int k = 0; k < (int)vBeam.size(); k++)
+				if(k != AncIdx)
+				{
+					float a = Arc(*vBeam[k]);
+					if(a > A)
+						Ahead++;
+					if(a > Best)
+					{
+						Best = a;
+						BestE = EffEnergy(*vBeam[k]);
+					}
+				}
+			std::printf("ancdbg step %d rt %d anchor arc %.0f E %.0f | best other %+.1f px (E %.0f), %d of %zu ahead\n", Step, vBeam[AncIdx]->m_Tick - vBeam[AncIdx]->m_StartTick, A,
+				EffEnergy(*vBeam[AncIdx]), Best - A, BestE, Ahead, vBeam.size());
+		}
+		auto tp5 = Now();
+		aProf[0] += Dt(tp0, tp1);
+		aProf[1] += Dt(tp1, tp2);
+		aProf[2] += Dt(tp2, tp3);
+		aProf[3] += Dt(tp3, tp4);
+		aProf[4] += Dt(tp4, tp5);
+		if(Prof && Step % 5 == 4)
+			std::printf("prof step %d: gen %.1fs sortsel %.1fs mat %.1fs free %.1fs surv %.1fs (cands %zu)\n", Step, aProf[0], aProf[1], aProf[2], aProf[3], aProf[4], vAll.size());
 		if(!gs_P.m_Quiet && (Step % 10 == 0 || getenv("SEG_DBG")) && !vSel.empty())
 		{
 			const SCand &B = vSel[0];

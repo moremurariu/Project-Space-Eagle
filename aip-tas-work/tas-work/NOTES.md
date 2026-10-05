@@ -527,3 +527,35 @@ Teero played the **KoG** version of AiP-Gores (user, from Teero). Our runs so fa
 - seg jitter=J seed=N (new, stochastic beam): exit -> k1215 with 8 seeds: 1227-1231. Window distribution over ~20 runs
   ~1226-1230 (rare 1223) -> best-of-N sampling worth ~1-3 ticks per window. Chain b12 (vset=p8: 4 setups x 3 seeds,
   best of 12 per window) from runs/ex/e1025.txt to the finish.
+
+## Session of Oct 5 (evening): upstream build, anchored search, exact fast paths
+- Build without aip-tas.zip: `setup_upstream.sh` (upstream DDNet 470eead4a + `ddnet-upstream.patch`: TAS targets,
+  trimmed `TasReplay.Run` test that also reports the grenade pickup tick, opt-in exact fast paths). The 978 run replays
+  identically in the sim and on the server (`simcmp.py RUN`: per-tick sim vs server comparison + pickup summary).
+- teero_track.txt is not in the snapshot: `mktrack.py RUN OUT` builds a reference track `rt x y vx vy` from our own run
+  (pre-grenade part) + kog_full_best.txt (post-pickup climb) -> `own_track2.txt`. With ghost=1 the score is then the lag
+  behind our own best run.
+- seg speed: the gate survival checks ran under a global mutex (thousands of failing post-pickup rollouts, serial):
+  6m19s -> 2m01s for the rt-940 search at 4 threads, then the exact fast paths below (another ~4x per step).
+- seg `anchor=FILE`: the anchor run's own lineage is always kept in the beam (never pruned or doomed) and its gate is a
+  candidate, so a search can only return a run at least as good. `gatet=1`: grenade gates are ranked by the sub-tick
+  entry time t* into the 48 px pickup circle (pickup tick = floor(t*) + 2). `gatejump=1`: a pickup only counts with the
+  air jump still available (post-pickup braking). `ancinj=W` / `ancinjt=1` (inject the anchor's inputs by reference
+  index / by tick) and `vpen=` (velocity penalty vs the reference) were tried: no gain.
+- Standalone seg (no anchor) is far weaker than the run it is compared to: rt 456 -> own-track k706 in 712-721 ticks
+  (our run 706), corridor 1 rt 0 -> k200 in 205-207 (our 200). So LNS without an anchor almost never improves.
+- `lns3.py`: anchored LNS (sub-tick acceptance on t*, climb check = seg box gate to the upper shaft). Gains only from
+  cuts >= ~650; with beams 3000-8000 every accepted deviation was in the last ~50 ticks.
+- `polish2` (input-level hill climbing on t*) finds unviable "gains" (no braking before the pocket) unless viability is
+  checked; the air-jump test alone is not enough (a 976.02 polish arrived at |v| 37 and could not climb out).
+- **Exact fast paths** (CCollision::ms_FastPaths, CCharacterCore::ms_TasSolo, set by sim.cpp; TAS_NOFAST=1 /
+  TAS_NOFASTCOPY=1 disable): broad-phase skip of the per-pixel loops in MoveBox / IntersectLineTeleHook / GetMapIndices
+  via 2D prefix sums of blocking / existing tiles (same float arithmetic otherwise), GetMoveRestrictions = 0 on maps
+  without stoppers, no loop over the 128 player slots in TickDeferred, and an allocation-free CTasGame::CopyFrom
+  (in-place character copy). copy+step 2.74 -> 0.66 us. Identical traces on 7 runs (incl. full runs with grenade
+  shots) and 134k random ticks (`DIFFTEST=N bench`).
+- Other branch claude/wonderful-faraday-klv0ms reports a pickup at 975, but its tee arrives at |v| 37.7 heading into
+  the pocket's freeze floor with the air jump spent; no continuation survives (beam 100000, 256 aims, shots allowed).
+  Its line shows a real gain though: no ceiling bump at rt 884 (+224 E) and ~2 ticks ahead through the dive.
+- **977 (viable)**: anchored seg from rt 790, ghoste=0.08 (energy weighted higher), gatejump=1, beam 20000 ->
+  t* 975.80; climb reaches the shaft at 1006. `pre_grenade_kog/kog_pregren_977.txt`.

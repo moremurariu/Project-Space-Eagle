@@ -30,8 +30,8 @@ static int gs_KeepFireFrom = -1; // prefire: keep the file's shots from this tic
 static void Print(const CTasGame &G)
 {
 	vec2 P = G.Pos(), V = G.Vel();
-	std::printf("rt=%d t=%d pos %.2f %.2f (tile %.2f %.2f) vel %.3f %.3f |v| %.3f hook %d jumped %d grounded %d reload %d proj %d frz %d\n", G.m_Started ? G.m_Tick - G.m_StartTick : -1, G.m_Tick, P.x, P.y, P.x / 32, P.y / 32,
-		V.x, V.y, length(V), G.HookState(), G.Jumped(), G.Grounded(), G.ReloadTimer(), G.NumProjectiles(), G.Frozen() || G.EnteredFreeze());
+	std::printf("rt=%d t=%d pos %.2f %.2f (tile %.2f %.2f) vel %.3f %.3f |v| %.3f hook %d jumped %d grounded %d reload %d proj %d frz %d gren %d\n", G.m_Started ? G.m_Tick - G.m_StartTick : -1, G.m_Tick, P.x, P.y, P.x / 32, P.y / 32,
+		V.x, V.y, length(V), G.HookState(), G.Jumped(), G.Grounded(), G.ReloadTimer(), G.NumProjectiles(), G.Frozen() || G.EnteredFreeze(), (int)G.HasGrenade());
 }
 
 int main(int argc, const char **argv)
