@@ -254,7 +254,7 @@
  }
 --- a/tas-work/NOTES.md
 +++ b/tas-work/NOTES.md
-@@ -84,3 +84,396 @@
+@@ -84,3 +84,402 @@
  - Corridor 1 from a Teero-like crossing (900,465,25,-13 spent): 294-296 (Teero 298). Our pre-start crossing gives ~306.
  - TileExists lookup cache in CCollision (opt-in flag, TAS only): step 1.54 -> 1.20 us, identical replays.
  - chain.py: segment chain over distance gates with several configs (gains ~1-2 ticks/gate; slow).
@@ -651,3 +651,9 @@
 +  rollouts with a virtual kick + quota), fhc (exact hill climber), segx.
 +- Both agents (hairpin, final maze) conclude: local play is level with Teero from his states; our losses come from
 +  long-horizon state differences (energy, reload phase). No section found where a TAS beats him by a large margin.
++- Chain q2 continued to the finish: k1725 1787 (-62), k1800 1872, k1875 1956 (-81), k2025 2130 (-105), k2100 2205,
++  k2175 2293, k2250 2375 (-125), k2325 2456, k2400 2535 (-135), k2475 2622 (-147), **FINISH rt 2700 (54.00 s)**.
++  **kog_full_2700.txt: first complete KoG run, server-identical (start 68, finish tick 2768 -> 2700 ticks = 54.00 s,
++  no freeze, no double start).** (DDNet-map best was 56.08 s.)
++- lnspost.py (new): LNS on the complete run (random cut >= cutmin, seg to gate=finish with a random p6-like variant
++  incl. quota/prefire/angles, keep earlier finishes). Run runs/lnsP1 from kog_full_2700.
