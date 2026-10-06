@@ -492,7 +492,7 @@
  }
 --- a/tas-work/NOTES.md
 +++ b/tas-work/NOTES.md
-@@ -84,3 +84,573 @@
+@@ -84,3 +84,612 @@
  - Corridor 1 from a Teero-like crossing (900,465,25,-13 spent): 294-296 (Teero 298). Our pre-start crossing gives ~306.
  - TileExists lookup cache in CCollision (opt-in flag, TAS only): step 1.54 -> 1.20 us, identical replays.
  - chain.py: segment chain over distance gates with several configs (gains ~1-2 ticks/gate; slow).
@@ -1066,3 +1066,42 @@
 +- LNS lnsinc2: **2666 (53.32 s)** at cut 2598 (Teero ref, beam 20000), server-identical -> kog_full_best.txt.
 +- LNS lnsinc2: **2664 (53.28 s)** at cut 2454 (own ref, beam 15000), server-identical -> kog_full_best.txt.
 +- auto-accepted lnsinc2/best_2663.txt: **2663 (53.26 s)**, server-identical (start tick 68 finish tick 2731 -> 2663 ticks = 53.26 s; no freeze, no double start) -> kog_full_best.txt.
++- **segf** (seg on CFastG via CTasFast, -DSEG_FAST) + CCollision::ms_FastPaths on (TAS_NOFAST disables): same
++  results as seg, several times faster. New seg options: inc=FILE (incumbent kept in the beam), kfut/kfutn, firemax,
++  erel, boxe, loadres, kickmin (drop states whose explosion kick < K, via CFastG::ms_pLog), tpline=N.
++- Teero's grenade techniques (video): (a) catch-up pre-fire before a U-turn (fire forward, outrun the grenade,
++  hook-swing round the inner wall tip, it explodes at the outer wall beside him after the turn); (b) 25-tick lob +
++  point-blank double kick (shaft 2x2 block); (c) shot schedules planned backwards (each shot is a pre-fire so the
++  reload frees in time for the next kick slot). Our beam picks shots greedily per tick.
++- Kick-slot comparison vs Teero: our lag jumps exactly where we miss his slots #5, #9, #14/15/18, #20, #27, #31/33,
++  #41, #44-45, #48.
++- From Teero's own state at k1100 the free search loses 11-12 ticks by k1262 (tracking matches until the apex, then
++  loses). With his structure as a plan (wall pre-fire + free): 1266 vs Teero 1262, reproducing his 5 kick spots. From
++  our real state c1 -> k1249: 1248 vs chain 1250. Catalog-based slot plans (time- or position-indexed) are worse; plans
++  built from exact rdv flights work.
++- **rdv RDV_SCHED (planner):** per fire tick x aims, exact flight incl. same-step explosions (CFastG log), fresh hook
++  press ticks skipped (shared aim); value = dv/max(|v|,10) * min(ticks to next speed minimum, 60); DP over shots with
++  >= 25 spacing and the initial reload -> SCHED_OUT. schedplan.py turns it into a loose plan (forced windows +-3 for
++  shots with >= 5 flight, free windows elsewhere). On a good path the planner picks Teero's structure; iterating
++  plan -> search -> plan diverges (1276 -> 1291-1299), so it is used as an extra candidate per window (pchain.py).
++- pchain p1 (planner-guided windows, beam 6000): k1249 1252 [g2 1250], k1324 1338 [g2 1331]; the plan variants lost
++  every window -> stopped.
++- Why the free search misses Teero's U-turn pairs: FireTargets only aims at solid tiles within 120 px (point-blank),
++  so long pre-fires exist only with padaims; and a pre-fire is judged as not fired (prefire=1) while holding states get
++  the loaded-grenade credit. On the c1 window (k1099 -> k1249): prefire+padaims 1254/1252, + loadres 1254/1254,
++  firelook=30 look-judged 1252/1252, pfcred (new: credit from a held-input look with/without the grenade) 1254 /
++  1253/1253 [free 1252/1252] -> none find the pair.
++- **seg retro=K (segf, new): retro shots.** A grenade's flight is independent of the tee, so at every state the
++  search looks back along the state's own history for ticks where it held a loaded grenade (no shot since, no hook
++  start in the patched input) and solves the aim whose grenade first hits a solid point next to the tee in the next
++  tick (exact flight check, no earlier collision); the state with that grenade in flight (reload 24-d, fire counters
++  +2) is expanded too and the shot is patched into the ancestor's input at output. Exact (patched runs replay to the
++  same gate tick). It finds Teero's shaft double kick by itself (lob fired 1582 + point-blank 1608, two explosions at
++  the 2x2 block in the same tick, |v| 22 -> 43.5) when the line goes there (latpen 1/16).
++  Window tests (beam 6000, 2 seeds): c1 window 1252/1252 [1252/1252]; k1324->1474 retro=1 1484/1491 [1488/1487];
++  k1399->1549 retro=1 1571/1569 [1577/1576]; shaft retro=3 latpen 1 1662/1656 [1661/1659].
++- Equal-state (tp at Teero's k1100 state, gate k1262, Teero 1262): free 1271/1273; retro=1/3 1270-1275; kickmin
++  10/11 1272-1274; track=1 1275-1283. Our free path is within 10-35 px of Teero's until the U-turn exit (7 px at
++  k1171) and then falls behind: one kick out of the turn (|v| 30) vs his pre-fire + point-blank pair (~38).
++  retro=3 + loadres 0.4 (seed 2): 1268 with his structure (no ceiling shot, pre-fire 1142 -> apex 1161 dist 68,
++  point-blank 1167, |v| 34.9); other seeds crash (1286-1291). k1220 equal state (Teero 1285): 1291-1292 for all.

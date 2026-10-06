@@ -24,6 +24,8 @@ public:
 	vec2 m_PendE = vec2(0, 0);
 	int m_PendT = -1, m_PendFire = -1;
 	int m_ReadyTicks = 0;
+	float m_PendCredit = 0;
+	int m_RetroMin = 0; // retro: ancestors before this tick can't fire a retro shot (a retro shot changed their reload) // pfcred: credit (ticks) for the grenade in flight, until it explodes
 
 	void CopyFrom(const CTasFast &Other) { *this = Other; }
 	void FromGameFull(const CTasGame &G)

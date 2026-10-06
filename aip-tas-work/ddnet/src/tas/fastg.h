@@ -23,9 +23,17 @@ struct SFastProj
 	int m_LifeSpan;
 };
 
+struct SExplLog
+{
+	int m_Tick;
+	vec2 m_E, m_Tee, m_VelBefore, m_Force;
+	float m_Dist;
+};
+
 class CFastG
 {
 public:
+	static thread_local std::vector<SExplLog> *ms_pLog; // analysis only (single-threaded tools): explosions are appended here
 	enum
 	{
 		MAX_PROJ = 4,

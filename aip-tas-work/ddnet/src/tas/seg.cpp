@@ -38,6 +38,15 @@
 //   shotref=teero/catalog/shots.tsv shotbonus=3 shotrad=64: a shot whose explosion lands within shotrad px of one of
 //     Teero's explosion points (later than the last one matched) earns shotbonus ticks
 //   erel=1: (ghost 1-3) the energy credit counts our energy minus the reference's own energy at the matched point
+//   kickmin=K (segf only): drop states in which a grenade explodes with a kick under K px/t (max 12: explosion within
+//     48 px; 10 ~ within 62 px) - get close to the surface first (Teero's mean kick is 11.7, ours was 10.6)
+//   pfcred=W (segf, with prefire=1 padaims=N): a pre-fire is credited W x the time its explosion saves on a held-input
+//     look (look with the grenade vs the same look without it) until it explodes
+//   retro=K [retrominf=2 retromaxf=30 retrotop=all retrorad=90] (segf): retro shots - a grenade's flight doesn't depend
+//     on the tee, so for each state the search looks back along its own history for a tick where it held a loaded
+//     grenade (no shot since, no hook start that tick) from which some aim explodes next tick right next to it; the
+//     shot is patched into that ancestor's input (exact: the tee's motion until the explosion is unchanged) and the
+//     state with the grenade in flight is expanded too (up to K best kicks). Pre-fires / double kicks without guessing.
 //   loadres=F: reserve F x beam places for the best-ranked states that hold a loaded grenade (horizon effect: a kick
 //     saved for the next bend looks worse than firing now until the bend)
 //   firemax=N: drop states that keep a loaded grenade (reload 0) for more than N ticks (kick as often as possible)
@@ -188,6 +197,11 @@ struct SParams
 	float m_QCell = 32, m_QVel = 6;
 	float m_KCredit = 0; // energy credit for the point-blank kick available when the grenade is (nearly) loaded
 	int m_KReady = 4;
+	float m_KickMin = 0; // kickmin=K (segf): drop states in which a grenade explodes with a kick weaker than K px/t
+	int m_Retro = 0; // retro=K (segf): up to K retro shots per state (fired by an ancestor holding the grenade)
+	int m_RetroMinF = 2, m_RetroMaxF = 30, m_RetroTop = 1000000;
+	float m_RetroRad = 90;
+	float m_PfCred = 0; // pfcred=W (segf, prefire=1): pre-fire credit from held-input looks with / without the grenade
 	float m_LoadRes = 0; // loadres=F: reserve F x beam places for the best states holding a loaded grenade
 	float m_BoxE = 0; // boxe=L: box gate value = race tick - L x (v^2 - y) (L large: most energy at the box)
 	float m_ERel = 0; // erel=1: ghost energy credit relative to the reference's own energy at the matched point
@@ -196,6 +210,7 @@ struct SParams
 	int m_KFutN = 25; // (only while the reload is <= kfutn and > kready)
 	int m_TpK = -1; // diagnostics: teleport after the prefix (tp=x,y,vx,vy tpk=K tpreload=N)
 	int m_TpReload = -1;
+	int m_TpLine = -1; // tpline=N: teleport after N prefix lines, then replay the rest of the prefix
 	vec2 m_TpPos, m_TpVel;
 };
 static SParams gs_P;
@@ -1545,6 +1560,24 @@ static int64_t QuotaKey(const CGameT &G)
 	return k * 8 + (G.ReloadTimer() == 0 ? 1 : 0) + (G.NumProjectiles() > 0 ? 2 : 0) + ((G.Jumped() & 2) ? 4 : 0);
 }
 
+struct SRetro
+{
+	int m_Step = -1; // retro shot: vHist step of the input that fires it (-1: none)
+	int16_t m_TX = 0, m_TY = 0;
+	vec2 m_P0 = vec2(0, 0), m_Dir = vec2(0, 0);
+	int m_StartTick = 0, m_Reload = 0, m_Life = 0;
+};
+struct SPatch
+{
+	int m_Step = -1;
+	int16_t m_TX = 0, m_TY = 0;
+};
+struct SAux
+{
+	vec2 m_Pos; // CCharacter::m_Pos after the step (a shot in the next tick starts here)
+	uint8_t m_Flags; // 1: holds a loaded grenade, 2: hook idle (a hook press next tick would aim)
+};
+
 struct SCand
 {
 	float m_S; // estimated total (lower better)
@@ -1558,7 +1591,162 @@ struct SCand
 	int64_t m_QKey = 0; // coarse position/velocity cell for the diversity quota
 	bool m_Inc = false; // the incumbent's own continuation
 	bool m_Loaded = false; // has the grenade with the reload at 0 (loadres)
+	SRetro m_R; // retro shot applied to the parent first
 };
+
+#ifdef SEG_FAST
+// retro shot: the grenade the ancestor fired is put in flight (newest first), with the reload it would have now
+static void ApplyRetro(CGameT &G, const SRetro &R)
+{
+	for(int k = G.m_NumProj; k > 0; k--)
+		G.m_aProj[k] = G.m_aProj[k - 1];
+	G.m_NumProj++;
+	SFastProj &P = G.m_aProj[0];
+	P.m_Pos = R.m_P0;
+	P.m_Dir = R.m_Dir;
+	P.m_StartTick = R.m_StartTick;
+	P.m_LifeSpan = R.m_Life;
+	G.m_ReloadTimer = R.m_Reload;
+	// the patched input pressed and released fire once more
+	G.m_Fire += 2;
+	G.m_Input.m_Fire += 2;
+	G.m_LatestInput.m_Fire += 2;
+	G.m_LatestPrevInput.m_Fire += 2;
+	G.m_Core.m_Input.m_Fire += 2;
+	G.m_RetroMin = G.m_Tick + 1;
+}
+
+// retro shots for state G (beam node idxG of vHist step sG): walk back while the state held a loaded grenade; from
+// each ancestor A (fire in the next input N: no hook start there) solve the aim whose grenade reaches a solid point
+// next to G in the tick after G, check its whole flight exactly (no earlier collision), keep the best K kicks
+static void RetroFind(const CGameT &G, int sG, int idxG, const std::vector<std::vector<std::pair<int, STasInput>>> &vHist,
+	const std::vector<std::vector<SAux>> &vAux, std::vector<SRetro> &vOut)
+{
+	vOut.clear();
+	if(!(G.HasGrenade() && G.ReloadTimer() == 0 && G.m_Core.m_ActiveWeapon == WEAPON_GRENADE && G.NumProjectiles() < CFastG::MAX_PROJ))
+		return;
+	const SMapInfo &M = CTasGame::Map();
+	const vec2 Q = G.m_Pos, V = G.Vel();
+	const int t = G.m_Tick;
+	// solid points around the tee
+	vec2 aE[24];
+	int NE = 0;
+	for(int a = 0; a < 24; a++)
+	{
+		const float Ang = 2 * pi * a / 24;
+		const vec2 D(std::cos(Ang), std::sin(Ang));
+		for(float r = 6.0f; r < gs_P.m_RetroRad; r += 3.0f)
+		{
+			vec2 P = Q + D * r;
+			if(M.Tile((int)std::floor(P.x / 32), (int)std::floor(P.y / 32)) == TILE_SOLID)
+			{
+				aE[NE++] = P;
+				break;
+			}
+		}
+	}
+	if(!NE)
+		return;
+	const float Curv = G.m_Core.m_Tuning.m_GrenadeCurvature, Speed = G.m_Core.m_Tuning.m_GrenadeSpeed;
+	const float Vg = Speed / SERVER_TICK_SPEED, Cg = Curv / 10000.0f * Vg * Vg, R0 = CCharacterCore::PhysicalSize() * 0.75f;
+	const float Strength = G.m_Core.m_Tuning.m_ExplosionStrength;
+	vec2 Tg = gs_Ref.Tangent(std::clamp(G.m_RefIdx, 0, (int)gs_Ref.m_vP.size() - 1));
+	struct SC
+	{
+		SRetro R;
+		float V;
+		vec2 C;
+	};
+	static thread_local std::vector<SC> s_vC;
+	s_vC.clear();
+	int sN = sG, iN = idxG;
+	for(int d = 0; d <= gs_P.m_RetroMaxF && sN >= 1; d++)
+	{
+		const SAux &N = vAux[sN][iN];
+		if(!(N.m_Flags & 1))
+			break;
+		const int iA = vHist[sN][iN].first;
+		const SAux &A = vAux[sN - 1][iA];
+		const STasInput &InN = vHist[sN][iN].second;
+		const int TickA = t - d - 1;
+		if(TickA < G.m_RetroMin || !(A.m_Flags & 1))
+			break;
+		if(d >= 1 && d >= gs_P.m_RetroMinF && !InN.m_Fire && !((A.m_Flags & 2) && InN.m_Hook))
+		{
+			const int TauT = t + 1 - TickA;
+			for(int e = 0; e < NE; e++)
+			{
+				const vec2 W = aE[e] - A.m_Pos;
+				auto F = [&](float Tau) { return length(vec2(W.x, W.y - Cg * Tau * Tau)) - R0 - Vg * Tau; };
+				float Lo = TauT - 1.0f, Hi = (float)TauT;
+				if(!(F(Lo) > 0 && F(Hi) <= 0))
+					continue;
+				for(int it = 0; it < 24; it++)
+				{
+					float Mid = 0.5f * (Lo + Hi);
+					if(F(Mid) > 0)
+						Lo = Mid;
+					else
+						Hi = Mid;
+				}
+				vec2 Dn = normalize(vec2(W.x, W.y - Cg * Hi * Hi));
+				int16_t TX = (int16_t)std::lround(Dn.x * 1000), TY = (int16_t)std::lround(Dn.y * 1000);
+				if(!TX && !TY)
+					TY = -1;
+				const vec2 Dir = normalize(vec2(TX, TY));
+				const vec2 P0 = A.m_Pos + Dir * R0;
+				// the exact flight (as CFastG::TickProjectiles): first collision in the tick after G
+				bool Ok = false;
+				vec2 Col;
+				for(int Tau = 1; Tau <= TauT; Tau++)
+				{
+					vec2 Prev = CalcPos(P0, Dir, Curv, Speed, (Tau - 1) / (float)SERVER_TICK_SPEED);
+					vec2 Cur = CalcPos(P0, Dir, Curv, Speed, Tau / (float)SERVER_TICK_SPEED);
+					if(Cur.x < 0 || Cur.y < 0 || Cur.x >= M.m_W * 32 || Cur.y >= M.m_H * 32)
+						break;
+					vec2 NewPos;
+					int Collide = CTasGame::Collision()->IntersectLine(Prev, Cur, &Col, &NewPos);
+					if(Collide)
+					{
+						Ok = Tau == TauT;
+						break;
+					}
+				}
+				if(!Ok)
+					continue;
+				// the kick (as CFastG::Explode, at G's position)
+				if(!(distance(Q, Col) < 135.0f + CCharacterCore::PhysicalSize()))
+					continue;
+				vec2 Diff = Q - Col;
+				float l = length(Diff);
+				vec2 Fd = l ? normalize(Diff) : vec2(0, 1);
+				l = 1 - std::clamp((l - 48.0f) / (135.0f - 48.0f), 0.0f, 1.0f);
+				float Dmg = Strength * l;
+				if(!(int)Dmg)
+					continue;
+				vec2 Fk = Fd * Dmg * 2;
+				float Val = dot(Fk, Tg) + (length(V + Fk) - length(V));
+				bool Dup = false;
+				for(auto &C : s_vC)
+					if(distance(C.C, Col) < 6.0f)
+					{
+						Dup = true;
+						if(Val > C.V)
+							C = {SRetro{sN, TX, TY, P0, Dir, TickA, std::max(0, 24 - d), 100 - (t - TickA)}, Val, Col};
+						break;
+					}
+				if(!Dup)
+					s_vC.push_back({SRetro{sN, TX, TY, P0, Dir, TickA, std::max(0, 24 - d), 100 - (t - TickA)}, Val, Col});
+			}
+		}
+		sN--;
+		iN = iA;
+	}
+	std::sort(s_vC.begin(), s_vC.end(), [](const SC &a, const SC &b) { return a.V > b.V; });
+	for(int k = 0; k < (int)s_vC.size() && k < gs_P.m_Retro; k++)
+		vOut.push_back(s_vC[k].R);
+}
+#endif
 
 struct SGate
 {
@@ -1568,6 +1756,7 @@ struct SGate
 	int m_Rt = 0;
 	float m_Ee = 0;
 	vec2 m_Pos, m_Vel;
+	SRetro m_R;
 };
 
 static float gs_aBox[6] = {0, 0, 0, 0, 1e9f, -1}; // gate=box:x0,x1,y0,y1[,vymax[,K]] (with the grenade)
@@ -1680,6 +1869,7 @@ int main(int argc, const char **argv)
 		else if(K == "latpen") gs_P.m_LatPen = std::stof(V);
 		else if(K == "tpk") gs_P.m_TpK = std::stoi(V);
 		else if(K == "tpreload") gs_P.m_TpReload = std::stoi(V);
+		else if(K == "tpline") gs_P.m_TpLine = std::stoi(V);
 		else if(K == "quota") gs_P.m_Quota = std::stoi(V);
 		else if(K == "qcell") gs_P.m_QCell = std::stof(V);
 		else if(K == "qvel") gs_P.m_QVel = std::stof(V);
@@ -1694,6 +1884,13 @@ int main(int argc, const char **argv)
 		else if(K == "erel") gs_P.m_ERel = std::stof(V);
 		else if(K == "boxe") gs_P.m_BoxE = std::stof(V);
 		else if(K == "loadres") gs_P.m_LoadRes = std::stof(V);
+		else if(K == "pfcred") gs_P.m_PfCred = std::stof(V);
+		else if(K == "retro") gs_P.m_Retro = std::stoi(V);
+		else if(K == "retrominf") gs_P.m_RetroMinF = std::stoi(V);
+		else if(K == "retromaxf") gs_P.m_RetroMaxF = std::stoi(V);
+		else if(K == "retrotop") gs_P.m_RetroTop = std::stoi(V);
+		else if(K == "retrorad") gs_P.m_RetroRad = std::stof(V);
+		else if(K == "kickmin") gs_P.m_KickMin = std::stof(V);
 		else if(K == "kfutn") gs_P.m_KFutN = std::stoi(V);
 		else if(K == "tp") std::sscanf(V.c_str(), "%f,%f,%f,%f", &gs_P.m_TpPos.x, &gs_P.m_TpPos.y, &gs_P.m_TpVel.x, &gs_P.m_TpVel.y);
 		else if(K == "latdz") gs_P.m_LatDz = std::stof(V);
@@ -1831,8 +2028,30 @@ int main(int argc, const char **argv)
 		auto G = std::make_unique<CTasGame>();
 		G->Spawn(CTasGame::Map().m_vSpawns[0]);
 		FILE *pTrack = getenv("SEG_TRACK") ? std::fopen(getenv("SEG_TRACK"), "w") : nullptr;
+		auto DoTp = [&]() {
+			// diagnostics only: teleport and set the race clock to Teero tick tpk
+			G->SetState(gs_P.m_TpPos, gs_P.m_TpVel);
+			G->m_Tick += 4000; // m_StartTick must stay >= 0 or CheckRace never records the finish (physlab4)
+			G->Chr()->m_Core.m_HookState = HOOK_IDLE;
+			G->Chr()->m_Core.m_HookTick = 0;
+			G->m_LastHook = 0;
+			G->m_StartTick = G->m_Tick - gs_P.m_TpK;
+			if(gs_P.m_TpReload >= 0)
+				G->Chr()->m_ReloadTimer = gs_P.m_TpReload;
+			for(int i = 0; i < (int)gs_Ref.m_vK.size(); i++)
+				if(gs_Ref.m_vK[i] >= gs_P.m_TpK - 3)
+				{
+					G->m_RefIdx = i;
+					break;
+				}
+			UpdateTrack(*G);
+		};
+		int PrefixIdx = 0;
 		for(const auto &In : vPrefix)
 		{
+			if(gs_P.m_TpK >= 0 && gs_P.m_TpLine >= 0 && PrefixIdx == gs_P.m_TpLine)
+				DoTp();
+			PrefixIdx++;
 			G->Step(In);
 			UpdateTrack(*G);
 			if(pTrack && G->m_Started && G->m_StartTick >= 0)
@@ -1849,25 +2068,8 @@ int main(int argc, const char **argv)
 			std::printf("the prefix must end after the start line\n");
 			return 1;
 		}
-		if(gs_P.m_TpK >= 0)
-		{
-			// diagnostics only: teleport after the prefix and set the race clock to Teero tick tpk
-			G->SetState(gs_P.m_TpPos, gs_P.m_TpVel);
-			G->m_Tick += 4000; // m_StartTick must stay >= 0 or CheckRace never records the finish (physlab4)
-			G->Chr()->m_Core.m_HookState = HOOK_IDLE;
-			G->Chr()->m_Core.m_HookTick = 0;
-			G->m_LastHook = 0;
-			G->m_StartTick = G->m_Tick - gs_P.m_TpK;
-			if(gs_P.m_TpReload >= 0)
-				G->Chr()->m_ReloadTimer = gs_P.m_TpReload;
-			for(int i = 0; i < (int)gs_Ref.m_vK.size(); i++)
-				if(gs_Ref.m_vK[i] >= gs_P.m_TpK - 3)
-				{
-					G->m_RefIdx = i;
-					break;
-				}
-			UpdateTrack(*G);
-		}
+		if(gs_P.m_TpK >= 0 && (gs_P.m_TpLine < 0 || gs_P.m_TpLine >= (int)vPrefix.size()))
+			DoTp(); // after the whole prefix
 #ifdef SEG_FAST
 		auto pF = std::make_unique<CTasFast>();
 		pF->FromGameFull(*G);
@@ -1921,6 +2123,8 @@ int main(int argc, const char **argv)
 		return a.m_Dir == b.m_Dir && a.m_Jump == b.m_Jump && a.m_Hook == b.m_Hook && a.m_Fire == b.m_Fire && a.m_TX == b.m_TX && a.m_TY == b.m_TY && a.m_Weapon == b.m_Weapon && a.m_Commit == b.m_Commit;
 	};
 	std::vector<std::vector<std::pair<int, STasInput>>> vHist;
+	std::vector<std::vector<SAux>> vAux; // per vHist node: position / loaded / hook idle (retro)
+	std::vector<std::vector<SPatch>> vHistR; // per vHist node: retro shot patched into an ancestor's input
 	std::unordered_map<int64_t, float> Dom;
 	SGate BestGate;
 	std::mutex GateMx;
@@ -1956,24 +2160,33 @@ int main(int argc, const char **argv)
 					if(!Have)
 						vActs.push_back(IncIn);
 				}
-				for(const auto &In : vActs)
-				{
-					Tmp.CopyFrom(G);
+				auto Child = [&](const CGameT &Src, const STasInput &In, const SRetro *pR) {
+					Tmp.CopyFrom(Src);
+#ifdef SEG_FAST
+					static thread_local std::vector<SExplLog> s_vExpl;
+					s_vExpl.clear();
+					if(gs_P.m_KickMin > 0)
+						CFastG::ms_pLog = &s_vExpl;
+#endif
 					Tmp.Step(In);
 					if(Tmp.Frozen() || Tmp.EnteredFreeze() || Tmp.m_StartTick == -2)
 					{
 						if(getenv("SEG_DBG") && Step < 30)
 							std::printf("drop step %d frz %d entered %d start %d pos %.0f %.0f\n", Step, Tmp.Frozen(), Tmp.EnteredFreeze(), Tmp.m_StartTick, Tmp.Pos().x, Tmp.Pos().y);
-						continue;
+						return;
 					}
 					UpdateTrack(Tmp);
 					Tmp.m_TrackCost += TrackInc(Tmp);
-					ShotBonus(G, Tmp, In);
-					Tmp.m_ReadyTicks = Tmp.HasGrenade() && Tmp.ReloadTimer() == 0 ? G.m_ReadyTicks + 1 : 0;
-					if(gs_P.m_FireMax >= 0 && Tmp.m_ReadyTicks > gs_P.m_FireMax && !(IsInc && SameIn(In, IncIn)))
-						continue;
-					if(!ShotPlanOk(Tmp, In, G.ReloadTimer() == 0 && Tmp.ReloadTimer() > 0))
-						continue;
+					ShotBonus(Src, Tmp, In);
+#ifdef SEG_FAST
+					if(Tmp.NumProjectiles() == 0)
+						Tmp.m_PendCredit = 0;
+#endif
+					Tmp.m_ReadyTicks = Tmp.HasGrenade() && Tmp.ReloadTimer() == 0 ? Src.m_ReadyTicks + 1 : 0;
+					if(gs_P.m_FireMax >= 0 && Tmp.m_ReadyTicks > gs_P.m_FireMax && !(!pR && IsInc && SameIn(In, IncIn)))
+						return;
+					if(!ShotPlanOk(Tmp, In, Src.ReloadTimer() == 0 && Tmp.ReloadTimer() > 0))
+						return;
 					if(gs_P.m_PlanForce && Tmp.ReloadTimer() == 0)
 					{
 						const int RtF = Tmp.m_Tick - Tmp.m_StartTick;
@@ -1982,10 +2195,10 @@ int main(int argc, const char **argv)
 							if(!P.m_Free && RtF == P.m_T1 + 1)
 								Missed = true;
 						if(Missed)
-							continue;
+							return;
 					}
 					if(!Tmp.HasGrenade() && Tmp.m_RefIdx > gs_GrenIdx + 3)
-						continue; // passed the pickup without the grenade
+						return; // passed the pickup without the grenade
 					const int Rt = Tmp.m_Tick - Tmp.m_StartTick;
 					if(AtGate(Tmp))
 					{
@@ -2002,14 +2215,28 @@ int main(int argc, const char **argv)
 							BestGate.m_V = V;
 							BestGate.m_Step = Step;
 							BestGate.m_Parent = i;
+							BestGate.m_R = pR ? *pR : SRetro{};
 							BestGate.m_In = In;
 							BestGate.m_Rt = gs_P.m_Gate == "finish" ? Tmp.m_FinishTick - Tmp.m_StartTick : Rt;
 							BestGate.m_Ee = Ee;
 							BestGate.m_Pos = Tmp.Pos();
 							BestGate.m_Vel = Tmp.Vel();
 						}
-						continue;
+						return;
 					}
+#ifdef SEG_FAST
+					auto WeakKick = [&]() {
+						for(const auto &L : s_vExpl)
+							if(length(L.m_Force) < gs_P.m_KickMin)
+								return true;
+						return false;
+					};
+					if(gs_P.m_KickMin > 0 && WeakKick())
+					{
+						CFastG::ms_pLog = nullptr;
+						return;
+					}
+#endif
 					const CGameT *pEval = &Tmp;
 					if(gs_P.m_TrackW <= 0 && (In.m_Fire || (gs_P.m_PendLook && !gs_P.m_Prefire)) && Tmp.NumProjectiles() > 0)
 					{
@@ -2028,13 +2255,68 @@ int main(int argc, const char **argv)
 								break;
 							}
 						}
+#ifdef SEG_FAST
+						if(gs_P.m_KickMin > 0 && WeakKick())
+							Dead = true;
+#endif
 						if(Dead)
-							continue;
+						{
+#ifdef SEG_FAST
+							CFastG::ms_pLog = nullptr;
+#endif
+							return;
+						}
 						// prefire: a shot still in flight after the look is judged as if not fired yet
 						pEval = gs_P.m_Prefire && Look.NumProjectiles() > 0 ? &Tmp : &Look;
+#ifdef SEG_FAST
+						if(gs_P.m_PfCred > 0 && pEval == &Tmp && Src.ReloadTimer() == 0 && Tmp.ReloadTimer() > 0)
+						{
+							// pfcred: fly the held-input look on to the explosion, and the same look without the
+							// grenade; the time it saves is credited until it explodes
+							int k = gs_P.m_FireLook;
+							bool DeadA = false;
+							for(; k < gs_P.m_PadRange + 2 && Look.NumProjectiles() > 0; k++)
+							{
+								Look.Step(L);
+								UpdateTrack(Look);
+								if(Look.Frozen() || Look.EnteredFreeze() || Look.m_StartTick == -2)
+								{
+									DeadA = true;
+									break;
+								}
+							}
+							float C = 0;
+							if(!DeadA && Look.NumProjectiles() == 0)
+							{
+								static thread_local CGameT s_LB;
+								s_LB.CopyFrom(Tmp);
+								s_LB.m_NumProj = 0;
+								bool DeadB = false;
+								for(int j = 0; j < k; j++)
+								{
+									s_LB.Step(L);
+									UpdateTrack(s_LB);
+									if(s_LB.Frozen() || s_LB.EnteredFreeze() || s_LB.m_StartTick == -2)
+									{
+										DeadB = true;
+										break;
+									}
+								}
+								C = DeadB ? 0.0f : std::max(0.0f, EstTotal(s_LB) - EstTotal(Look));
+							}
+							Tmp.m_PendCredit = gs_P.m_PfCred * C;
+						}
+#endif
 					}
+#ifdef SEG_FAST
+					CFastG::ms_pLog = nullptr;
+#endif
 					float Ee;
 					float S = EstTotal(*pEval, &Ee);
+#ifdef SEG_FAST
+					if(pEval == &Tmp && Tmp.NumProjectiles() > 0)
+						S -= Tmp.m_PendCredit;
+#endif
 					if(gs_P.m_HookLA > 0 && pEval == &Tmp && Tmp.HookState() >= HOOK_FLYING)
 					{
 						vec2 Pp, Vf, Vp;
@@ -2086,9 +2368,30 @@ int main(int argc, const char **argv)
 					S -= Tmp.m_Bonus;
 					vTC[T].push_back({S, i, In, CellKey(Tmp), Tmp.Hash(), Ee, Rt, Tmp.m_RefIdx, QuotaKey(Tmp)});
 					vTC[T].back().m_Loaded = Tmp.HasGrenade() && Tmp.ReloadTimer() == 0;
-					if(IsInc && SameIn(In, IncIn))
+					if(pR)
+						vTC[T].back().m_R = *pR;
+					if(!pR && IsInc && SameIn(In, IncIn))
 						vTC[T].back().m_Inc = true;
+				};
+				for(const auto &In : vActs)
+					Child(G, In, nullptr);
+#ifdef SEG_FAST
+				if(gs_P.m_Retro > 0 && Step >= 1 && i < gs_P.m_RetroTop && !IsInc)
+				{
+					// retro shots: a grenade fired from an ancestor that was holding it, exploding next to us next tick
+					static thread_local std::vector<SRetro> s_vR;
+					static thread_local CGameT s_Gr;
+					RetroFind(G, Step - 1, i, vHist, vAux, s_vR);
+					for(const auto &R : s_vR)
+					{
+						s_Gr.CopyFrom(G);
+						ApplyRetro(s_Gr, R);
+						for(const auto &In : vActs)
+							if(!(In.m_Fire && s_Gr.ReloadTimer() > 0))
+								Child(s_Gr, In, &R);
+					}
 				}
+#endif
 			}
 		};
 		std::vector<std::thread> vTh;
@@ -2207,6 +2510,10 @@ int main(int argc, const char **argv)
 					break;
 				vNew[k] = std::make_unique<CGameT>();
 				vNew[k]->CopyFrom(*vBeam[vSel[k].m_Parent]);
+#ifdef SEG_FAST
+				if(vSel[k].m_R.m_Step >= 0)
+					ApplyRetro(*vNew[k], vSel[k].m_R);
+#endif
 				vNew[k]->Step(vSel[k].m_In);
 				UpdateTrack(*vNew[k]);
 				vNew[k]->m_TrackCost += TrackInc(*vNew[k]);
@@ -2225,6 +2532,25 @@ int main(int argc, const char **argv)
 		for(size_t k = 0; k < vSel.size(); k++)
 			H[k] = {vSel[k].m_Parent, vSel[k].m_In};
 		vHist.push_back(std::move(H));
+		{
+			std::vector<SAux> Ax(vSel.size());
+			std::vector<SPatch> Pr(vSel.size());
+			for(size_t k = 0; k < vSel.size(); k++)
+			{
+				const CGameT &N = *vNew[k];
+#ifdef SEG_FAST
+				Ax[k].m_Pos = N.m_Pos;
+				Ax[k].m_Flags = (N.HasGrenade() && N.ReloadTimer() == 0 && N.m_Core.m_ActiveWeapon == WEAPON_GRENADE && N.m_NumInputs >= 2 ? 1 : 0) |
+						(N.m_Core.m_HookState == HOOK_IDLE ? 2 : 0);
+#else
+				Ax[k].m_Pos = N.Pos();
+				Ax[k].m_Flags = 0;
+#endif
+				Pr[k] = {vSel[k].m_R.m_Step, vSel[k].m_R.m_TX, vSel[k].m_R.m_TY};
+			}
+			vAux.push_back(std::move(Ax));
+			vHistR.push_back(std::move(Pr));
+		}
 		vBeam = std::move(vNew);
 		vPrev = std::move(vNewPrev);
 		vDoomed.assign(vBeam.size(), 0);
@@ -2268,14 +2594,28 @@ int main(int argc, const char **argv)
 		return 0;
 	}
 	std::vector<STasInput> vRun;
+	std::vector<SPatch> vPatch;
 	vRun.push_back(BestGate.m_In);
+	if(BestGate.m_R.m_Step >= 0)
+		vPatch.push_back({BestGate.m_R.m_Step, BestGate.m_R.m_TX, BestGate.m_R.m_TY});
 	int Idx = BestGate.m_Parent;
 	for(int s = BestGate.m_Step - 1; s >= 0; s--)
 	{
 		vRun.push_back(vHist[s][Idx].second);
+		if(vHistR[s][Idx].m_Step >= 0)
+			vPatch.push_back(vHistR[s][Idx]);
 		Idx = vHist[s][Idx].first;
 	}
 	std::reverse(vRun.begin(), vRun.end());
+	for(const auto &P : vPatch)
+	{
+		// retro shot: the ancestor fires the grenade with this aim
+		vRun[P.m_Step].m_Fire = 1;
+		vRun[P.m_Step].m_TX = P.m_TX;
+		vRun[P.m_Step].m_TY = P.m_TY;
+	}
+	if(!vPatch.empty())
+		std::printf("retro shots: %zu\n", vPatch.size());
 	std::vector<STasInput> vAllIn = vPrefix;
 	vAllIn.insert(vAllIn.end(), vRun.begin(), vRun.end());
 	std::string Out = gs_P.m_Out + "0.txt";

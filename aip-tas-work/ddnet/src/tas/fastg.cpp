@@ -16,6 +16,7 @@
 #include <cstdlib>
 
 CTeamsCore CFastG::ms_Teams;
+thread_local std::vector<SExplLog> *CFastG::ms_pLog = nullptr;
 
 enum
 {
@@ -245,6 +246,8 @@ void CFastG::Explode(vec2 Pos)
 	l = 1 - std::clamp((l - InnerRadius) / (Radius - InnerRadius), 0.0f, 1.0f);
 	float Strength = m_Core.m_Tuning.m_ExplosionStrength;
 	float Dmg = Strength * l;
+	if(ms_pLog)
+		ms_pLog->push_back({m_Tick, Pos, m_Pos, m_Core.m_Vel, (int)Dmg ? ForceDir * Dmg * 2 : vec2(0, 0), length(Diff)});
 	if((int)Dmg)
 	{
 		// TakeDamage: no move restrictions on this map (ClampVel is the identity)

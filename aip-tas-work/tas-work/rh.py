@@ -281,6 +281,21 @@ if args.get('vset') == 'p11':
         f'beam=20000 survevery=2 survive=40 {G3} {RQ} latpen=0.05 latdz=48 quota=10',
     ]
     NVAR = int(args.get('nvar', 12))
+if args.get('vset') == 'qs':
+    # short windows (beam 4000) for plan-guided chains: free search seeds (+ slot-plan variants via slotx=1)
+    PS2 = '1156,1285,1443,1793,2143,2465'
+    SV = 'beam=4000 survevery=2 survive=30'
+    RQ = 'rothook=1 quant=1'
+    G3 = f'ghost=3 hnow=1000 ghoste=0.02 sinks={PS2} ghostsink=1500'
+    B1 = f'{SV} {G3} kcredit=2 kready=10 {RQ} latpen=0.2 latdz=24'
+    POST = [f'{B1} jitter=1 seed=1', f'{B1} jitter=1 seed=2', f'{B1} vcap=1.1 jitter=1 seed=3']
+    WIDE = [
+        f'beam=10000 survevery=1 survive=40 {G3} {RQ} latpen=0.1 latdz=32 quota=6',
+        f'beam=10000 survevery=2 survive=30 ghost=3 hnow=600 ghoste=0.0 sinks={PS2} brake=2 {RQ} latpen=0.2 latdz=24 quota=3',
+        f'beam=10000 survevery=1 survive=50 ghost=1 hnow=300 ghoste=0.01 {RQ} latpen=0.1 latdz=32 quota=6',
+        f'beam=10000 survevery=2 survive=40 {G3} {RQ} latpen=0.05 latdz=48 quota=10',
+    ]
+    NVAR = int(args.get('nvar', 3))
 STOP_K = int(args.get('stopk', 99999))
 GREN_K = 990
 WIDE_R = [
@@ -373,6 +388,17 @@ def main():
             if os.path.exists(pf) and os.path.getsize(pf) > 0:
                 base = variants[0].split(' jitter=')[0]
                 variants = variants + [f'{base} prefire=1 padtop=300 plan={pf} jitter=1 seed={sd}' for sd in range(1, int(args['planx']) + 1)]
+        if args.get('slotx') and k0 >= GREN_K and not wide:
+            # Teero's explosion slots as plans (slotplan.py), shifted by our lag at the window start
+            lag = rt0 - (k0 - 3)
+            base = variants[0].split(' jitter=')[0]
+            for fr in ('1', '0'):
+                pf = f'{D}/s{step + 1}slot{fr}.plan'
+                subprocess.run(['python3', 'slotplan.py', str(lag), str(k0 - 10), str(k0 + WINDOW + 30), pf, f'free={fr}'],
+                               capture_output=True, text=True)
+                if os.path.exists(pf) and os.path.getsize(pf) > 0:
+                    seeds = (1, 2) if fr == '1' else (1,)
+                    variants = variants + [f'{base} prefire=1 padtop=300 plan={pf} jitter=1 seed={sd}' for sd in seeds]
         step += 1
         with ThreadPoolExecutor(len(variants)) as ex:
             res = list(ex.map(lambda iv: run_variant(prefix, gate, commitk, iv[1], f's{step}v{iv[0]}', maxticks), enumerate(variants)))
