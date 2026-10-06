@@ -158,7 +158,7 @@
      if(EXISTS ${PROJECT_SOURCE_DIR}/src/tas/${TAS_TOOL}.cpp)
        add_executable(${TAS_TOOL} EXCLUDE_FROM_ALL
          src/tas/${TAS_TOOL}.cpp
-@@ -3554,6 +3557,23 @@
+@@ -3554,6 +3557,36 @@
        list(APPEND TARGETS_LINK ${TAS_TOOL})
      endif()
    endforeach()
@@ -174,6 +174,19 @@
 +      ${DEPS}
 +    )
 +    target_compile_definitions(segf PRIVATE SEG_FAST)
++    add_executable(rdv EXCLUDE_FROM_ALL
++      src/tas/rdv.cpp
++      src/tas/fastg.cpp
++      ${TAS_EXTRA_SRC}
++      $<TARGET_OBJECTS:engine-shared>
++      $<TARGET_OBJECTS:game-shared>
++      $<TARGET_OBJECTS:rust-bridge-shared>
++      ${DEPS}
++    )
++    target_link_libraries(rdv ${LIBS_SERVER})
++    target_include_directories(rdv BEFORE PRIVATE src/tas/shim)
++    list(APPEND TARGETS_OWN rdv)
++    list(APPEND TARGETS_LINK rdv)
 +    target_link_libraries(segf ${LIBS_SERVER})
 +    target_include_directories(segf BEFORE PRIVATE src/tas/shim)
 +    list(APPEND TARGETS_OWN segf)
@@ -479,7 +492,7 @@
  }
 --- a/tas-work/NOTES.md
 +++ b/tas-work/NOTES.md
-@@ -84,3 +84,548 @@
+@@ -84,3 +84,559 @@
  - Corridor 1 from a Teero-like crossing (900,465,25,-13 spent): 294-296 (Teero 298). Our pre-start crossing gives ~306.
  - TileExists lookup cache in CCollision (opt-in flag, TAS only): step 1.54 -> 1.20 us, identical replays.
  - chain.py: segment chain over distance gates with several configs (gains ~1-2 ticks/gate; slow).
@@ -1028,3 +1041,14 @@
 +  planrv (rendezvous credit) 1661/1663, padtop 1500 1656. Double kicks need a planner that picks the lob and the
 +  approach line together.
 +- Chain g2 resumed after step 9 with pre-fire variants (rh.py p11 pf11=1).
++- Teero's catalog: ~10 long pre-fires (18-23 t of flight, "rode beside him", "lob") + several short ones; ours 2-3.
++- **rdv (new tool, build target `rdv`):** rendezvous opportunities along a run - from every tick, N aims flown
++  exactly (CFastG), reported when the grenade explodes 'minflight..maxflight' ticks later next to where the run
++  itself is (kick strength / d(v^2) with the run's velocity); `loaded=1` only ticks where the run holds a loaded
++  grenade, and the run's next shot is printed. Chain run c9 (rt 1012-1760): ~10 clusters worth +500..+860 (about as
++  many as Teero's pre-fires), but every one collides with one of our own nearby shots (taking it means dropping a
++  kick, which changes the path and the rendezvous). Forced lob plans from it (planforce=1, with/without planrv):
++  step-7 window 1668-1678 [1656-1658], step-8 window NOGATE. Unforced plans: the beam never fires the lob.
++  padref 80/120 with pre-fire aims: 1656/1656/1657. => double kicks need the line and the shot schedule planned
++  together (as Teero does); not reachable with seg + plans.
++- Chain g2 step 10: k1849 at 1900 (54 behind Teero). Projected finish ~2630.

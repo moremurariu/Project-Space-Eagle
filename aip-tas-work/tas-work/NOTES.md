@@ -629,3 +629,14 @@ Teero played the **KoG** version of AiP-Gores (user, from Teero). Our runs so fa
   planrv (rendezvous credit) 1661/1663, padtop 1500 1656. Double kicks need a planner that picks the lob and the
   approach line together.
 - Chain g2 resumed after step 9 with pre-fire variants (rh.py p11 pf11=1).
+- Teero's catalog: ~10 long pre-fires (18-23 t of flight, "rode beside him", "lob") + several short ones; ours 2-3.
+- **rdv (new tool, build target `rdv`):** rendezvous opportunities along a run - from every tick, N aims flown
+  exactly (CFastG), reported when the grenade explodes 'minflight..maxflight' ticks later next to where the run
+  itself is (kick strength / d(v^2) with the run's velocity); `loaded=1` only ticks where the run holds a loaded
+  grenade, and the run's next shot is printed. Chain run c9 (rt 1012-1760): ~10 clusters worth +500..+860 (about as
+  many as Teero's pre-fires), but every one collides with one of our own nearby shots (taking it means dropping a
+  kick, which changes the path and the rendezvous). Forced lob plans from it (planforce=1, with/without planrv):
+  step-7 window 1668-1678 [1656-1658], step-8 window NOGATE. Unforced plans: the beam never fires the lob.
+  padref 80/120 with pre-fire aims: 1656/1656/1657. => double kicks need the line and the shot schedule planned
+  together (as Teero does); not reachable with seg + plans.
+- Chain g2 step 10: k1849 at 1900 (54 behind Teero). Projected finish ~2630.
