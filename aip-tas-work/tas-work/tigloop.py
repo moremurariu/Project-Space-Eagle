@@ -118,9 +118,23 @@ def refresh():
 
 refresh()
 starts = [int(x) for x in kw.get('starts', '1800').split(',')]
+def sync_best():
+    """another loop may have promoted a better run: adopt the shared best"""
+    global inc, F
+    fb = finish_of('kog_full_best.txt')
+    if fb is not None and fb < F:
+        F = fb
+        inc = f'kog_full_{F}.txt'
+        if not os.path.exists(inc):
+            subprocess.run(['cp', 'kog_full_best.txt', inc])
+        log(f'adopted shared best {F} -> {inc}')
+        refresh()
+
+
 for s in starts:
     if time.time() > T_END:
         break
+    sync_best()
     t0 = time.time()
     off = LAB[s] - s
     pre = cut(inc, s, f'{D}/s{s}_pre.txt')
@@ -157,7 +171,9 @@ for s in starts:
         out = f'{D}/s{s}_c{c}_j.txt'
         tig(pre2, f'{D}/inc.csv', f'{D}/inc_track.txt', l, c + JUDGE, out, 0, ['shadow=' + inc])
         n = sum(1 for z in open(out) if z.strip())
-        e = min(c + JUDGE, n - 68)
+        if n - 68 < c + JUDGE - 2:
+            return (-99.0, l, sd, c)  # the follower died before the horizon
+        e = c + JUDGE
         return (root_progress(cut(out, e, f'{D}/s{s}_c{c}_je.txt')) - e, l, sd, c)
 
     with ThreadPoolExecutor(NSEED) as ex:
@@ -188,6 +204,7 @@ for s in starts:
     fin, run = int(m.group(1)), m.group(3)
     log(f'  chain {tag}: finish {fin} (T {fT}, incumbent {F}) ({time.time() - t0:.0f}s)')
     cand = [(fin, run), (fT, T)]
+    sync_best()
     for fc, rc in sorted(cand):
         if fc >= F:
             break
