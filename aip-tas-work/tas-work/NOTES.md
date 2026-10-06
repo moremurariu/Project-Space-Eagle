@@ -653,3 +653,4 @@ Teero played the **KoG** version of AiP-Gores (user, from Teero). Our runs so fa
 - LNS lnsinc2: **2668 (53.36 s)** at cut 2060 (Teero ref, beam 8000, survive 20, kcredit 0), server-identical (start 68, finish 2736, no freeze, no double start) -> kog_full_best.txt.
 - LNS lnsinc2: **2666 (53.32 s)** at cut 2598 (Teero ref, beam 20000), server-identical -> kog_full_best.txt.
 - LNS lnsinc2: **2664 (53.28 s)** at cut 2454 (own ref, beam 15000), server-identical -> kog_full_best.txt.
+- auto-accepted lnsinc2/best_2663.txt: **2663 (53.26 s)**, server-identical (start tick 68 finish tick 2731 -> 2663 ticks = 53.26 s; no freeze, no double start) -> kog_full_best.txt.
