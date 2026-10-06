@@ -108,6 +108,7 @@ struct SNode
 	float m_Rank;
 	float m_Lab = 0; // place on the reference line (label, by projection)
 	float m_ShI = 0; // place on the shadow path (step index)
+	bool m_Sh = false; // made by one of the shadow run's own inputs (kept past the quota, see ShKeep)
 	int m_PendTau = -1; // reserved shot: fired from m_PendPos in the step from tick m_PendTau, aim decided at its explosion
 	vec2 m_PendPos = vec2(0, 0);
 	int m_PatchTau = -1; // this step resolved the reserved shot: fire + aim go into the input of the step from that tick
@@ -470,6 +471,7 @@ int main(int argc, const char **argv)
 	const float EW = std::stof(Get("ew", "0"));
 	const float SW = std::stof(Get("sw", "0"));
 	const float Jitter = std::stof(Get("jitter", "0"));
+	const int ShKeep = std::stoi(Get("shkeep", "300")); // shadow-input children kept past the quota (when a shadow is given)
 	const float VW = std::stof(Get("vw", "0")), VDz = std::stof(Get("vdz", "5")); // velocity-match weight (px per px/t)
 	const int Seed = std::stoi(Get("seed", "0")); // ticks per px/t of ramped speed along the route
 	std::vector<STasInput> vPre = ReadInputs(argv[2]);
@@ -793,6 +795,7 @@ int main(int argc, const char **argv)
 					R.push_back(std::move(C));
 				};
 				const int KeepTau = Pend ? Nd.m_PendTau : -1;
+				const size_t NShIn = vShIn.size(); // the shadow inputs go first into vC
 				for(const STasInput &A : vShIn)
 				{
 					// the shadow input as it is (its exact aim and shot); a shot only with the reload free, and it
@@ -813,14 +816,22 @@ int main(int argc, const char **argv)
 					}
 					vC.push_back(In);
 				}
-				for(const STasInput &In : vC)
+				for(size_t ci = 0; ci < vC.size(); ci++)
 				{
+					const STasInput &In = vC[ci];
 					CFastG G = Nd.m_G;
 					G.Step(In);
+					size_t Before = R.size();
 					Emit(G, In, KeepTau, Nd.m_PendPos, -1, 0, 0);
+					if(ci < NShIn && R.size() > Before)
+						R.back().m_Sh = true;
 				}
 				for(auto &[G, In] : ShFire)
+				{
 					Emit(G, In, -1, vec2(0, 0), -1, 0, 0);
+					if(!R.empty() && R.back().m_Parent == k)
+						R.back().m_Sh = true;
+				}
 				if(CanFire)
 				{
 					// reserve the slot
@@ -1048,6 +1059,34 @@ int main(int argc, const char **argv)
 			AllDoomed = vDoomed[q] != 0;
 		if(AllDoomed)
 			std::fill(vDoomed.begin(), vDoomed.end(), 0); // nothing passes the simple policies: keep the best anyway
+		auto Key = [&](const SNode &Nd) {
+			const CFastG &G = Nd.m_G;
+			auto Q = [](float v, float q) { return (uint64_t)(int64_t)std::lround(v / q) & 0xffff; };
+			uint64_t K = Q(G.m_Pos.x, Qp) | Q(G.m_Pos.y, Qp) << 16 | Q(G.m_Core.m_Vel.x, Qv) << 32 | Q(G.m_Core.m_Vel.y, Qv) << 48;
+			int Hs = G.m_Core.m_HookState;
+			uint64_t K2 = (uint64_t)(Hs + 2) * 1000003ull +
+				      (Hs == HOOK_GRABBED || Hs == HOOK_FLYING ? (uint64_t)(G.m_Core.m_HookPos.x / 4) * 7919 + (uint64_t)(G.m_Core.m_HookPos.y / 4) : 0) +
+				      (uint64_t)G.m_Core.m_Jumped * 31 + (Nd.m_In.m_Hook ? 17 : 0) + (uint64_t)G.m_ReloadTimer * 131071 + (uint64_t)(Nd.m_PendTau + 7) * 2246822519ull;
+			for(int p = 0; p < G.m_NumProj; p++)
+				K2 = K2 * 1315423911ull + (uint64_t)G.m_aProj[p].m_StartTick * 2654435761ull + (uint64_t)(int64_t)std::lround(std::atan2(G.m_aProj[p].m_Dir.y, G.m_aProj[p].m_Dir.x) * 2000);
+			return K ^ (K2 * 0x9E3779B97F4A7C15ull);
+		};
+		if(ShKeep > 0)
+		{
+			int NSh = 0;
+			for(SNode &Nd : vAll)
+			{
+				if(NSh >= ShKeep)
+					break;
+				if(!Nd.m_Sh) // the shadow run survived where it goes: no survival check for its own inputs
+					continue;
+				if(!Seen.emplace(Key(Nd), 0).second)
+					continue;
+				vU.push_back(Nd);
+				vDoomed[&Nd - vAll.data()] = 1; // taken
+				NSh++;
+			}
+		}
 		for(SNode &Nd : vAll)
 		{
 			if(vDoomed[&Nd - vAll.data()])
