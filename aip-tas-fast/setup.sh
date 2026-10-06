@@ -15,7 +15,7 @@ mkdir -p ddnet/build
 cd ddnet/build
 cmake .. -GNinja -DCMAKE_BUILD_TYPE=Release -DCLIENT=OFF -DDOWNLOAD_GTEST=ON -DMYSQL=OFF -DWEBSOCKETS=OFF \
 	-DDISCORD=OFF -DSTEAM=OFF -DUPNP=OFF -DAUTOUPDATE=OFF -DVIDEORECORDER=OFF
-ninja -j"${JOBS:-$(nproc)}" replay fastcheck eacct ddsearch testrunner
+ninja -j"${JOBS:-$(nproc)}" replay fastcheck eacct viacheck ddsearch testrunner
 cd "$ROOT"
 if [ ! -f kog.map ]; then
 	echo "put the KoG map at $ROOT/kog.map to run the checks"

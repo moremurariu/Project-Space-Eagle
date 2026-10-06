@@ -5,13 +5,13 @@ Map: KoG AiP-Gores, sha256 `353b27cf72168cd0bb917c56eb46a83ef8d4266f310ec79b68db
 `aip-tas-fast/kog.map`).
 
 ## Result (metric: race tick of the grenade pickup)
-- **968** (`runs/kog_pregren_968.txt`, also `kog_pregren_968b.txt`), previous best 978 → **−10 ticks**.
+- **967** (`runs/kog_pregren_967.txt`), previous best 978 → **−11 ticks** (968: `kog_pregren_968.txt`).
   Checked on DDNet's prediction code (`replay`) and on the real server code (`testrunner` `TasServer.Run`): start tick 68,
-  pickup at input 1036 = race tick 968, no freeze, no double start up to the pickup.
-- Like all runs from this search (977 … 968), the tee arrives at ~37 px/tick diving down-right with both jumps spent and
+  pickup at input 1035 = race tick 967, no freeze, no double start up to the pickup.
+- Like all runs from this search (977 … 967), the tee arrives at ~37 px/tick diving down-right with both jumps spent and
   freezes on the pocket floor right after the pickup. This is accepted for this metric (a separate step turns such
   arrivals into viable ones for a few ticks). `viacheck` measures the exit: from the 978 run the climb point
-  (5254, 2176) is reached at race tick 1011; from the 977 … 968 runs it is not reachable.
+  (5254, 2176) is reached at race tick 1011; from the 977 … 967 runs it is not reachable.
 - Format: one line per tick from spawn, `dir jump hook fire target_x target_y weapon`; the race starts at input 68.
 
 ## How (ideas taken from ddnet_physics / frametee)
@@ -42,3 +42,14 @@ Tools (in `ddnet/build`): `replay MAP INPUTS [every]`, `fastcheck MAP INPUTS [tr
 `TAS_MAP=... TAS_INPUTS=... testrunner --gtest_filter='TasServer.*'`.
 Drivers (run from a folder next to `ddnet/` and `kog.map`): `tools/splice.py BEST DIR [hours= cores=]`,
 `tools/lns.py BEST DIR [hours= workers= cutmin= latep=]`.
+
+## Using other runs as guides (session of Oct 6)
+- `ddsearch ref=FILE` uses another trajectory ("race_tick x y") as the time model's reference; `transplant=1` keeps the
+  best run's inputs, replayed from the most similar state, in the beam; `geogoal=` (gate search) with `geojump`,
+  `geovref`/`geovtol`, `geoge` and `geomax` for short windows; `jw` credits an unused air jump.
+- **967**: a search on 968 cut at race tick 700, guided by a reference that follows 968 up to race tick 740 and the older
+  973 run (which was 3 ticks faster in 740-860) after it.
+- Teero's new run (`runs/teero_new_xy_60fps.csv`, tile units per 60-fps frame): he gains ~6 ticks on 968 in corridor 1
+  (low line, touching the bare block at x 6688-6784 to refill jumps before the right U-turn) and keeps ~7.5 through the
+  turn (tighter over the pillar top: lower, hooking down earlier). Following his line we reach +3 at race tick 265 and
+  +2 at the turn exit (race tick 403 vs 405), but no fresh search carries that through corridor 2 as well as 967's.

@@ -219,10 +219,10 @@ index 18019f5..49e23bd 100644
  
 diff --git a/src/tas/ddsearch.cpp b/src/tas/ddsearch.cpp
 new file mode 100644
-index 0000000..25f2463
+index 0000000..ded848c
 --- /dev/null
 +++ b/src/tas/ddsearch.cpp
-@@ -0,0 +1,826 @@
+@@ -0,0 +1,1049 @@
 +// ddsearch: beam search to the grenade pickup on the exact fast stepper (CFast).
 +//
 +//   ddsearch MAP best=FILE cut=RT [key=value ...]
@@ -237,12 +237,18 @@ index 0000000..25f2463
 +// Hook aims: `angles` evenly spaced, plus rotation-pulse aims (rothook=1: +-30 deg around the velocity normals in
 +// 3 deg steps; rothook=2: the exact edge of the region where the hook pull is accepted above the speed limit,
 +// found by bisection, and 4 aims slightly inside it).
-+// Keys: beam angles hnow ge lp latdz threads seed jitter out cellpos cellvel abort rothook survive incumbent slack
-+//       dumpat=RT (stop when the beam reaches RT and write the best-ranked state's inputs to OUT)
++// Keys: beam angles hnow ge jw lp latdz threads seed jitter out cellpos cellvel abort rothook survive incumbent slack
++//       dumpat=RT [dumpk=K] (stop when the beam reaches RT and write the best-ranked state's inputs to OUT, and up to
++//       K-1 more distinct top states to OUT.1 ...)
 +//       via=0|1 (default 0; 1: a pickup only counts if a small search gets from there to the climb point 5254,2176 without
 +//       freezing; viamax viabeam viatry) goal=pickup|climb (climb: minimise pickup + ticks to the climb point; climbextra)
 +//       gateend=1 [gater=R] (goal: the reference's last position instead of the pickup; for post-pickup checks)
-+//       prefix=FILE (start at the end of FILE instead of a cut of the best run; reference = best, no incumbent)
++//       geogoal=X,Y [geol=L geos=S geor=R geoge=G geovmin=V geojump=1 geovref=VX,VY geovtol=T] (short windows: rank by race tick + geodesic distance from the position
++//       extrapolated L ticks ahead to the gate point / S; stop when within R px of it; writes the inputs to OUT)
++//       ref=FILE (reference track "race_tick x y" per line on our race clock, e.g. another player's run; replaces the
++//       best run's positions as the time model's reference inside its time range)
++//       prefix=FILE (start at the end of FILE instead of a cut of the best run; reference = best, no incumbent unless
++//       transplant=1: the best run's inputs replayed from its most similar state are kept in the beam)
 +// Writes OUT (inputs from spawn to the pickup) when it finds an earlier pickup, verified on CTasGame with the fast
 +// collision paths off (plain DDNet prediction code).
 +#define private public
@@ -259,6 +265,7 @@ index 0000000..25f2463
 +#include <game/gamecore.h>
 +
 +#include <algorithm>
++#include <array>
 +#include <atomic>
 +#include <chrono>
 +#include <cmath>
@@ -290,6 +297,7 @@ index 0000000..25f2463
 +static float gs_HNow = 600.0f;
 +static float gs_Ge = 0.02f;
 +static float gs_Lp = 0.0f;
++static float gs_Jw = 0.0f; // energy credit for an unused air jump (jw=144 ~ its impulse)
 +static float gs_LatDz = 24.0f;
 +static int gs_Threads = 1;
 +static float gs_Jitter = 0.0f;
@@ -319,8 +327,35 @@ index 0000000..25f2463
 +	int m_LastJump;
 +};
 +
++static int gs_Geo = 0; // geogoal=X,Y: rank by race tick + geodesic distance to a gate point, stop at the gate
++static vec2 gs_GeoGoal;
++static float gs_GeoL = 4.0f, gs_GeoS = 30.0f, gs_GeoR = 48.0f;
++static float gs_GeoGe = 0.0f, gs_GeoVMin = 0.0f; // geo mode: energy credit (with jw), minimum speed at the gate
++static int gs_GeoMax = 250; // geo mode: give up after this many ticks
++static int gs_GeoJump = 0; // geo mode: the gate needs an unused air jump
++static vec2 gs_GeoVRef = vec2(0, 0); // geo mode: reference velocity at the gate (geovref=vx,vy)
++static float gs_GeoVTol = 1e9f; // geo mode: required speed along geovref's direction >= |geovref| - geovtol
++static CViaField gs_GeoField;
++
++static bool AtGoal(const CFast &F);
++
 +static float Score(SState &S, std::mt19937 *pRng)
 +{
++	if(gs_Geo)
++	{
++		const CFast &F = S.m_F;
++		vec2 P = F.m_Core.m_Pos, V = F.m_Core.m_Vel;
++		float D = std::min(gs_GeoField.Dist(P + V * gs_GeoL), gs_GeoField.Dist(P) + gs_GeoL * gs_GeoS);
++		float Est = (float)F.RaceTick() + D / gs_GeoS;
++		if(gs_GeoGe > 0)
++		{
++			float E = dot(V, V) - P.y + (!(F.m_Core.m_Jumped & 2) ? gs_Jw : 0.0f);
++			Est -= gs_GeoGe * E;
++		}
++		if(pRng && gs_Jitter > 0)
++			Est += std::uniform_real_distribution<float>(-gs_Jitter, gs_Jitter)(*pRng);
++		return Est;
++	}
 +	const CFast &F = S.m_F;
 +	vec2 P = F.m_Core.m_Pos, V = F.m_Core.m_Vel;
 +	int N = (int)gs_vRef.size();
@@ -349,6 +384,9 @@ index 0000000..25f2463
 +	float Ramp = RampScale(V);
 +	float VTan = V.x * Ramp * R.m_Tan.x + V.y * R.m_Tan.y;
 +	float E = dot(V, V) - P.y;
++	// an unused air jump is worth about its impulse squared (vy = -12 from rest); grounded refills both
++	if(!(F.m_Core.m_Jumped & 2))
++		E += gs_Jw;
 +	float Rt = (float)F.RaceTick();
 +	float Est = Rt + (gs_RefEnd - (BestT + 1 - gs_RefStart));
 +	Est += gs_HNow * (1.0f / std::max(VTan, 1.0f) - 1.0f / std::max(R.m_VTan, 1.0f));
@@ -388,6 +426,7 @@ index 0000000..25f2463
 +}
 +
 +static int gs_Incumbent = 1;
++static int gs_Transplant = 0; // prefix mode: incumbent = the best run's inputs replayed from the prefix (most similar state)
 +static int gs_Via = 0; // 1: a pickup only counts if the tee can get from there to the climb point (gs_ViaGoal) without freezing
 +static vec2 gs_ViaGoal(5254.0f, 2176.0f);
 +static int gs_ViaMax = 70, gs_ViaBeam = 1500, gs_ViaTry = 40;
@@ -397,7 +436,8 @@ index 0000000..25f2463
 +static int gs_GateEnd = 0; // 1: the goal is the reference's last position (within gs_GateR), not the pickup
 +static float gs_GateR = 48.0f;
 +static vec2 gs_GatePos;
-+static int gs_DumpAt = 1 << 30; // write the best-ranked state's inputs when the beam reaches this race tick, then stop
++static int gs_DumpAt = 1 << 30;
++static int gs_DumpK = 1; // dumpk: number of distinct top states to dump (OUT, OUT.1, ...) // write the best-ranked state's inputs when the beam reaches this race tick, then stop
 +static int gs_Slack = 0; // also accept pickups up to this many ticks after the reference (exploration, with incumbent=0)
 +static int gs_Survive = 8; // ticks a kept state must survive under at least one simple continuation (0 = off)
 +
@@ -440,6 +480,20 @@ index 0000000..25f2463
 +	return false;
 +}
 +
++static bool AtGoal(const CFast &F)
++{
++	if(gs_Geo)
++	{
++		float Lr = length(gs_GeoVRef);
++		bool VelOk = Lr <= 0 || dot(F.m_Core.m_Vel, gs_GeoVRef / Lr) >= Lr - gs_GeoVTol;
++		return distance(F.m_Core.m_Pos, gs_GeoGoal) < gs_GeoR && length(F.m_Core.m_Vel) >= gs_GeoVMin && VelOk &&
++		       (!gs_GeoJump || !(F.m_Core.m_Jumped & 2));
++	}
++	if(gs_GateEnd)
++		return F.m_Got && distance(F.m_Core.m_Pos, gs_GatePos) < gs_GateR;
++	return F.m_Got;
++}
++
 +int main(int argc, const char **argv)
 +{
 +	if(argc < 2)
@@ -447,7 +501,7 @@ index 0000000..25f2463
 +		std::printf("usage: ddsearch MAP best=FILE cut=RT [beam= angles= hnow= ge= lp= latdz= threads= seed= jitter= out= cellpos= cellvel= abort= rothook=]\n");
 +		return 1;
 +	}
-+	std::string BestFile, PrefixFile, Out = "ddsearch_out.txt";
++	std::string BestFile, PrefixFile, RefFile, Out = "ddsearch_out.txt";
 +	int Cut = 100;
 +	unsigned Seed = 1;
 +	for(int i = 2; i < argc; i++)
@@ -470,6 +524,33 @@ index 0000000..25f2463
 +			gs_HNow = atof(v);
 +		else if(K == "ge")
 +			gs_Ge = atof(v);
++		else if(K == "geogoal")
++		{
++			gs_Geo = 1;
++			std::sscanf(v, "%f,%f", &gs_GeoGoal.x, &gs_GeoGoal.y);
++		}
++		else if(K == "geoge")
++			gs_GeoGe = atof(v);
++		else if(K == "geomax")
++			gs_GeoMax = atoi(v);
++		else if(K == "geovref")
++			std::sscanf(v, "%f,%f", &gs_GeoVRef.x, &gs_GeoVRef.y);
++		else if(K == "geovtol")
++			gs_GeoVTol = atof(v);
++		else if(K == "geovmin")
++			gs_GeoVMin = atof(v);
++		else if(K == "geojump")
++			gs_GeoJump = atoi(v);
++		else if(K == "geol")
++			gs_GeoL = atof(v);
++		else if(K == "geos")
++			gs_GeoS = atof(v);
++		else if(K == "geor")
++			gs_GeoR = atof(v);
++		else if(K == "transplant")
++			gs_Transplant = atoi(v);
++		else if(K == "jw")
++			gs_Jw = atof(v);
 +		else if(K == "lp")
 +			gs_Lp = atof(v);
 +		else if(K == "latdz")
@@ -506,6 +587,10 @@ index 0000000..25f2463
 +			gs_GateEnd = atoi(v);
 +		else if(K == "gater")
 +			gs_GateR = atof(v);
++		else if(K == "ref")
++			RefFile = V;
++		else if(K == "dumpk")
++			gs_DumpK = atoi(v);
 +		else if(K == "dumpat")
 +			gs_DumpAt = atoi(v);
 +		else if(K == "prefix")
@@ -574,6 +659,55 @@ index 0000000..25f2463
 +		R.m_E = dot(R.m_Vel, R.m_Vel) - R.m_Pos.y;
 +		gs_vRef.push_back(R);
 +	}
++	if(!RefFile.empty())
++	{
++		// external reference track ("race_tick x y" per line, race ticks on our clock, any spacing): replaces the
++		// reference positions / velocities inside its time range; after its end the last point is held
++		std::vector<std::array<float, 3>> vT;
++		FILE *pF = std::fopen(RefFile.c_str(), "r");
++		float a, b, c;
++		while(pF && std::fscanf(pF, "%f %f %f", &a, &b, &c) == 3)
++			vT.push_back({a, b, c});
++		if(pF)
++			std::fclose(pF);
++		if(vT.size() < 10)
++		{
++			std::printf("bad reference track %s\n", RefFile.c_str());
++			return 1;
++		}
++		auto At = [&](float Rt) {
++			if(Rt <= vT.front()[0])
++				return vec2(vT.front()[1], vT.front()[2]);
++			if(Rt >= vT.back()[0])
++				return vec2(vT.back()[1], vT.back()[2]);
++			size_t j = 1;
++			while(vT[j][0] < Rt)
++				j++;
++			float u = (Rt - vT[j - 1][0]) / std::max(1e-6f, vT[j][0] - vT[j - 1][0]);
++			return vec2(vT[j - 1][1] + (vT[j][1] - vT[j - 1][1]) * u, vT[j - 1][2] + (vT[j][2] - vT[j - 1][2]) * u);
++		};
++		auto Smooth = [&](float Rt) {
++			vec2 Sum(0, 0);
++			for(int k = -2; k <= 2; k++)
++				Sum += At(Rt + k);
++			return Sum / 5.0f;
++		};
++		int Used = 0;
++		gs_vRef.resize(vStates.size() + 400);
++		for(int i = 0; i < (int)gs_vRef.size(); i++)
++		{
++			float Rt = (float)(i + 1 - gs_RefStart);
++			if(Rt < vT.front()[0])
++				continue;
++			SRefPt R;
++			R.m_Pos = Smooth(Rt);
++			R.m_Vel = (Smooth(Rt + 1) - Smooth(Rt - 1)) / 2.0f;
++			R.m_E = dot(R.m_Vel, R.m_Vel) - R.m_Pos.y;
++			gs_vRef[i] = R;
++			Used++;
++		}
++		std::printf("reference track %s: %zu points, race ticks %.1f .. %.1f\n", RefFile.c_str(), vT.size(), vT.front()[0], vT.back()[0]);
++	}
 +	int CutInput = Cut + gs_RefStart - 1;
 +	if(CutInput < 0 || CutInput >= (int)vStates.size() - 1)
 +		CutInput = -1;
@@ -639,6 +773,14 @@ index 0000000..25f2463
 +		StartJump = vLastJump[CutInput];
 +		StartRef = CutInput;
 +	}
++	if(gs_Geo)
++	{
++		gs_GeoField.Build(gs_GeoGoal);
++		gs_Via = 0;
++		gs_Incumbent = 0;
++		gs_Slack = 100000; // the gate is not the pickup: no reference deadline
++		std::printf("geo goal %.0f %.0f (radius %.0f, look-ahead %.0f ticks, speed %.0f)\n", gs_GeoGoal.x, gs_GeoGoal.y, gs_GeoR, gs_GeoL, gs_GeoS);
++	}
 +	if(gs_Via && !gs_GateEnd)
 +	{
 +		gs_ViaField.Build(gs_ViaGoal);
@@ -656,6 +798,58 @@ index 0000000..25f2463
 +		float Ang = (a + 0.5f) / gs_Angles * 2 * pi;
 +		vAims.emplace_back((int)std::lround(std::cos(Ang) * 1000), (int)std::lround(std::sin(Ang) * 1000));
 +	}
++
++	// incumbent sequence: the best run's own continuation, or (prefix mode, transplant=1) the best run's inputs
++	// replayed from the prefix's end, starting at the best run's most similar state
++	std::vector<CFast> vIncF;
++	std::vector<STasInput> vIncIn;
++	if(PrefixFile.empty() && gs_Incumbent)
++	{
++		for(int k = CutInput + 1; k < (int)vStates.size(); k++)
++		{
++			vIncF.push_back(vStates[k]);
++			vIncIn.push_back(vBest[k]);
++		}
++	}
++	else if(!PrefixFile.empty() && gs_Transplant)
++	{
++		int BestJ = -1;
++		float BestD = 1e30f;
++		const CCharacterCore &C0 = StartF.m_Core;
++		for(int j = 0; j + 1 < (int)vStates.size(); j++)
++		{
++			if(vStates[j].m_StartTick < 0 || std::abs(vStates[j].RaceTick() - StartF.RaceTick()) > 40)
++				continue;
++			const CCharacterCore &C = vStates[j].m_Core;
++			float Dd = distance(C.m_Pos, C0.m_Pos) + 4.0f * distance(C.m_Vel, C0.m_Vel);
++			if((C.m_Jumped & 2) != (C0.m_Jumped & 2))
++				Dd += 1000.0f;
++			if((C.m_HookState == HOOK_GRABBED) != (C0.m_HookState == HOOK_GRABBED) || vBest[j].m_Hook != StartHook)
++				Dd += 300.0f;
++			if(Dd < BestD)
++			{
++				BestD = Dd;
++				BestJ = j;
++			}
++		}
++		if(BestJ >= 0)
++		{
++			CFast T = StartF;
++			for(int k = BestJ + 1; k < (int)vBest.size(); k++)
++			{
++				T.Step(vBest[k]);
++				if(T.m_Dead)
++					break;
++				vIncF.push_back(T);
++				vIncIn.push_back(vBest[k]);
++				if(T.m_Got)
++					break;
++			}
++			std::printf("transplant: best run from input %d (race tick %d, match %.1f): %zu ticks%s\n", BestJ + 1, vStates[BestJ].RaceTick(), BestD,
++				vIncF.size(), !vIncF.empty() && vIncF.back().m_Got ? (" -> pickup at race tick " + std::to_string(vIncF.back().RaceTick())).c_str() : " (dies)");
++		}
++	}
++	int IncBeamIdx = vIncF.empty() ? -1 : 0;
 +
 +	std::vector<std::vector<SNode>> vLayers; // kept nodes per search tick
 +	std::vector<SState> vBeam(1);
@@ -677,6 +871,7 @@ index 0000000..25f2463
 +
 +	auto T0 = std::chrono::steady_clock::now();
 +	int IncNode = -1; // node of the incumbent in the previous layer
++	int IncRefIdx = StartRef;
 +	int FoundRt = -1, FoundVia = -1, FoundTotal = 1 << 30, FoundLayer = -1;
 +	SNode FoundNode;
 +	SState Found;
@@ -685,6 +880,11 @@ index 0000000..25f2463
 +		int RtNow = vBeam[0].m_F.RaceTick() + 1;
 +		if(FoundRt >= 0 && RtNow > FoundRt + (gs_GoalClimb ? gs_ClimbExtra : 0))
 +			break;
++		if(gs_Geo && FoundRt < 0 && RtNow > Cut + gs_GeoMax)
++		{
++			std::printf("RESULT none (gate not reached within %d ticks)\n", gs_GeoMax);
++			return 2;
++		}
 +		if(FoundRt < 0 && RtNow >= gs_RefEnd + gs_Slack)
 +		{
 +			std::printf("RESULT none (no pickup before race tick %d)\n", gs_RefEnd);
@@ -800,6 +1000,8 @@ index 0000000..25f2463
 +							}
 +						}
 +					}
++				if(i == IncBeamIdx && Step < (int)vIncIn.size())
++					vIn.push_back(vIncIn[Step]);
 +				for(const STasInput &In : vIn)
 +				{
 +					SState N2;
@@ -812,7 +1014,7 @@ index 0000000..25f2463
 +					N2.m_LastJump = In.m_Jump;
 +					N2.m_Node = -1;
 +					float Sc = Score(N2, &TRng);
-+					if(gs_GateEnd ? (N2.m_F.m_Got && distance(N2.m_F.m_Core.m_Pos, gs_GatePos) < gs_GateR) : N2.m_F.m_Got)
++					if(AtGoal(N2.m_F))
 +					{
 +						std::lock_guard<std::mutex> Lock(GotMutex);
 +						SPick Pk;
@@ -949,25 +1151,26 @@ index 0000000..25f2463
 +				vSel.push_back(vNew[k]);
 +			}
 +		// incumbent: the reference run's own continuation always stays in the beam
-+		if(gs_Incumbent)
++		IncBeamIdx = -1;
++		if(Step < (int)vIncF.size() && !vIncF[Step].m_Got)
 +		{
-+			int RefIn = CutInput + Step + 1;
-+			if(RefIn < (int)vStates.size() && !vStates[RefIn].m_Got)
-+			{
-+				SState R;
-+				R.m_F = vStates[RefIn];
-+				R.m_RefIdx = std::min((int)gs_vRef.size() - 2, RefIn);
-+				R.m_LastHook = vBest[RefIn].m_Hook;
-+				R.m_LastJump = vBest[RefIn].m_Jump;
-+				R.m_Score = Score(R, nullptr);
-+				SNode Nd;
-+				Nd.m_Parent = IncNode;
-+				Nd.m_In = vBest[RefIn];
-+				R.m_Node = (int)vSel.size();
-+				IncNode = R.m_Node;
-+				LayerSel.push_back(Nd);
-+				vSel.push_back(R);
-+			}
++			SState R;
++			R.m_F = vIncF[Step];
++			R.m_RefIdx = vBeam.empty() ? 0 : vBeam[0].m_RefIdx;
++			// track the reference index from the incumbent's own previous one
++			R.m_RefIdx = IncRefIdx;
++			R.m_LastHook = vIncIn[Step].m_Hook;
++			R.m_LastJump = vIncIn[Step].m_Jump;
++			R.m_Score = Score(R, nullptr);
++			IncRefIdx = R.m_RefIdx;
++			SNode Nd;
++			Nd.m_Parent = IncNode;
++			Nd.m_In = vIncIn[Step];
++			R.m_Node = (int)vSel.size();
++			IncNode = R.m_Node;
++			IncBeamIdx = (int)vSel.size();
++			LayerSel.push_back(Nd);
++			vSel.push_back(R);
 +		}
 +		if(vSel.empty())
 +		{
@@ -986,18 +1189,34 @@ index 0000000..25f2463
 +		}
 +		if(B.m_F.RaceTick() >= gs_DumpAt)
 +		{
-+			std::vector<STasInput> vP;
-+			int Nd = B.m_Node;
-+			for(int L = (int)vLayers.size() - 1; L >= 0 && Nd >= 0; L--)
++			// the best-ranked state, and up to dumpk-1 more that are at least 24 px away from all dumped ones
++			std::vector<int> vPick;
++			for(int k = 0; k < (int)vBeam.size() && (int)vPick.size() < gs_DumpK; k++)
 +			{
-+				vP.push_back(vLayers[L][Nd].m_In);
-+				Nd = vLayers[L][Nd].m_Parent;
++				bool Far = true;
++				for(int j : vPick)
++					if(distance(vBeam[j].m_F.m_Core.m_Pos, vBeam[k].m_F.m_Core.m_Pos) < 24.0f)
++						Far = false;
++				if(Far)
++					vPick.push_back(k);
 +			}
-+			std::reverse(vP.begin(), vP.end());
-+			std::vector<STasInput> vD = vHead;
-+			vD.insert(vD.end(), vP.begin(), vP.end());
-+			WriteInputs(Out.c_str(), vD);
-+			std::printf("RESULT dump est %.2f at rt %d (ref idx %d) -> %s\n", B.m_Score, B.m_F.RaceTick(), B.m_RefIdx, Out.c_str());
++			for(int n = 0; n < (int)vPick.size(); n++)
++			{
++				const SState &S = vBeam[vPick[n]];
++				std::vector<STasInput> vP;
++				int Nd = S.m_Node;
++				for(int L = (int)vLayers.size() - 1; L >= 0 && Nd >= 0; L--)
++				{
++					vP.push_back(vLayers[L][Nd].m_In);
++					Nd = vLayers[L][Nd].m_Parent;
++				}
++				std::reverse(vP.begin(), vP.end());
++				std::vector<STasInput> vD = vHead;
++				vD.insert(vD.end(), vP.begin(), vP.end());
++				std::string Name = n == 0 ? Out : Out + "." + std::to_string(n);
++				WriteInputs(Name.c_str(), vD);
++				std::printf("RESULT dump est %.2f at rt %d (ref idx %d) -> %s\n", S.m_Score, S.m_F.RaceTick(), S.m_RefIdx, Name.c_str());
++			}
 +			return 0;
 +		}
 +		if(B.m_Score > gs_RefEnd + gs_Abort)
@@ -1034,7 +1253,11 @@ index 0000000..25f2463
 +			Bad = true;
 +			break;
 +		}
-+		if(gs_GateEnd ? (i + 1 == vOut.size() && V.HasGrenade() && distance(V.Pos(), gs_GatePos) < gs_GateR) : V.HasGrenade())
++		float VLr = length(gs_GeoVRef);
++		bool VerGoal = gs_Geo ? (i + 1 == vOut.size() && distance(V.Pos(), gs_GeoGoal) < gs_GeoR && length(V.Vel()) >= gs_GeoVMin &&
++						(VLr <= 0 || dot(V.Vel(), gs_GeoVRef / VLr) >= VLr - gs_GeoVTol) && (!gs_GeoJump || !(V.Jumped() & 2))) :
++				   gs_GateEnd ? (i + 1 == vOut.size() && V.HasGrenade() && distance(V.Pos(), gs_GatePos) < gs_GateR) : V.HasGrenade();
++		if(VerGoal)
 +		{
 +			VerRt = V.m_Tick - V.m_StartTick;
 +			break;
