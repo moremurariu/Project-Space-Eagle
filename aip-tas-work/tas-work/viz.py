@@ -2,7 +2,7 @@
 """Draw a run trace (x_trace output) on the map: path coloured by speed, explosions (circle = 48 px full-kick radius,
 line to the tee; red = reduced force), fire ticks, labels every 25 race ticks.
 usage: viz.py TRACE OUT.png [rt0 rt1] [x0 y0 x1 y1] [scale]"""
-import sys
+import os, sys
 from PIL import Image, ImageDraw
 
 tr, out = sys.argv[1], sys.argv[2]
@@ -55,5 +55,21 @@ for e in E:
     d.ellipse([ex - r, ey - r, ex + r, ey + r], outline=c)
     d.line([(ex, ey), (tx, ty)], fill=c, width=1)
     d.text((ex + 3, ey + 2), '%d:%.0f' % (e[0], e[6]), fill=c)
+# optional reference track overlay: TREF=track_file:label0:label1 (black dots, label every 25)
+if os.environ.get('TREF'):
+    f, l0, l1 = os.environ['TREF'].split(':')
+    R = {}
+    for l in open(f):
+        a = l.split()
+        if len(a) >= 3 and int(l0) <= int(a[0]) <= int(l1):
+            R[int(a[0])] = (float(a[1]), float(a[2]))
+    ks = sorted(R)
+    for a, b in zip(ks, ks[1:]):
+        d.line([P(*R[a]), P(*R[b])], fill=(0, 0, 0), width=1)
+    for k in ks:
+        if k % 25 == 0:
+            x, y = P(*R[k])
+            d.rectangle([x - 2, y - 2, x + 2, y + 2], fill=(0, 0, 0))
+            d.text((x + 3, y + 3), 'T%d' % k, fill=(90, 0, 120))
 img.save(out)
 print(out, W, H)
