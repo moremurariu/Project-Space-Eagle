@@ -855,3 +855,12 @@ Teero played the **KoG** version of AiP-Gores (user, from Teero). Our runs so fa
   holds ordinary shots while approaching; mkplan.py with PLANPOS=D): U-turn window from 2631 rt 1850 -> k2042:
   D=48 NOGATE, D=96 2099 / 2107 (time-shifted plan: 2090). Bottom-left window (rt 2080 -> k2192) with the time plan
   shifted 5 / 6 (+-3): 2263-2273 (best without a plan 2262; 2629 2259). Not solved.
+- More attempts at the bottom-left corner from the rt-2080 state (+6): 26 variants in all give 2259-2271 (2629:
+  2259). The cause is shot timing again: our shots are 5-6 ticks ahead of 2629's at the same spots until the
+  top-left turn (2629 shot 2149 at (1370,2777); ours 2159 at another spot), then only 2-5 ahead at the corner.
+  Teero-tracking (seg track=W from 2629 rt 1740 -> k1849): 1895-1906 (own 1890). Finer shot aims (fireangles 64/96):
+  1893-1898 (32: 1895). U-turn 1 pre-fire construction (kickfix KDIR=-1,0): 1266-1267 at k1249 (own 1253).
+- **Other agent: new best 2622 (52.44 s)** (compassionate-davinci, tigloop start 1700): = 2629 up to rt ~1700, then
+  +6 on the right straight (k1730-1880, where the box test showed +350 energy available), kept to the finish. It
+  has the single kick at the shaft (1600). Our double-kick line (+10 at rt 1690) is complementary: hand-off
+  candidate for their pipeline (start ~1690, prefix runs/shaft/L1576_0_0.txt cut at 1690).
