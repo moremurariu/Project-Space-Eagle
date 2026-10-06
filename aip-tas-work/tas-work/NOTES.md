@@ -729,3 +729,15 @@ Teero played the **KoG** version of AiP-Gores (user, from Teero). Our runs so fa
   best_height 2413 unchanged, kog_full_best still replays to 2663. Patch included in changes.patch.
 - LNS lnsr1 (retro variants, on the r1b 2663 run): **2661 (53.22 s)** at cut 2403 (retro=3 loadres=0.2 quota=30, beam 8000), server-identical (start 68, finish 2729, no freeze, no double start) -> kog_full_best.txt. (autoaccept's first check got an empty testrunner output - transient; re-checked by hand.)
 - auto-accepted lnsr1/best_2653.txt: **2653 (53.06 s)**, server-identical (start tick 68 finish tick 2721 -> 2653 ticks = 53.06 s; no freeze, no double start) -> kog_full_best.txt.
+- autoaccept.sh: DIR is now made absolute (a relative DIR broke the testrunner input path after its cd -> the empty
+  "start tick" rejections of 2661/2654); empty testrunner output is retried.
+- Shaft window from the best run (cut 1550 -> k1699; own run 1731): free 1735, retro + loadres + latpen 1/16
+  1733-1739; forced hold before the block (plan free windows around 1576-1599) 1738-1742 - one of them gets the
+  double kick at the block (two explosions at 1601, |v| 22 -> 44) but still 1738. The shaft loss (~15 ticks vs Teero)
+  is not just the missing double.
+- **seg bug (incumbent lost in LNS):** a state with a grenade in flight is judged by a held-input look; if that look
+  froze the child was dropped - the incumbent's own continuation too (runs with long pre-fires / retro shots hit it a
+  lot), so lnsinc iterations returned worse than their incumbent (2669/2676/2701/2662/2682). Fixed: the incumbent's
+  child is never dropped by the look (evaluated without it). Beam-1 incumbent replays now reach 2653/2663 from cuts
+  1100/1984 (before: NOGATE). New tool fgcheck (CTasGame vs CTasFast tick by tick from a cut, freeze flags): no
+  mismatch on kog_full_best / kog_full_2663.

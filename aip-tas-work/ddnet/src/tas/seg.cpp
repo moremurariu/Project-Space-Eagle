@@ -2283,7 +2283,9 @@ int main(int argc, const char **argv)
 						if(gs_P.m_KickMin > 0 && WeakKick())
 							Dead = true;
 #endif
-						if(Dead)
+						// (the incumbent's own continuation is never dropped: a held-input look is only a guess)
+						const bool IncChild = !pR && IsInc && SameIn(In, IncIn);
+						if(Dead && !IncChild)
 						{
 #ifdef SEG_FAST
 							CFastG::ms_pLog = nullptr;
@@ -2291,7 +2293,7 @@ int main(int argc, const char **argv)
 							return;
 						}
 						// prefire: a shot still in flight after the look is judged as if not fired yet
-						pEval = gs_P.m_Prefire && Look.NumProjectiles() > 0 ? &Tmp : &Look;
+						pEval = Dead || (gs_P.m_Prefire && Look.NumProjectiles() > 0) ? &Tmp : &Look;
 #ifdef SEG_FAST
 						if(gs_P.m_PfCred > 0 && pEval == &Tmp && Src.ReloadTimer() == 0 && Tmp.ReloadTimer() > 0)
 						{

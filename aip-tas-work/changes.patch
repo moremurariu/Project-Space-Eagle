@@ -158,7 +158,7 @@
      if(EXISTS ${PROJECT_SOURCE_DIR}/src/tas/${TAS_TOOL}.cpp)
        add_executable(${TAS_TOOL} EXCLUDE_FROM_ALL
          src/tas/${TAS_TOOL}.cpp
-@@ -3554,6 +3557,67 @@
+@@ -3554,6 +3557,80 @@
        list(APPEND TARGETS_LINK ${TAS_TOOL})
      endif()
    endforeach()
@@ -187,6 +187,19 @@
 +    target_include_directories(rdv BEFORE PRIVATE src/tas/shim)
 +    list(APPEND TARGETS_OWN rdv)
 +    list(APPEND TARGETS_LINK rdv)
++    add_executable(fgcheck EXCLUDE_FROM_ALL
++      src/tas/fgcheck.cpp
++      src/tas/fastg.cpp
++      ${TAS_EXTRA_SRC}
++      $<TARGET_OBJECTS:engine-shared>
++      $<TARGET_OBJECTS:game-shared>
++      $<TARGET_OBJECTS:rust-bridge-shared>
++      ${DEPS}
++    )
++    target_link_libraries(fgcheck ${LIBS_SERVER})
++    target_include_directories(fgcheck BEFORE PRIVATE src/tas/shim)
++    list(APPEND TARGETS_OWN fgcheck)
++    list(APPEND TARGETS_LINK fgcheck)
 +    target_link_libraries(segf ${LIBS_SERVER})
 +    target_include_directories(segf BEFORE PRIVATE src/tas/shim)
 +    list(APPEND TARGETS_OWN segf)
@@ -538,7 +551,7 @@
  }
 --- a/tas-work/NOTES.md
 +++ b/tas-work/NOTES.md
-@@ -84,3 +84,648 @@
+@@ -84,3 +84,660 @@
  - Corridor 1 from a Teero-like crossing (900,465,25,-13 spent): 294-296 (Teero 298). Our pre-start crossing gives ~306.
  - TileExists lookup cache in CCollision (opt-in flag, TAS only): step 1.54 -> 1.20 us, identical replays.
  - chain.py: segment chain over distance gates with several configs (gains ~1-2 ticks/gate; slow).
@@ -1187,3 +1200,15 @@
 +  best_height 2413 unchanged, kog_full_best still replays to 2663. Patch included in changes.patch.
 +- LNS lnsr1 (retro variants, on the r1b 2663 run): **2661 (53.22 s)** at cut 2403 (retro=3 loadres=0.2 quota=30, beam 8000), server-identical (start 68, finish 2729, no freeze, no double start) -> kog_full_best.txt. (autoaccept's first check got an empty testrunner output - transient; re-checked by hand.)
 +- auto-accepted lnsr1/best_2653.txt: **2653 (53.06 s)**, server-identical (start tick 68 finish tick 2721 -> 2653 ticks = 53.06 s; no freeze, no double start) -> kog_full_best.txt.
++- autoaccept.sh: DIR is now made absolute (a relative DIR broke the testrunner input path after its cd -> the empty
++  "start tick" rejections of 2661/2654); empty testrunner output is retried.
++- Shaft window from the best run (cut 1550 -> k1699; own run 1731): free 1735, retro + loadres + latpen 1/16
++  1733-1739; forced hold before the block (plan free windows around 1576-1599) 1738-1742 - one of them gets the
++  double kick at the block (two explosions at 1601, |v| 22 -> 44) but still 1738. The shaft loss (~15 ticks vs Teero)
++  is not just the missing double.
++- **seg bug (incumbent lost in LNS):** a state with a grenade in flight is judged by a held-input look; if that look
++  froze the child was dropped - the incumbent's own continuation too (runs with long pre-fires / retro shots hit it a
++  lot), so lnsinc iterations returned worse than their incumbent (2669/2676/2701/2662/2682). Fixed: the incumbent's
++  child is never dropped by the look (evaluated without it). Beam-1 incumbent replays now reach 2653/2663 from cuts
++  1100/1984 (before: NOGATE). New tool fgcheck (CTasGame vs CTasFast tick by tick from a cut, freeze flags): no
++  mismatch on kog_full_best / kog_full_2663.
