@@ -668,7 +668,7 @@
  }
 --- a/tas-work/NOTES.md
 +++ b/tas-work/NOTES.md
-@@ -84,3 +84,797 @@
+@@ -84,3 +84,800 @@
  - Corridor 1 from a Teero-like crossing (900,465,25,-13 spent): 294-296 (Teero 298). Our pre-start crossing gives ~306.
  - TileExists lookup cache in CCollision (opt-in flag, TAS only): step 1.54 -> 1.20 us, identical replays.
  - chain.py: segment chain over distance gates with several configs (gains ~1-2 ticks/gate; slow).
@@ -1466,3 +1466,6 @@
 +  crashw 1573-1576. Strong in some sections, harmful in others: variants, not defaults.
 +- gchain cw22 (shaft line, 8 variants incl. crashw/hookw, vs 2622): k1849 1884 (+1), k1999 2048 (-4), k2192 2255
 +  (-3), k2342 2417 (-10). Stopped.
++- **2621 (52.42 s), server-checked** (testrunner TasReplay: start tick 68, finish tick 2689 -> 2621 ticks; srvcheck:
++  frozen ticks 0, double start False, died False): 2622 (other agent) with a new ending from a finish search on its
++  rt-2500 cut (segx survx=300 jitter=1 seed=406, inc=2622) -> kog_full_2621.txt = kog_full_best.txt.

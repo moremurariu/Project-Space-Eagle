@@ -878,3 +878,6 @@ Teero played the **KoG** version of AiP-Gores (user, from Teero). Our runs so fa
   crashw 1573-1576. Strong in some sections, harmful in others: variants, not defaults.
 - gchain cw22 (shaft line, 8 variants incl. crashw/hookw, vs 2622): k1849 1884 (+1), k1999 2048 (-4), k2192 2255
   (-3), k2342 2417 (-10). Stopped.
+- **2621 (52.42 s), server-checked** (testrunner TasReplay: start tick 68, finish tick 2689 -> 2621 ticks; srvcheck:
+  frozen ticks 0, double start False, died False): 2622 (other agent) with a new ending from a finish search on its
+  rt-2500 cut (segx survx=300 jitter=1 seed=406, inc=2622) -> kog_full_2621.txt = kog_full_best.txt.
