@@ -742,3 +742,8 @@ Teero played the **KoG** version of AiP-Gores (user, from Teero). Our runs so fa
   1100/1984 (before: NOGATE). New tool fgcheck (CTasGame vs CTasFast tick by tick from a cut, freeze flags): no
   mismatch on kog_full_best / kog_full_2663.
 - auto-accepted lnsr1/best_2652.txt: **2652 (53.04 s)**, server-identical (start tick 68 finish tick 2720 -> 2652 ticks = 53.04 s; no freeze, no double start) -> kog_full_best.txt.
+- Shaft (best run cut 1550): Teero reaches the 2x2 block already rising at ~25 px/t (hook swing through the V bottom,
+  no kick) and the double kick sends him up at ~53; we reach it slower and get one kick (~36). Box gate at the shaft
+  top (3400-3700 x 2300-2520): search 1625 vs own 1627 (Teero ~1604, mostly lost before 1550). Box past the top turn
+  (3950-4150 x 2350-2750): search 1652-1653 vs own 1657, but at |v| 24 vs our 30-32 -> no real gain.
+- LNS lnsr1: 2653 -> **2652 (53.04 s)** at cut 2088 (retro=3 loadres=0.2 quota=30, beam 15000), auto-accepted.
