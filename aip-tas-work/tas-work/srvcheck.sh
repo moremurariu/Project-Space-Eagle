@@ -6,7 +6,8 @@ cd "$(dirname "$0")"
 IN=$(readlink -f "$1")
 STOPX=${2:-8800}
 LOG=$(mktemp)
-(cd ../ddnet/build-sim && TAS_MAP=$(readlink -f ../../tas-work/AiP-Gores.map) TAS_INPUTS=$IN TAS_TRACE=1 \
+MAPF=$(readlink -f AiP-Gores.map)
+(cd ../ddnet/build-sim && TAS_MAP=$MAPF TAS_INPUTS=$IN TAS_TRACE=1 \
 	./testrunner --gtest_filter=TasReplay.Run > "$LOG" 2>&1)
 python3 - "$LOG" "$STOPX" <<'PY'
 import re, sys

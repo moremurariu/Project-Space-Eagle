@@ -1,0 +1,9 @@
+# local build / map / scratch outputs (see setup_ds.sh)
+ddnet/build-sim
+ddnet-up/
+tas-work/AiP-Gores.map
+tas-work/map.txt
+tas-work/own_track.txt
+tas-work/runs/ds/
+tas-work/runs/dsc/
+tas-work/runs/*.out

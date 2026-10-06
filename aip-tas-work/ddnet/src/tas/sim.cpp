@@ -58,11 +58,9 @@ bool CTasGame::LoadMap(const char *pPath)
 	gs_pCollision = new CCollision();
 	gs_pCollision->Init(gs_pLayers);
 	CCollision::ms_TileExistsCache = getenv("TAS_NOCACHE") == nullptr;
-	if(!getenv("TAS_NOFAST"))
-	{
-		gs_pCollision->InitFast(); // only enables itself on maps where the fast paths are exact
-		CCollision::ms_FastPaths = true;
-	}
+	// exact fast paths of the upstream build (ddnet-upstream.patch); they only enable themselves where exact
+	CCollision::ms_FastPaths = getenv("TAS_NOFAST") == nullptr;
+	CCharacterCore::ms_TasSolo = getenv("TAS_NOFAST") == nullptr;
 
 	// same as CGameContext::OnInit with default settings
 	for(auto &Tuning : gs_aTuning)
