@@ -838,3 +838,16 @@ Teero played the **KoG** version of AiP-Gores (user, from Teero). Our runs so fa
   inc from its commits at rt 2493 / 2414 (10 + 6 variants): best **2631** (retro=1 seed 79 / survx seed 84;
   kog_full_2631_shaft.txt). 2629 not beaten: the shaft gain is lost at the left U-turn (k1967-2042) and the
   bottom-left turn (k2117-2267), where 2629 is very tight.
+- **Why the lead dies at the hard turns: shot timing.** 2631 (+7 ahead of 2629) follows 2629's path, but its shots are
+  out of step with 2629's kick spots. From the same spot as 2629's rt-1868 shot (2631: rt 1861) it waited 50 ticks
+  and missed 2629's kicks at (7684,3206), (6732,3188) and the bare block (5272,3726) (2629: full aligned kick at
+  1965, then a perpendicular turning kick at the corner, 1995). 2629's gaps (28-39 ticks) leave enough reload
+  slack to fire at all its kick spots 7 ticks earlier.
+- **Shot plan from the incumbent (mkplan.py RUN FROM SHIFT TOL > plan):** 2629's shots as seg plan entries (fire
+  window shifted -SHIFT +-TOL, explosion target = 2629's explosion point). planfree=1 prefire=1 padtop=600 from
+  2631 at rt 1850 -> k2042 at **2090** (2629 2097, 2631 2095; planforce=1: 2104). Lead along it: +6.9 -> +2.6 in
+  the U-turn -> +6.5 at rt 2090. As rchain windows (pl7) it fails (gates/commits inside the U-turn: 2026 at k1968,
+  2106 at k2043). From that run at rt 2080 (+6.1) to k2192 (2629 2259): plan variants 2271-2282, survx 2263,
+  survevery=0 **2262**, retro + survx 2263. The lead holds at +4..+5 to rt 2230 and then dies at the bottom-left corner
+  (2629: a 23-tick lob straight down landing at 2221, then a point-blank at 2233; ours: one strong kick at 2214 and a
+  weak freeze-lined one at 2242; no lob from the free reload slot reaches the corner on our path).

@@ -97,7 +97,7 @@ int main(int argc, const char **argv)
 			}
 			const float Fl = length(L.m_Force), V0 = length(L.m_VelBefore);
 			const float C = (Fl > 0 && V0 > 0.1f) ? dot(L.m_Force, L.m_VelBefore) / (Fl * V0) : 0;
-			std::printf("X %d dist %.1f force %.2f cos %+.2f surf %s along %.2f\n", Rt, L.m_Dist, Fl, C, Frz ? "freeze-lined" : "bare", Fl * C);
+			std::printf("X %d dist %.1f force %.2f cos %+.2f surf %s along %.2f E %.1f %.1f\n", Rt, L.m_Dist, Fl, C, Frz ? "freeze-lined" : "bare", Fl * C, L.m_E.x, L.m_E.y);
 		}
 		float d[NUM];
 		d[EXPL] = En(A.m_VExpl) - En(A.m_V0);

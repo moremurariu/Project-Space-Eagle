@@ -28,6 +28,8 @@ for _i in range(1, 7):
 for _i in range(1, 7):
     VAR[f'qs{_i}'] = f'quota=30 jitter=1 seed={55 + _i}'
     VAR[f'rlrxs{_i}'] = f'retro=3 loadres=0.2 quota=30 survx=300 jitter=1 seed={54 + _i}'
+for _i in range(1, 9):
+    VAR[f'pf{_i}'] = f'plan={args.get("plan", "runs/pl/plan_all7.txt")} planfree=1 prefire=1 padtop=600 jitter=1 seed={90 + _i}'
 VLIST = args.get('variants', 'free1,rt1,rlr2,rlr4').split(',')
 LOG = f'{D}/rc.log'
 def log(m):
