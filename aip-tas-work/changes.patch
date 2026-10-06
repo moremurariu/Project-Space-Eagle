@@ -668,7 +668,7 @@
  }
 --- a/tas-work/NOTES.md
 +++ b/tas-work/NOTES.md
-@@ -84,3 +84,747 @@
+@@ -84,3 +84,757 @@
  - Corridor 1 from a Teero-like crossing (900,465,25,-13 spent): 294-296 (Teero 298). Our pre-start crossing gives ~306.
  - TileExists lookup cache in CCollision (opt-in flag, TAS only): step 1.54 -> 1.20 us, identical replays.
  - chain.py: segment chain over distance gates with several configs (gains ~1-2 ticks/gate; slow).
@@ -1416,3 +1416,13 @@
 +  10.2, 1236 6.7 -> 10.8, 1348 5.8 -> 12.0, 1574 6.4 -> 10.3, 1807 8.5 -> 11.4, 2261 4.6 -> 11.4). Applied
 +  (kickfix.py RUN T0 T1 GATEK): the 1348 re-aim (full kick at 1356) -> k1449 at 1491-1496 vs own 1458. The weak
 +  kick was deliberate: it sets up the left U-turn. Kick strength along v is the wrong objective near turns.
++- **Seed spread dominates window results:** the right U-turn window (2629 cut rt 1740 -> box past the turn, own 1850)
++  gives 1845-1882 over 6 seeds (survival on) and 1848-1872 over 5 (survevery=0). Best-of-many beats the polished
++  run locally (1845).
++- **Best-of-10 chain from the shaft line** (rchain.py variants ss*/sz*, then bo10b with a mixed set qs*/sz*/sxs*/
++  rlrxs*/ss1; window 3 redone, where quota=30 seed 56 gave 2008 vs own 2015). Lead vs 2629 per gate: k1817 +7,
++  k1892 +9 (sz = survevery=0 seeds 20 ticks better than survival-on seeds there), k1967 +7, k2042 +1, k2117 +3,
++  k2192 0, k2267 -6, k2342 -3, k2417 +1, k2492 -4. **Finish 2633** (kog_full_2633_shaft.txt). Finish searches with
++  inc from its commits at rt 2493 / 2414 (10 + 6 variants): best **2631** (retro=1 seed 79 / survx seed 84;
++  kog_full_2631_shaft.txt). 2629 not beaten: the shaft gain is lost at the left U-turn (k1967-2042) and the
++  bottom-left turn (k2117-2267), where 2629 is very tight.

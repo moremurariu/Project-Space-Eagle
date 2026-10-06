@@ -19,6 +19,15 @@ VAR = {'free1': 'jitter=1 seed=1', 'free2': 'jitter=1 seed=2', 'rt1': 'retro=1 j
        'sv0': 'survevery=0 jitter=1 seed=1', 'sv0b': 'survevery=0 jitter=1 seed=2', 'rt1sv0': 'retro=1 survevery=0 jitter=1 seed=3',
        'sx1': 'survx=300 jitter=1 seed=1', 'sx2': 'survx=300 jitter=1 seed=2', 'rt1sx': 'retro=1 survx=300 jitter=1 seed=3',
        'rlr2qsx': 'retro=3 loadres=0.2 quota=30 survx=300 jitter=1 seed=1'}
+for _i in range(1, 13):
+    VAR[f'ss{_i}'] = f'jitter=1 seed={10 + _i}'
+    VAR[f'sz{_i}'] = f'survevery=0 jitter=1 seed={30 + _i}'
+for _i in range(1, 7):
+    VAR[f'sxs{_i}'] = f'survx=300 jitter=1 seed={50 + _i}'
+    VAR[f'rlrs{_i}'] = f'retro=3 loadres=0.2 quota=30 jitter=1 seed={53 + _i}'
+for _i in range(1, 7):
+    VAR[f'qs{_i}'] = f'quota=30 jitter=1 seed={55 + _i}'
+    VAR[f'rlrxs{_i}'] = f'retro=3 loadres=0.2 quota=30 survx=300 jitter=1 seed={54 + _i}'
 VLIST = args.get('variants', 'free1,rt1,rlr2,rlr4').split(',')
 LOG = f'{D}/rc.log'
 def log(m):
