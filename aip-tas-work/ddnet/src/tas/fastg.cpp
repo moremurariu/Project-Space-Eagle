@@ -279,10 +279,12 @@ void CFastG::TickProjectiles()
 		bool Destroy = false;
 		if(Collide || Clipped(CurPos))
 		{
+			// server CProjectile::Tick explodes once and returns; the client prediction world would also run the
+			// lifetime explosion when the hit falls on the last lifetime tick (nadelab: server-checked)
 			Explode(ColPos);
 			Destroy = true;
 		}
-		if(P.m_LifeSpan == -1)
+		else if(P.m_LifeSpan == -1)
 		{
 			Explode(ColPos);
 			Destroy = true;

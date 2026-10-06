@@ -715,3 +715,12 @@ Teero played the **KoG** version of AiP-Gores (user, from Teero). Our runs so fa
 - r1b (last two windows of r1 re-run with 10 variants: free x3, retro=1 x3, retro=3+loadres+quota x3, retro=3+quota):
   k2524 still 2644 (2644-2662); finish **2663 (53.26 s), server-identical -> kog_full_r1b_2663.txt** = ties the best
   (the LNS-polished g2 run) without any LNS. Wait loops of the form `until ! pgrep -f X` match their own command line.
+- **nadelab (sub-agent), scenario 1 = max height from one unhookable block: 2414 px (75.4 tiles), server-identical**
+  (nadelab/best_height.txt, FINDINGS.md). Technique: grenade stacks exploding on the block in the same tick as a
+  ground jump + point-blank shot: a 2-stack (79-tick lob + point-blank, vy -36.7), then a 3-stack (a 101-tick
+  lifetime grenade fired from 853 px up exploding in mid-air right under the launch spot + a 73-tick lob + point-blank,
+  vy -48.7). Proven max without mid-air kicks toward the block (relaxed gate model); a kick-assisted 4-stack (3734 px)
+  is not ruled out.
+- **Prediction vs server bug found by nadelab:** a grenade hitting a tile on its last lifetime tick explodes twice in
+  the client prediction world (CTasGame, CFastG) but once on the server. CFastG fixed (lifetime branch now `else if`;
+  backup fastg.cpp.bak_dblexpl); CTasGame still has it. Accepted runs were all server-checked, so they are unaffected.

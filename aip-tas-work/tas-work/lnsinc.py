@@ -4,7 +4,7 @@
 so a search can only match or beat it. Reference line: our own best run (ref=own, regenerated after every improvement,
 Teero's sinks mapped onto it) or Teero's track, chosen per iteration.
 usage: lnsinc.py BEST.txt DIR [minutes=600] [workers=4] [cutmin=1030] [cutmax=] [refmode=mix|own|teero] [span=]
-  span=N: only cuts at most N ticks before the finish"""
+  span=N: only cuts at most N ticks before the finish; retro=1: retro-shot variants (70% of the iterations)"""
 import os, random, re, subprocess, sys, threading, time
 from concurrent.futures import ThreadPoolExecutor
 HERE = os.path.dirname(os.path.abspath(__file__)); os.chdir(HERE)
@@ -58,6 +58,11 @@ def variant(rng, refown):
         v.update(prefire=1, padaims=48, padtop=300, padrange=30)
     if rng.random() < 0.2:
         v.update(angles=128, hookdedup=0)
+    if args.get('retro') and rng.random() < 0.7:
+        # retro shots (seg retro=K), with the loaded-grenade reserve + quota that make them pay off
+        v['retro'] = rng.choice([1, 3, 3])
+        if rng.random() < 0.6:
+            v.update(loadres=rng.choice([0.2, 0.4]), quota=30)
     if rng.random() < 0.5:
         v.update(jitter=1, seed=rng.randint(1, 10**6))
     return v
