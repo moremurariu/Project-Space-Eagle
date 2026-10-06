@@ -30,10 +30,17 @@ struct SExplLog
 	float m_Dist;
 };
 
+struct SStepAudit
+{
+	vec2 m_V0, m_VExpl, m_VTick, m_VMove; // velocity at the step start, after explosions, after the core tick, after the move
+	CCharacterCore m_CoreBeforeTick; // for counterfactual core ticks (hook / dir / jump attribution)
+};
+
 class CFastG
 {
 public:
-	static thread_local std::vector<SExplLog> *ms_pLog; // analysis only (single-threaded tools): explosions are appended here
+	static thread_local std::vector<SExplLog> *ms_pLog;
+	static thread_local SStepAudit *ms_pAudit; // analysis only: per-stage velocities of the last Step // analysis only (single-threaded tools): explosions are appended here
 	enum
 	{
 		MAX_PROJ = 4,

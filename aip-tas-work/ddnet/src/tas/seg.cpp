@@ -48,6 +48,16 @@
 //     shot is patched into that ancestor's input (exact: the tee's motion until the explosion is unchanged) and the
 //     state with the grenade in flight is expanded too (up to K best kicks). Pre-fires / double kicks without guessing.
 //     retroafter=1: also for states that fired since (the retro shot 25+ ticks before that shot, exploding after it)
+//   rjrun=FILE rjd=D [rjtest=30 rjwv=4 rjtie=0.01] (segf): exact rejoin - states are ranked by their distance (pos + rjwv x vel,
+//     hook / reload mismatch) to FILE's own state D ticks further on; every step the closest rjtest states are tested by
+//     replaying FILE's remaining inputs from them: if that finishes D ticks earlier than FILE, the spliced run is written
+//     (out + "rj.txt") and the search stops. Use with a prefix that is ahead of FILE (or D=0 to merge back).
+//   hookmaxv=V: no new hook presses while |v| > V (a hook only brakes above 15 px/t; keep the speed for kicks / turns)
+//   hookhold=N [hookholdv=25]: a grabbed hook must be released after N ticks while |v| > hookholdv (tap-style hooking)
+//   follow=FILE [fh=40 fw=1 ffin=0] (segf): follower lookahead - every beam state is continued for fh ticks with FILE's own
+//     inputs from the FILE tick whose position matches it best; the follower's lead over FILE (FILE ticks gained) is a
+//     bonus of fw ticks per tick for the state's children. ffin=K: the K best followers are run to the finish each step;
+//     one that finishes before FILE is written (out + "ff.txt"). (shares the reference loading with rjrun)
 //   loadres=F: reserve F x beam places for the best-ranked states that hold a loaded grenade (horizon effect: a kick
 //     saved for the next bend looks worse than firing now until the bend)
 //   firemax=N: drop states that keep a loaded grenade (reload 0) for more than N ticks (kick as often as possible)
@@ -202,6 +212,14 @@ struct SParams
 	int m_Retro = 0; // retro=K (segf): up to K retro shots per state (fired by an ancestor holding the grenade)
 	int m_RetroMinF = 2, m_RetroMaxF = 30, m_RetroTop = 1000000, m_RetroAfter = 0; // retroafter: also behind the state's own last shot
 	float m_RetroRad = 90;
+	std::string m_RjRun; // rjrun=FILE (segf): rejoin mode - rank by distance to that run's state rjd ticks ahead, test exact continuation
+	int m_RjD = 0, m_RjTest = 30;
+	int m_HookHold = 0;
+	float m_HookHoldV = 25;
+	float m_HookMaxV = 0;
+	int m_FollowH = 40, m_FollowFin = 0; // follow=FILE: follower lookahead (see usage)
+	float m_FollowW = 0; // hookmaxv=V: no new hook presses while |v| > V
+	float m_RjWv = 4, m_RjTie = 0.01f;
 	float m_PfCred = 0; // pfcred=W (segf, prefire=1): pre-fire credit from held-input looks with / without the grenade
 	float m_LoadRes = 0; // loadres=F: reserve F x beam places for the best states holding a loaded grenade
 	float m_BoxE = 0; // boxe=L: box gate value = race tick - L x (v^2 - y) (L large: most energy at the box)
@@ -1355,7 +1373,21 @@ static void GenActions(const CGameT &G, const STasInput &Prev, std::vector<STasI
 	static thread_local std::vector<std::pair<int16_t, int16_t>> s_vHooks, s_vFire;
 	const bool Hooking = G.m_LastHook;
 	if(!Hooking)
+	{
 		HookTargets(G, s_vHooks);
+		if(gs_P.m_HookMaxV > 0 && length(G.Vel()) > gs_P.m_HookMaxV)
+			s_vHooks.clear(); // hookmaxv: no new hook above this speed (a hook at speed only brakes)
+	}
+	bool HoldCapped = false; // hookhold=N hookholdv=V: a grabbed hook is released after N ticks while |v| > V (taps, not holds)
+	if(Hooking && gs_P.m_HookHold > 0 && G.HookState() == HOOK_GRABBED && length(G.Vel()) > gs_P.m_HookHoldV)
+	{
+#ifdef SEG_FAST
+		const int HT = G.Core().m_HookTick;
+#else
+		const int HT = G.Chr()->m_Core.m_HookTick;
+#endif
+		HoldCapped = HT >= gs_P.m_HookHold;
+	}
 	const bool CanJump = !G.m_LastJump && (G.Grounded() || !(G.Jumped() & 2));
 	const int Weapon = G.HasGrenade() ? 3 : -1;
 	const bool CanFire = gs_P.m_Fire && G.HasGrenade() && G.ActiveWeapon() == 3 && G.ReloadTimer() == 0 && !Prev.m_Fire;
@@ -1474,7 +1506,8 @@ static void GenActions(const CGameT &G, const STasInput &Prev, std::vector<STasI
 			In.m_TX = Prev.m_TX;
 			In.m_TY = Prev.m_TY;
 			In.m_Hook = Hooking;
-			vOut.push_back(In);
+			if(!(Hooking && HoldCapped))
+				vOut.push_back(In);
 			if(Hooking)
 			{
 				STasInput R = In;
@@ -1771,6 +1804,103 @@ static void RetroFind(const CGameT &G, int sG, int idxG, const std::vector<std::
 }
 #endif
 
+#ifdef SEG_FAST
+struct SRjRef
+{
+	vec2 m_P, m_V, m_HP;
+	int m_HS, m_RL;
+};
+static std::vector<STasInput> gs_vRj;
+static std::vector<SRjRef> gs_vRjR; // by race tick - gs_RjR0
+static int gs_RjR0 = 0, gs_RjFin = -1;
+static float RjDist(const CGameT &S)
+{
+	const int Rt = S.m_Tick - S.m_StartTick + gs_P.m_RjD - gs_RjR0;
+	if(Rt < 0 || Rt >= (int)gs_vRjR.size())
+		return 1e6f;
+	const SRjRef &R = gs_vRjR[Rt];
+	float d = distance(S.Pos(), R.m_P) + gs_P.m_RjWv * distance(S.Vel(), R.m_V);
+	if(S.HookState() != R.m_HS)
+		d += 20;
+	else if(R.m_HS == HOOK_GRABBED)
+		d += 0.5f * distance(S.HookPos(), R.m_HP);
+	if(S.ReloadTimer() != R.m_RL)
+		d += 5;
+	return d;
+}
+// replay the rejoin run's remaining inputs from S (S at race tick t stands for the run's state at t + D): finish or -1
+static int RjCont(const CGameT &S)
+{
+	static thread_local CGameT F;
+	F.CopyFrom(S);
+	const int Rt = S.m_Tick - S.m_StartTick;
+	for(int i = Rt + gs_P.m_RjD + 68; i < (int)gs_vRj.size(); i++)
+	{
+		F.Step(gs_vRj[i]);
+		if(F.Frozen() || F.EnteredFreeze() || F.m_StartTick == -2)
+			return -1;
+		if(F.m_FinishTick >= 0)
+			return F.m_FinishTick - F.m_StartTick;
+	}
+	return -1;
+}
+#endif
+
+#ifdef SEG_FAST
+// nearest reference race tick to P around a hint
+static int RjNear(vec2 P, int Hint, int W)
+{
+	int Best = -1;
+	float Bd = 1e30f;
+	const int N = (int)gs_vRjR.size();
+	int a = std::max(0, Hint - W), b = std::min(N - 1, Hint + W);
+	if(Hint < 0)
+		a = 0, b = N - 1;
+	for(int i = a; i <= b; i++)
+	{
+		float d = distance(P, gs_vRjR[i].m_P);
+		if(d < Bd)
+			Bd = d, Best = i;
+	}
+	return Best;
+}
+// follower: continue S with the reference's inputs from its matching tick; lead in reference ticks after H ticks
+static float FollowLead(CGameT &S, int H, int *pFinish)
+{
+	const int Rt = S.m_Tick - S.m_StartTick;
+	int Idx = RjNear(S.Pos(), S.m_FollowIdx >= 0 ? S.m_FollowIdx + 1 : Rt - gs_RjR0, 40);
+	S.m_FollowIdx = Idx;
+	static thread_local CGameT F;
+	F.CopyFrom(S);
+	int h = 0, Last = Idx;
+	const int N = (int)gs_vRjR.size();
+	for(; h < H || pFinish; h++)
+	{
+		const int i = gs_RjR0 + Idx + h + 1 + 67; // input making reference rt (R0 + Idx + h + 1)
+		if(i >= (int)gs_vRj.size())
+			break;
+		F.Step(gs_vRj[i]);
+		if(F.Frozen() || F.EnteredFreeze() || F.m_StartTick == -2)
+		{
+			if(pFinish)
+				*pFinish = -1;
+			return (float)(Last - Idx) - (h + 1) - 10.0f;
+		}
+		if(F.m_FinishTick >= 0)
+		{
+			if(pFinish)
+				*pFinish = F.m_FinishTick - F.m_StartTick;
+			return (float)(N - 1 - Idx) - (h + 1);
+		}
+		if(h % 5 == 4 || h == H - 1)
+			Last = RjNear(F.Pos(), Last + 5, 15);
+	}
+	if(pFinish)
+		*pFinish = -1;
+	return (float)(Last - Idx) - h;
+}
+#endif
+
 struct SGate
 {
 	float m_V = 1e30f; // lower better
@@ -1908,6 +2038,18 @@ int main(int argc, const char **argv)
 		else if(K == "boxe") gs_P.m_BoxE = std::stof(V);
 		else if(K == "loadres") gs_P.m_LoadRes = std::stof(V);
 		else if(K == "pfcred") gs_P.m_PfCred = std::stof(V);
+		else if(K == "rjrun") gs_P.m_RjRun = V;
+		else if(K == "hookmaxv") gs_P.m_HookMaxV = std::stof(V);
+		else if(K == "follow") gs_P.m_RjRun = V, gs_P.m_FollowW = gs_P.m_FollowW > 0 ? gs_P.m_FollowW : 1.0f;
+		else if(K == "fh") gs_P.m_FollowH = std::stoi(V);
+		else if(K == "fw") gs_P.m_FollowW = std::stof(V);
+		else if(K == "ffin") gs_P.m_FollowFin = std::stoi(V);
+		else if(K == "hookhold") gs_P.m_HookHold = std::stoi(V);
+		else if(K == "hookholdv") gs_P.m_HookHoldV = std::stof(V);
+		else if(K == "rjd") gs_P.m_RjD = std::stoi(V);
+		else if(K == "rjtest") gs_P.m_RjTest = std::stoi(V);
+		else if(K == "rjwv") gs_P.m_RjWv = std::stof(V);
+		else if(K == "rjtie") gs_P.m_RjTie = std::stof(V);
 		else if(K == "retro") gs_P.m_Retro = std::stoi(V);
 		else if(K == "retrominf") gs_P.m_RetroMinF = std::stoi(V);
 		else if(K == "retromaxf") gs_P.m_RetroMaxF = std::stoi(V);
@@ -2121,6 +2263,37 @@ int main(int argc, const char **argv)
 			gs_P.m_TrackOff = (int)std::lround(gs_Ref.m_vK[GT->m_RefIdx]) - (GT->m_Tick - GT->m_StartTick);
 		if(gs_P.m_TrackW > 0)
 			std::printf("tracking: offset %d (teero tick = race tick + offset)\n", gs_P.m_TrackOff);
+#ifdef SEG_FAST
+		if(!gs_P.m_RjRun.empty())
+		{
+			gs_vRj = ReadInputs(gs_P.m_RjRun.c_str());
+			const int StartRt = GT->m_Tick - GT->m_StartTick;
+			gs_RjR0 = std::max(1, StartRt - 60);
+			CTasGame RG;
+			RG.Spawn(CTasGame::Map().m_vSpawns[0]);
+			for(int i = 0; i < gs_RjR0 + 68 && i < (int)gs_vRj.size(); i++)
+				RG.Step(gs_vRj[i]);
+			static CGameT RF;
+			RF.FromGameFull(RG);
+			gs_vRjR.clear();
+			gs_vRjR.push_back({RF.Pos(), RF.Vel(), RF.HookPos(), RF.HookState(), RF.ReloadTimer()});
+			for(int i = gs_RjR0 + 68; i < (int)gs_vRj.size(); i++)
+			{
+				RF.Step(gs_vRj[i]);
+				gs_vRjR.push_back({RF.Pos(), RF.Vel(), RF.HookPos(), RF.HookState(), RF.ReloadTimer()});
+				if(RF.m_FinishTick >= 0)
+				{
+					gs_RjFin = RF.m_FinishTick - RF.m_StartTick;
+					break;
+				}
+				if(RF.Frozen() || RF.EnteredFreeze())
+					break;
+			}
+			std::printf("rejoin target %s: finish %d, D %d, start rt %d\n", gs_P.m_RjRun.c_str(), gs_RjFin, gs_P.m_RjD, StartRt);
+			if(gs_RjFin < 0)
+				return 1;
+		}
+#endif
 		vPrev.push_back(vPrefix.empty() ? STasInput{} : vPrefix.back());
 		vBeam.push_back(std::move(GT));
 	}
@@ -2391,6 +2564,12 @@ int main(int argc, const char **argv)
 					}
 					if(gs_P.m_TrackW > 0)
 						S = Tmp.m_TrackCost + gs_P.m_TrackTie * S;
+#ifdef SEG_FAST
+					if(!gs_P.m_RjRun.empty() && gs_P.m_FollowW <= 0)
+						S = RjDist(Tmp) + gs_P.m_RjTie * S;
+					if(gs_P.m_FollowW > 0)
+						S -= gs_P.m_FollowW * Src.m_FollowLead;
+#endif
 					S -= Tmp.m_Bonus;
 					vTC[T].push_back({S, i, In, CellKey(Tmp), Tmp.Hash(), Ee, Rt, Tmp.m_RefIdx, QuotaKey(Tmp)});
 					vTC[T].back().m_Loaded = Tmp.HasGrenade() && Tmp.ReloadTimer() == 0;
@@ -2579,6 +2758,113 @@ int main(int argc, const char **argv)
 		}
 		vBeam = std::move(vNew);
 		vPrev = std::move(vNewPrev);
+#ifdef SEG_FAST
+		if(gs_P.m_FollowW > 0)
+		{
+			std::atomic<int> NextF{0};
+			auto Fol = [&]() {
+				while(true)
+				{
+					int k = NextF.fetch_add(1);
+					if(k >= (int)vBeam.size())
+						break;
+					vBeam[k]->m_FollowLead = FollowLead(*vBeam[k], gs_P.m_FollowH, nullptr);
+				}
+			};
+			std::vector<std::thread> vThF;
+			for(int T = 1; T < NT; T++)
+				vThF.emplace_back(Fol);
+			Fol();
+			for(auto &Th : vThF)
+				Th.join();
+			if(gs_P.m_FollowFin > 0)
+			{
+				std::vector<int> vOrd(vBeam.size());
+				for(int k = 0; k < (int)vOrd.size(); k++)
+					vOrd[k] = k;
+				std::partial_sort(vOrd.begin(), vOrd.begin() + std::min((int)vOrd.size(), gs_P.m_FollowFin), vOrd.end(),
+					[&](int a, int b) { return vBeam[a]->m_FollowLead > vBeam[b]->m_FollowLead; });
+				static int s_BestFF = 1 << 30;
+				int nFin = 0, BestFinHere = 1 << 30;
+				for(int q = 0; q < (int)vOrd.size() && q < gs_P.m_FollowFin; q++)
+				{
+					const int k = vOrd[q];
+					CGameT Tmp2;
+					Tmp2.CopyFrom(*vBeam[k]);
+					int Fin = -1;
+					FollowLead(Tmp2, 0, &Fin);
+					if(Fin >= 0)
+						nFin++, BestFinHere = std::min(BestFinHere, Fin);
+					if(Fin >= 0 && Fin < gs_RjFin && Fin < s_BestFF)
+					{
+						s_BestFF = Fin;
+						std::vector<STasInput> vRun;
+						std::vector<SPatch> vPatch;
+						int Idx = k;
+						for(int s2 = Step; s2 >= 0; s2--)
+						{
+							vRun.push_back(vHist[s2][Idx].second);
+							if(vHistR[s2][Idx].m_Step >= 0)
+								vPatch.push_back(vHistR[s2][Idx]);
+							Idx = vHist[s2][Idx].first;
+						}
+						std::reverse(vRun.begin(), vRun.end());
+						for(const auto &P : vPatch)
+						{
+							vRun[P.m_Step].m_Fire = 1;
+							vRun[P.m_Step].m_TX = P.m_TX;
+							vRun[P.m_Step].m_TY = P.m_TY;
+						}
+						std::vector<STasInput> vAllIn = vPrefix;
+						vAllIn.insert(vAllIn.end(), vRun.begin(), vRun.end());
+						const int From = gs_RjR0 + Tmp2.m_FollowIdx + 1 + 67;
+						vAllIn.insert(vAllIn.end(), gs_vRj.begin() + From, gs_vRj.end());
+						std::string OutF = gs_P.m_Out + "ff.txt";
+						WriteInputs(OutF.c_str(), vAllIn);
+						std::printf("FOLLOW-FINISH step %d: finish %d (ref %d) -> %s\n", Step, Fin, gs_RjFin, OutF.c_str());
+						std::fflush(stdout);
+					}
+				}
+				if(getenv("SEG_FDBG") && Step % 10 == 0)
+					std::printf("fdbg step %d: best lead %.1f, followers finishing %d/%d (best %d)\n", Step, vBeam[vOrd[0]]->m_FollowLead, nFin, std::min((int)vOrd.size(), gs_P.m_FollowFin), BestFinHere == (1 << 30) ? -1 : BestFinHere);
+			}
+		}
+		if(!gs_P.m_RjRun.empty() && gs_P.m_FollowW <= 0)
+		{
+			// exact rejoin test on the closest states
+			for(int k = 0; k < (int)vBeam.size() && k < gs_P.m_RjTest; k++)
+			{
+				const int f = RjCont(*vBeam[k]);
+				if(f < 0 || f > gs_RjFin - gs_P.m_RjD)
+					continue;
+				std::vector<STasInput> vRun;
+				std::vector<SPatch> vPatch;
+				int Idx = k;
+				for(int s2 = Step; s2 >= 0; s2--)
+				{
+					vRun.push_back(vHist[s2][Idx].second);
+					if(vHistR[s2][Idx].m_Step >= 0)
+						vPatch.push_back(vHistR[s2][Idx]);
+					Idx = vHist[s2][Idx].first;
+				}
+				std::reverse(vRun.begin(), vRun.end());
+				for(const auto &P : vPatch)
+				{
+					vRun[P.m_Step].m_Fire = 1;
+					vRun[P.m_Step].m_TX = P.m_TX;
+					vRun[P.m_Step].m_TY = P.m_TY;
+				}
+				std::vector<STasInput> vAllIn = vPrefix;
+				vAllIn.insert(vAllIn.end(), vRun.begin(), vRun.end());
+				const int Rt = vBeam[k]->m_Tick - vBeam[k]->m_StartTick;
+				vAllIn.insert(vAllIn.end(), gs_vRj.begin() + Rt + gs_P.m_RjD + 68, gs_vRj.end());
+				std::string OutR = gs_P.m_Out + "rj.txt";
+				WriteInputs(OutR.c_str(), vAllIn);
+				std::printf("REJOIN at rt %d (= run rt %d): finish %d (run %d) -> %s (%zu inputs)\n", Rt, Rt + gs_P.m_RjD, f, gs_RjFin, OutR.c_str(), vAllIn.size());
+				return 0;
+			}
+		}
+#endif
 		vDoomed.assign(vBeam.size(), 0);
 		if(gs_P.m_SurvEvery > 0 && Step % gs_P.m_SurvEvery == 0)
 		{

@@ -16,6 +16,7 @@
 #include <cstdlib>
 
 CTeamsCore CFastG::ms_Teams;
+thread_local SStepAudit *CFastG::ms_pAudit = nullptr;
 thread_local std::vector<SExplLog> *CFastG::ms_pLog = nullptr;
 
 enum
@@ -365,8 +366,12 @@ void CFastG::Step(const STasInput &In)
 	CheckRace();
 
 	// world tick: projectiles, then pickups, then the character
+	if(ms_pAudit)
+		ms_pAudit->m_V0 = m_Core.m_Vel;
 	if(m_NumProj)
 		TickProjectiles();
+	if(ms_pAudit)
+		ms_pAudit->m_VExpl = m_Core.m_Vel;
 	if(!m_Core.m_aWeapons[WEAPON_GRENADE].m_Got)
 		for(const vec2 &G : gs_vGrenades)
 			if(distance(G, m_Pos) < 20.0f + CCharacterCore::PhysicalSize())
@@ -377,7 +382,11 @@ void CFastG::Step(const STasInput &In)
 
 	// CCharacter::Tick: PreTick (DDRaceTick restores m_Input from m_SavedInput == m_Input)
 	m_Core.m_Input = m_Input;
+	if(ms_pAudit)
+		ms_pAudit->m_CoreBeforeTick = m_Core;
 	m_Core.Tick(true, true);
+	if(ms_pAudit)
+		ms_pAudit->m_VTick = m_Core.m_Vel;
 	// HandleWeapons
 	if(m_ReloadTimer)
 		m_ReloadTimer--;
@@ -395,6 +404,8 @@ void CFastG::Step(const STasInput &In)
 	m_PrevPos = m_Core.m_Pos;
 	// TickDeferred
 	m_Core.Move();
+	if(ms_pAudit)
+		ms_pAudit->m_VMove = m_Core.m_Vel;
 	m_Core.Quantize();
 	m_Pos = m_Core.m_Pos;
 	uint8_t Move = MoveFlags(m_PrevPos, m_Pos);

@@ -755,3 +755,16 @@ Teero played the **KoG** version of AiP-Gores (user, from Teero). Our runs so fa
   Direct splices "963 up to rt c + 2630 from c+5" (c = 700..945) all freeze (checked with fgcheck). Sub-agent
   (merge963/) re-fits the transition aiming at an exact state match with 2630 (DDNet quantizes the core state), so
   2630's inputs can be appended unchanged (target ~2625).
+- **Strategy change (user): no single operation > 1 min until +50 ticks; creativity over compute.** LNS stopped.
+- New tools: `eaudit MAP INPUTS FROM_RT [TO_RT]` (per-tick energy audit: hook / explosion / tick / move deltas of |v|,
+  EA_TICKS=1 for per-tick lines), `perturb MAP INPUTS CUT_RT [n dpos dvel seed]` (basin test: perturb the state at a
+  cut and replay the rest), `rejoin MAP RUN A B DELTA` (beam toward RUN's state at B+DELTA), seg options `rjrun=FILE
+  rjd=D` (rank by distance to FILE's state D ticks ahead, write out+"rj.txt" on an exact rejoin), `follow=FILE fh fw
+  ffin` (follower lookahead toward a reference run), `hookmaxv=V`, `hookhold=N hookholdv=V`.
+- Energy audit of 2630 post-nade: braking dominates the losses; long hook holds are ~2/3 of the hook loss; taps cost
+  ~4 px/t each. Teero takes the same path with the same vertical share but is 1-4 px/t faster horizontally, with the
+  same air-brake frequency.
+- **The polished run is a knife-edge:** perturbing the state by +-1 px kills 73% of continuations within 30-100 ticks;
+  +-0.02 vel is absorbed. Rejoin works only for delta=0. rjrun rjd=1 scan of 2630 at A=1100..2525 step 75: no exact
+  rejoin anywhere. Follower lookahead: followers die, no gain. Window searches with brake=4.35 / vcap / hookmaxv /
+  hookhold knobs stay within +-5 ticks of 2630's own window times (owngate.py).

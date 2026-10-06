@@ -158,7 +158,7 @@
      if(EXISTS ${PROJECT_SOURCE_DIR}/src/tas/${TAS_TOOL}.cpp)
        add_executable(${TAS_TOOL} EXCLUDE_FROM_ALL
          src/tas/${TAS_TOOL}.cpp
-@@ -3554,6 +3557,80 @@
+@@ -3554,6 +3557,119 @@
        list(APPEND TARGETS_LINK ${TAS_TOOL})
      endif()
    endforeach()
@@ -200,6 +200,45 @@
 +    target_include_directories(fgcheck BEFORE PRIVATE src/tas/shim)
 +    list(APPEND TARGETS_OWN fgcheck)
 +    list(APPEND TARGETS_LINK fgcheck)
++    add_executable(rejoin EXCLUDE_FROM_ALL
++      src/tas/rejoin.cpp
++      src/tas/fastg.cpp
++      ${TAS_EXTRA_SRC}
++      $<TARGET_OBJECTS:engine-shared>
++      $<TARGET_OBJECTS:game-shared>
++      $<TARGET_OBJECTS:rust-bridge-shared>
++      ${DEPS}
++    )
++    target_link_libraries(rejoin ${LIBS_SERVER})
++    target_include_directories(rejoin BEFORE PRIVATE src/tas/shim)
++    list(APPEND TARGETS_OWN rejoin)
++    list(APPEND TARGETS_LINK rejoin)
++    add_executable(perturb EXCLUDE_FROM_ALL
++      src/tas/perturb.cpp
++      src/tas/fastg.cpp
++      ${TAS_EXTRA_SRC}
++      $<TARGET_OBJECTS:engine-shared>
++      $<TARGET_OBJECTS:game-shared>
++      $<TARGET_OBJECTS:rust-bridge-shared>
++      ${DEPS}
++    )
++    target_link_libraries(perturb ${LIBS_SERVER})
++    target_include_directories(perturb BEFORE PRIVATE src/tas/shim)
++    list(APPEND TARGETS_OWN perturb)
++    list(APPEND TARGETS_LINK perturb)
++    add_executable(eaudit EXCLUDE_FROM_ALL
++      src/tas/eaudit.cpp
++      src/tas/fastg.cpp
++      ${TAS_EXTRA_SRC}
++      $<TARGET_OBJECTS:engine-shared>
++      $<TARGET_OBJECTS:game-shared>
++      $<TARGET_OBJECTS:rust-bridge-shared>
++      ${DEPS}
++    )
++    target_link_libraries(eaudit ${LIBS_SERVER})
++    target_include_directories(eaudit BEFORE PRIVATE src/tas/shim)
++    list(APPEND TARGETS_OWN eaudit)
++    list(APPEND TARGETS_LINK eaudit)
 +    target_link_libraries(segf ${LIBS_SERVER})
 +    target_include_directories(segf BEFORE PRIVATE src/tas/shim)
 +    list(APPEND TARGETS_OWN segf)
@@ -551,7 +590,7 @@
  }
 --- a/tas-work/NOTES.md
 +++ b/tas-work/NOTES.md
-@@ -84,3 +84,674 @@
+@@ -84,3 +84,687 @@
  - Corridor 1 from a Teero-like crossing (900,465,25,-13 spent): 294-296 (Teero 298). Our pre-start crossing gives ~306.
  - TileExists lookup cache in CCollision (opt-in flag, TAS only): step 1.54 -> 1.20 us, identical replays.
  - chain.py: segment chain over distance gates with several configs (gains ~1-2 ticks/gate; slow).
@@ -1226,3 +1265,16 @@
 +  Direct splices "963 up to rt c + 2630 from c+5" (c = 700..945) all freeze (checked with fgcheck). Sub-agent
 +  (merge963/) re-fits the transition aiming at an exact state match with 2630 (DDNet quantizes the core state), so
 +  2630's inputs can be appended unchanged (target ~2625).
++- **Strategy change (user): no single operation > 1 min until +50 ticks; creativity over compute.** LNS stopped.
++- New tools: `eaudit MAP INPUTS FROM_RT [TO_RT]` (per-tick energy audit: hook / explosion / tick / move deltas of |v|,
++  EA_TICKS=1 for per-tick lines), `perturb MAP INPUTS CUT_RT [n dpos dvel seed]` (basin test: perturb the state at a
++  cut and replay the rest), `rejoin MAP RUN A B DELTA` (beam toward RUN's state at B+DELTA), seg options `rjrun=FILE
++  rjd=D` (rank by distance to FILE's state D ticks ahead, write out+"rj.txt" on an exact rejoin), `follow=FILE fh fw
++  ffin` (follower lookahead toward a reference run), `hookmaxv=V`, `hookhold=N hookholdv=V`.
++- Energy audit of 2630 post-nade: braking dominates the losses; long hook holds are ~2/3 of the hook loss; taps cost
++  ~4 px/t each. Teero takes the same path with the same vertical share but is 1-4 px/t faster horizontally, with the
++  same air-brake frequency.
++- **The polished run is a knife-edge:** perturbing the state by +-1 px kills 73% of continuations within 30-100 ticks;
++  +-0.02 vel is absorbed. Rejoin works only for delta=0. rjrun rjd=1 scan of 2630 at A=1100..2525 step 75: no exact
++  rejoin anywhere. Follower lookahead: followers die, no gain. Window searches with brake=4.35 / vcap / hookmaxv /
++  hookhold knobs stay within +-5 ticks of 2630's own window times (owngate.py).
