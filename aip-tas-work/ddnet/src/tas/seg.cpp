@@ -73,6 +73,7 @@
 //     held 5 / 12 ticks (hook kept) followed by any of the usual rollouts
 //   plan lines "P fx fy D ex ey r": position entry - fire while the tee is within D px of (fx, fy) so the grenade explodes
 //     within r px of (ex, ey); with planfree=1 ordinary shots are held for the planlockpx=300 px before it (approaching)
+//   hookw=W (segf): W ticks per unit of v^2/2 taken by the hook along the path (counterfactual core tick without it)
 //   eres=F [ewin=15]: F x beam places for the highest-energy states within ewin reference ticks of the front
 //   survrisk=F: up to F x beam states that fail the survival test (held-input rollouts; best-ranked first) still breed;
 //     the beam takes at most F x beam of their children (fast states that need an active brake/turn aren't all cut)
@@ -166,6 +167,7 @@ struct SParams
 	int m_PlanForce = 0;
 	int m_PlanRef = 0;
 	float m_Jitter = 0; int m_Seed = 0; // jitter=J seed=N: uniform +-J ticks of score noise (stochastic beam)
+	float m_HookW = 0; // hookw=W (segf): W ticks per unit of v^2/2 the hook has taken so far (pulls that brake)
 	float m_CrashW = 0; int m_CrashN = 8; // crashw=W crashn=N: W ticks per unit of v^2 lost to collisions in the next N ticks
 	int m_PlanFree = 0, m_PlanLock = 25; // planfree=1: point-blank shots also outside the plan, except planlock ticks before a target shot // planref=1: plan windows in Teero ticks on the reference line, te = flight time
 	float m_PlanRv = 0, m_PlanAcc = 1.5f; // rendezvous credit for grenades in flight (planrv=, planacc=)
@@ -2065,6 +2067,7 @@ int main(int argc, const char **argv)
 		else if(K == "jitter") gs_P.m_Jitter = std::stof(V);
 		else if(K == "seed") gs_P.m_Seed = std::stoi(V);
 		else if(K == "crashw") gs_P.m_CrashW = std::stof(V);
+		else if(K == "hookw") gs_P.m_HookW = std::stof(V);
 		else if(K == "crashn") gs_P.m_CrashN = std::stoi(V);
 		else if(K == "planref") gs_P.m_PlanRef = std::stoi(V);
 		else if(K == "planforce") gs_P.m_PlanForce = std::stoi(V);
@@ -2457,8 +2460,26 @@ int main(int argc, const char **argv)
 					s_vExpl.clear();
 					if(gs_P.m_KickMin > 0)
 						CFastG::ms_pLog = &s_vExpl;
+					static thread_local SStepAudit s_Aud;
+					const bool AudHook = gs_P.m_HookW > 0 && (In.m_Hook || Src.HookState() != HOOK_IDLE);
+					if(AudHook)
+						CFastG::ms_pAudit = &s_Aud;
 #endif
 					Tmp.Step(In);
+#ifdef SEG_FAST
+					if(AudHook)
+					{
+						// hookw: energy the hook took this tick (core tick with vs without the hook)
+						CFastG::ms_pAudit = nullptr;
+						CCharacterCore C = s_Aud.m_CoreBeforeTick;
+						C.m_HookState = HOOK_IDLE;
+						C.m_Input.m_Hook = 0;
+						C.Tick(true, true);
+						const float Loss = 0.5f * (dot(C.m_Vel, C.m_Vel) - dot(s_Aud.m_VTick, s_Aud.m_VTick));
+						if(Loss > 0)
+							Tmp.m_HookLoss += Loss;
+					}
+#endif
 					if(Tmp.Frozen() || Tmp.EnteredFreeze() || Tmp.m_StartTick == -2)
 					{
 						if(getenv("SEG_DBG") && Step < 30)
@@ -2633,6 +2654,8 @@ int main(int argc, const char **argv)
 						h ^= h >> 33;
 						S += gs_P.m_Jitter * ((h & 0xffffff) / (float)0xffffff - 0.5f) * 2.0f;
 					}
+					if(gs_P.m_HookW > 0)
+						S += gs_P.m_HookW * Tmp.m_HookLoss;
 					if(gs_P.m_CrashW > 0)
 						S += gs_P.m_CrashW * Tmp.CrashLoss(gs_P.m_CrashN); // v^2 about to be lost against walls/ceilings
 					if(gs_P.m_PlanRv > 0 && Tmp.NumProjectiles() > 0)

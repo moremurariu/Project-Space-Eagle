@@ -867,3 +867,14 @@ Teero played the **KoG** version of AiP-Gores (user, from Teero). Our runs so fa
 - gchain.py (gate-list chain: gates after the turns, 10 variants per window, half of them with a plan from the
   incumbent's shots shifted -8): shaft line from rt 1690 vs 2622 -> k1849 1885 (= 2622), k1999 2051 (2622 2044, -7;
   the left U-turn again). Stopped. 2622's better straight (k1730-1880) uses up the shaft gain by k1849.
+- **Collision / hook-loss penalties as search variants.** 2622's straight gain over 2629 comes from no block-landing
+  collision (coll -28 vs -215 over rt 1750-1799) and fewer hook taps (hook -521 vs -662 over rt 1700-1799); its
+  kick spots are the same. seg `crashw=W` (existing: penalty for v^2 about to be lost against walls) and the new
+  `hookw=W` (segf: penalty per unit of v^2/2 the hook has taken along the path; a counterfactual core tick
+  without the hook, via SStepAudit). Windows from 2629 cuts:
+  right straight k1699->1849 (own 1890): plain 1893-1898, crashw 0.005-0.02 **1886-1888**, hookw 0.002 1896 /
+  0.005 1918, both 1888; left U-turn k1849->1999 (own 2051): plain 2071, crashw 0.02 **2055** (0.04 NOGATE),
+  hookw 0.002 2062 / 0.005 **2055**; k1249 window (1407): plain 1409, crashw 1420; k1399 window (1564): plain 1569,
+  crashw 1573-1576. Strong in some sections, harmful in others: variants, not defaults.
+- gchain cw22 (shaft line, 8 variants incl. crashw/hookw, vs 2622): k1849 1884 (+1), k1999 2048 (-4), k2192 2255
+  (-3), k2342 2417 (-10). Stopped.
