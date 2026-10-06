@@ -693,3 +693,22 @@ Teero played the **KoG** version of AiP-Gores (user, from Teero). Our runs so fa
   k1171) and then falls behind: one kick out of the turn (|v| 30) vs his pre-fire + point-blank pair (~38).
   retro=3 + loadres 0.4 (seed 2): 1268 with his structure (no ceiling shot, pre-fire 1142 -> apex 1161 dist 68,
   point-blank 1167, |v| 34.9); other seeds crash (1286-1291). k1220 equal state (Teero 1285): 1291-1292 for all.
+- retroafter=1 (new, off by default): retro shots also for states that fired since (retro shot 25+ ticks before that
+  shot, exploding after it). k1100 equal state: identical results (1270/1273, 1268) -> rarely matters.
+- retro + loadres variance = beam collapse: e.g. seed 3 (1288) kicks to |v| 52 at 1224, keeps rising along y~2000
+  while Teero drops into the dip, hits the ceiling at ~1248 (lag +8 -> +17) and the whole beam is in that lineage.
+  quota=30 fixes it: retro=3 loadres=0.4 quota=30 1269/1270, crashw=0.002 crashn=12 1272/1270 [free 1271/1273,
+  Teero 1262]. Remaining gap to Teero from his state: U-turn exit ~35 px/t vs his ~40 (our double: d54 cos 0.60 +
+  d55 cos 0.70; his d57 + d14).
+- Validation chain r1 (rchain.py, beam 6000, best of free1 / rt1 / rlr2 / rlr4): k1249 1252 [g2 best-of-12 at beam
+  10000: 1250], k1324 1331 [1331, won by retro + loadres 0.2]. Resumed from window 3 with quota variants
+  (free1, rt1, rlr2q, rlr4q).
+- Nade lab sub-agent (tas-work/nadelab/): best possible grenade boosts in isolated scenarios, first: max height from
+  one unhookable block.
+- **Chain r1 finished (rchain.py, beam 6000, best of free / retro=1 / retro=3 + loadres 0.2|0.4 + quota 30): 2664
+  (53.28 s), server-identical (start 68, finish 2732, no freeze, no double start) -> kog_full_r1_2664.txt**, vs the
+  same-scheme chain g2 2677 (best of 12 at beam 10000). Per window vs g2: k1399 1405 [1409], k1474 1485 [1487],
+  k1549 1562 [1569], k1624 1652 [1658], k1699 1734 [1741], k1774 1809 [1820], k1849 1895 [1900], k1924 1973 [1981],
+  k1999 2059 [2076], k2074 2143 [2154], k2149 2227 [2233], k2224 2306 [2318], k2299 2390 [2402], k2374 2468 [2482],
+  k2449 2551 [2566], k2524 2644 [2648], finish 2664 [2677]. Retro variants won 12 of 19 windows (often by 5-15 over
+  free). Not yet below the LNS-polished 2663; re-running the last two windows with 10 variants (runs/rc/r1b).

@@ -47,6 +47,7 @@
 //     grenade (no shot since, no hook start that tick) from which some aim explodes next tick right next to it; the
 //     shot is patched into that ancestor's input (exact: the tee's motion until the explosion is unchanged) and the
 //     state with the grenade in flight is expanded too (up to K best kicks). Pre-fires / double kicks without guessing.
+//     retroafter=1: also for states that fired since (the retro shot 25+ ticks before that shot, exploding after it)
 //   loadres=F: reserve F x beam places for the best-ranked states that hold a loaded grenade (horizon effect: a kick
 //     saved for the next bend looks worse than firing now until the bend)
 //   firemax=N: drop states that keep a loaded grenade (reload 0) for more than N ticks (kick as often as possible)
@@ -199,7 +200,7 @@ struct SParams
 	int m_KReady = 4;
 	float m_KickMin = 0; // kickmin=K (segf): drop states in which a grenade explodes with a kick weaker than K px/t
 	int m_Retro = 0; // retro=K (segf): up to K retro shots per state (fired by an ancestor holding the grenade)
-	int m_RetroMinF = 2, m_RetroMaxF = 30, m_RetroTop = 1000000;
+	int m_RetroMinF = 2, m_RetroMaxF = 30, m_RetroTop = 1000000, m_RetroAfter = 0; // retroafter: also behind the state's own last shot
 	float m_RetroRad = 90;
 	float m_PfCred = 0; // pfcred=W (segf, prefire=1): pre-fire credit from held-input looks with / without the grenade
 	float m_LoadRes = 0; // loadres=F: reserve F x beam places for the best states holding a loaded grenade
@@ -1598,10 +1599,14 @@ struct SCand
 // retro shot: the grenade the ancestor fired is put in flight (newest first), with the reload it would have now
 static void ApplyRetro(CGameT &G, const SRetro &R)
 {
-	for(int k = G.m_NumProj; k > 0; k--)
+	// entity list order: newest first
+	int At = 0;
+	while(At < G.m_NumProj && G.m_aProj[At].m_StartTick > R.m_StartTick)
+		At++;
+	for(int k = G.m_NumProj; k > At; k--)
 		G.m_aProj[k] = G.m_aProj[k - 1];
 	G.m_NumProj++;
-	SFastProj &P = G.m_aProj[0];
+	SFastProj &P = G.m_aProj[At];
 	P.m_Pos = R.m_P0;
 	P.m_Dir = R.m_Dir;
 	P.m_StartTick = R.m_StartTick;
@@ -1623,7 +1628,7 @@ static void RetroFind(const CGameT &G, int sG, int idxG, const std::vector<std::
 	const std::vector<std::vector<SAux>> &vAux, std::vector<SRetro> &vOut)
 {
 	vOut.clear();
-	if(!(G.HasGrenade() && G.ReloadTimer() == 0 && G.m_Core.m_ActiveWeapon == WEAPON_GRENADE && G.NumProjectiles() < CFastG::MAX_PROJ))
+	if(!(G.HasGrenade() && G.m_Core.m_ActiveWeapon == WEAPON_GRENADE && G.NumProjectiles() < CFastG::MAX_PROJ))
 		return;
 	const SMapInfo &M = CTasGame::Map();
 	const vec2 Q = G.m_Pos, V = G.Vel();
@@ -1660,7 +1665,25 @@ static void RetroFind(const CGameT &G, int sG, int idxG, const std::vector<std::
 	static thread_local std::vector<SC> s_vC;
 	s_vC.clear();
 	int sN = sG, iN = idxG;
-	for(int d = 0; d <= gs_P.m_RetroMaxF && sN >= 1; d++)
+	// G may have fired one shot itself recently (reload running): then the retro shot must come from before that
+	// shot's tick Ts, 25+ ticks earlier (its reload over in time); G keeps its own reload
+	int Ts = -1;
+	if(!(vAux[sG][idxG].m_Flags & 1))
+	{
+		if(gs_P.m_RetroAfter <= 0)
+			return;
+		int d = 0;
+		while(sN >= 1 && !(vAux[sN][iN].m_Flags & 1) && d <= gs_P.m_RetroMaxF)
+		{
+			iN = vHist[sN][iN].first;
+			sN--;
+			d++;
+		}
+		if(sN < 1 || !(vAux[sN][iN].m_Flags & 1) || d > gs_P.m_RetroMaxF)
+			return;
+		Ts = t - d + 1; // tick of the node created by the shot's step
+	}
+	for(int d = sG - sN; d <= gs_P.m_RetroMaxF && sN >= 1; d++)
 	{
 		const SAux &N = vAux[sN][iN];
 		if(!(N.m_Flags & 1))
@@ -1671,7 +1694,7 @@ static void RetroFind(const CGameT &G, int sG, int idxG, const std::vector<std::
 		const int TickA = t - d - 1;
 		if(TickA < G.m_RetroMin || !(A.m_Flags & 1))
 			break;
-		if(d >= 1 && d >= gs_P.m_RetroMinF && !InN.m_Fire && !((A.m_Flags & 2) && InN.m_Hook))
+		if(d >= 1 && d >= gs_P.m_RetroMinF && !InN.m_Fire && !((A.m_Flags & 2) && InN.m_Hook) && (Ts < 0 || t - d + 25 <= Ts))
 		{
 			const int TauT = t + 1 - TickA;
 			for(int e = 0; e < NE; e++)
@@ -1732,11 +1755,11 @@ static void RetroFind(const CGameT &G, int sG, int idxG, const std::vector<std::
 					{
 						Dup = true;
 						if(Val > C.V)
-							C = {SRetro{sN, TX, TY, P0, Dir, TickA, std::max(0, 24 - d), 100 - (t - TickA)}, Val, Col};
+							C = {SRetro{sN, TX, TY, P0, Dir, TickA, Ts < 0 ? std::max(0, 24 - d) : G.ReloadTimer(), 100 - (t - TickA)}, Val, Col};
 						break;
 					}
 				if(!Dup)
-					s_vC.push_back({SRetro{sN, TX, TY, P0, Dir, TickA, std::max(0, 24 - d), 100 - (t - TickA)}, Val, Col});
+					s_vC.push_back({SRetro{sN, TX, TY, P0, Dir, TickA, Ts < 0 ? std::max(0, 24 - d) : G.ReloadTimer(), 100 - (t - TickA)}, Val, Col});
 			}
 		}
 		sN--;
@@ -1889,6 +1912,7 @@ int main(int argc, const char **argv)
 		else if(K == "retrominf") gs_P.m_RetroMinF = std::stoi(V);
 		else if(K == "retromaxf") gs_P.m_RetroMaxF = std::stoi(V);
 		else if(K == "retrotop") gs_P.m_RetroTop = std::stoi(V);
+		else if(K == "retroafter") gs_P.m_RetroAfter = std::stoi(V);
 		else if(K == "retrorad") gs_P.m_RetroRad = std::stof(V);
 		else if(K == "kickmin") gs_P.m_KickMin = std::stof(V);
 		else if(K == "kfutn") gs_P.m_KFutN = std::stoi(V);

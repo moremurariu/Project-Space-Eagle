@@ -158,7 +158,7 @@
      if(EXISTS ${PROJECT_SOURCE_DIR}/src/tas/${TAS_TOOL}.cpp)
        add_executable(${TAS_TOOL} EXCLUDE_FROM_ALL
          src/tas/${TAS_TOOL}.cpp
-@@ -3554,6 +3557,36 @@
+@@ -3554,6 +3557,67 @@
        list(APPEND TARGETS_LINK ${TAS_TOOL})
      endif()
    endforeach()
@@ -191,6 +191,37 @@
 +    target_include_directories(segf BEFORE PRIVATE src/tas/shim)
 +    list(APPEND TARGETS_OWN segf)
 +    list(APPEND TARGETS_LINK segf)
++  endif()
++  # nadelab (grenade boost lab, tas-work/nadelab): map writer, exact server-semantics grenade stepper, searches
++  set(NADELAB_DIR ${PROJECT_SOURCE_DIR}/../tas-work/nadelab)
++  if(EXISTS ${NADELAB_DIR}/nade.cpp)
++    foreach(NADE_TOOL nadecheck nadesearch)
++      if(EXISTS ${NADELAB_DIR}/${NADE_TOOL}.cpp)
++        add_executable(${NADE_TOOL} EXCLUDE_FROM_ALL
++          ${NADELAB_DIR}/${NADE_TOOL}.cpp
++          ${NADELAB_DIR}/nade.cpp
++          ${TAS_EXTRA_SRC}
++          $<TARGET_OBJECTS:engine-shared>
++          $<TARGET_OBJECTS:game-shared>
++          $<TARGET_OBJECTS:rust-bridge-shared>
++          ${DEPS}
++        )
++        target_link_libraries(${NADE_TOOL} ${LIBS_SERVER})
++        target_include_directories(${NADE_TOOL} BEFORE PRIVATE src/tas/shim src/tas ${NADELAB_DIR})
++        list(APPEND TARGETS_OWN ${NADE_TOOL})
++        list(APPEND TARGETS_LINK ${NADE_TOOL})
++      endif()
++    endforeach()
++    add_executable(nademap EXCLUDE_FROM_ALL
++      ${NADELAB_DIR}/nademap.cpp
++      $<TARGET_OBJECTS:engine-shared>
++      $<TARGET_OBJECTS:game-shared>
++      $<TARGET_OBJECTS:rust-bridge-shared>
++      ${DEPS}
++    )
++    target_link_libraries(nademap ${LIBS_SERVER})
++    list(APPEND TARGETS_OWN nademap)
++    list(APPEND TARGETS_LINK nademap)
 +  endif()
  
    set(TARGET_TESTRUNNER testrunner)
@@ -492,7 +523,7 @@
  }
 --- a/tas-work/NOTES.md
 +++ b/tas-work/NOTES.md
-@@ -84,3 +84,612 @@
+@@ -84,3 +84,631 @@
  - Corridor 1 from a Teero-like crossing (900,465,25,-13 spent): 294-296 (Teero 298). Our pre-start crossing gives ~306.
  - TileExists lookup cache in CCollision (opt-in flag, TAS only): step 1.54 -> 1.20 us, identical replays.
  - chain.py: segment chain over distance gates with several configs (gains ~1-2 ticks/gate; slow).
@@ -1105,3 +1136,22 @@
 +  k1171) and then falls behind: one kick out of the turn (|v| 30) vs his pre-fire + point-blank pair (~38).
 +  retro=3 + loadres 0.4 (seed 2): 1268 with his structure (no ceiling shot, pre-fire 1142 -> apex 1161 dist 68,
 +  point-blank 1167, |v| 34.9); other seeds crash (1286-1291). k1220 equal state (Teero 1285): 1291-1292 for all.
++- retroafter=1 (new, off by default): retro shots also for states that fired since (retro shot 25+ ticks before that
++  shot, exploding after it). k1100 equal state: identical results (1270/1273, 1268) -> rarely matters.
++- retro + loadres variance = beam collapse: e.g. seed 3 (1288) kicks to |v| 52 at 1224, keeps rising along y~2000
++  while Teero drops into the dip, hits the ceiling at ~1248 (lag +8 -> +17) and the whole beam is in that lineage.
++  quota=30 fixes it: retro=3 loadres=0.4 quota=30 1269/1270, crashw=0.002 crashn=12 1272/1270 [free 1271/1273,
++  Teero 1262]. Remaining gap to Teero from his state: U-turn exit ~35 px/t vs his ~40 (our double: d54 cos 0.60 +
++  d55 cos 0.70; his d57 + d14).
++- Validation chain r1 (rchain.py, beam 6000, best of free1 / rt1 / rlr2 / rlr4): k1249 1252 [g2 best-of-12 at beam
++  10000: 1250], k1324 1331 [1331, won by retro + loadres 0.2]. Resumed from window 3 with quota variants
++  (free1, rt1, rlr2q, rlr4q).
++- Nade lab sub-agent (tas-work/nadelab/): best possible grenade boosts in isolated scenarios, first: max height from
++  one unhookable block.
++- **Chain r1 finished (rchain.py, beam 6000, best of free / retro=1 / retro=3 + loadres 0.2|0.4 + quota 30): 2664
++  (53.28 s), server-identical (start 68, finish 2732, no freeze, no double start) -> kog_full_r1_2664.txt**, vs the
++  same-scheme chain g2 2677 (best of 12 at beam 10000). Per window vs g2: k1399 1405 [1409], k1474 1485 [1487],
++  k1549 1562 [1569], k1624 1652 [1658], k1699 1734 [1741], k1774 1809 [1820], k1849 1895 [1900], k1924 1973 [1981],
++  k1999 2059 [2076], k2074 2143 [2154], k2149 2227 [2233], k2224 2306 [2318], k2299 2390 [2402], k2374 2468 [2482],
++  k2449 2551 [2566], k2524 2644 [2648], finish 2664 [2677]. Retro variants won 12 of 19 windows (often by 5-15 over
++  free). Not yet below the LNS-polished 2663; re-running the last two windows with 10 variants (runs/rc/r1b).
