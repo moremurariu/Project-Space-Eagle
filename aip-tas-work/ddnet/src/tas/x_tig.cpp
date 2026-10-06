@@ -1028,6 +1028,11 @@ int main(int argc, const char **argv)
 		std::unordered_map<uint64_t, int> Seen;
 		std::unordered_map<uint64_t, int> CellCnt;
 		std::vector<size_t> vOver;
+		bool AllDoomed = true;
+		for(size_t q = 0; q < vAll.size() && AllDoomed; q++)
+			AllDoomed = vDoomed[q] != 0;
+		if(AllDoomed)
+			std::fill(vDoomed.begin(), vDoomed.end(), 0); // nothing passes the simple policies: keep the best anyway
 		for(SNode &Nd : vAll)
 		{
 			if(vDoomed[&Nd - vAll.data()])
