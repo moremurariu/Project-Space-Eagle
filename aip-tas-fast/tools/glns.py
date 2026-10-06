@@ -123,6 +123,9 @@ def main():
 				extra = [f'aimfile={af}', f'aimwin={rng.choice([3, 6])}']
 				if rng.random() < 0.5:
 					extra.append('jw=144')
+			if len(open(gname).readline().split()) != 3 and rng.random() < float(os.environ.get('GLNS_SHADOW', '0')):
+				# offer the guide's own inputs at the matched point (its track is shifted by `shift` in ref=)
+				extra += ['shadowfile=' + gname, f'shadowshift={shift}', f'shadow={rng.choice([2, 3])}']
 			out = os.path.join(d, f'out_{w}.txt')
 			if os.path.exists(out):
 				os.remove(out)

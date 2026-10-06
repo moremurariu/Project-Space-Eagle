@@ -5,10 +5,10 @@ Map: KoG AiP-Gores, sha256 `353b27cf72168cd0bb917c56eb46a83ef8d4266f310ec79b68db
 `aip-tas-fast/kog.map`).
 
 ## Result (metric: race tick of the grenade pickup)
-- **965** (`runs/kog_pregren_965.txt`), previous best 978 → **−13 ticks** (also 966, 967, 968).
+- **964** (`runs/kog_pregren_964.txt`), previous best 978 → **−14 ticks** (also 965, 966, 967, 968).
   Checked on DDNet's prediction code (`replay`) and on the real server code (`testrunner` `TasServer.Run`): start tick 68,
-  pickup at input 1033 = race tick 965, no freeze, no double start up to the pickup.
-- Like all runs from this search (977 … 965), the tee arrives at ~37 px/tick diving down-right with both jumps spent and
+  pickup at input 1032 = race tick 964, no freeze, no double start up to the pickup.
+- Like all runs from this search (977 … 964), the tee arrives at ~37 px/tick diving down-right with both jumps spent and
   freezes on the pocket floor right after the pickup. This is accepted for this metric (a separate step turns such
   arrivals into viable ones for a few ticks). `viacheck` measures the exit: from the 978 run the climb point
   (5254, 2176) is reached at race tick 1011; from the 977 … 966 runs it is not reachable.
@@ -75,5 +75,9 @@ Drivers (run from a folder next to `ddnet/` and `kog.map`): `tools/splice.py BES
 - Chain: `AT` → turn exit (+3.1 at rt 440) → corridor 2 with shadow inputs (+2.96 at rt 640) → left U-turn (+2.93 at
   rt 760) → a plain time-model search with `shadow=2` to the pickup: **965**. Following 966 further (rt 760 → 900)
   loses the lead at the ground jump near x 2734 and over the peak at rt 870–890.
+- **964**: `tools/glns.py` on 965 (cuts at rt 700–960), guided by 966 aligned at the cut, with 966's own inputs offered
+  as shadow candidates (`GLNS_SHADOW=0.7`: `shadowfile=` / `shadowshift=`); found at cut 780.
+- `tools/pipe.py` chains the whole rebuild (Teero-style corridor search, turn exit, follow stages, completion) so a
+  better upstream can be carried to the pickup with one command.
 - Tools: `tools/leadat.py` / `tools/leadtrace.py` (lead over a reference run by nearest point), `tools/tlag.py` (lead
   against a "race_tick x y" track), `tools/trk.py` (track-then-splice), `replay` now also prints the hook position.
