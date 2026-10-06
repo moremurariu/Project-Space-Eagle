@@ -5,10 +5,10 @@ Map: KoG AiP-Gores, sha256 `353b27cf72168cd0bb917c56eb46a83ef8d4266f310ec79b68db
 `aip-tas-fast/kog.map`).
 
 ## Result (metric: race tick of the grenade pickup)
-- **963** (`runs/kog_pregren_963.txt`), previous best 978 → **−15 ticks** (also 964, 965, 966, 967, 968).
+- **962** (`runs/kog_pregren_962.txt`), previous best 978 → **−16 ticks** (also 963, 964, 965, 966, 967, 968).
   Checked on DDNet's prediction code (`replay`) and on the real server code (`testrunner` `TasServer.Run`): start tick 68,
-  pickup at input 1031 = race tick 963, no freeze, no double start up to the pickup.
-- Like all runs from this search (977 … 963), the tee arrives at ~37 px/tick diving down-right with both jumps spent and
+  pickup at input 1030 = race tick 962, no freeze, no double start up to the pickup.
+- Like all runs from this search (977 … 962), the tee arrives at ~37 px/tick diving down-right with both jumps spent and
   freezes on the pocket floor right after the pickup. This is accepted for this metric (a separate step turns such
   arrivals into viable ones for a few ticks). `viacheck` measures the exit: from the 978 run the climb point
   (5254, 2176) is reached at race tick 1011; from the 977 … 966 runs it is not reachable.
@@ -79,6 +79,10 @@ Drivers (run from a folder next to `ddnet/` and `kog.map`): `tools/splice.py BES
   as shadow candidates (`GLNS_SHADOW=0.7`: `shadowfile=` / `shadowshift=`); found at cut 780.
 - **963**: the same guided LNS on 964 (cuts at rt 440–960, guides 966/965/967 and older runs), found at cut 719
   guided by 967 aligned 3 ticks early.
+- **962**: `tools/gsplice2.py` (two-stage splice on 963: stage A from a cut at rt 300–650 dumps 4 states 80–350 ticks
+  later, stage B finishes each with the best run aligned at the dump as reference and its inputs as shadow candidates);
+  found from cut 610, dump at rt 830. Guided LNS (428 jobs) and a 400M-trial bruteforce of the last 140 ticks found
+  nothing below 963.
 - `tools/pipe.py` chains the whole rebuild (Teero-style corridor search, turn exit, follow stages, completion) so a
   better upstream can be carried to the pickup with one command.
 - Tools: `tools/leadat.py` / `tools/leadtrace.py` (lead over a reference run by nearest point), `tools/tlag.py` (lead
