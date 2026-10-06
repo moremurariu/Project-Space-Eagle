@@ -768,3 +768,26 @@ Teero played the **KoG** version of AiP-Gores (user, from Teero). Our runs so fa
   +-0.02 vel is absorbed. Rejoin works only for delta=0. rjrun rjd=1 scan of 2630 at A=1100..2525 step 75: no exact
   rejoin anywhere. Follower lookahead: followers die, no gain. Window searches with brake=4.35 / vcap / hookmaxv /
   hookhold knobs stay within +-5 ticks of 2630's own window times (owngate.py).
+- **Teero comparison, post-nade (2630):** the same path, and about the same number of explosions (ours 56: mean kick 11.0,
+  78% of the ideal aligned energy). Teero is faster on the straights (ramp-inverted |v| 10-17 px/t higher at the peaks).
+  Lag growth per section (vcmp/wp.py): the shaft climb + top turn (block k1584 -> k1624) costs 17 ticks; 2110-2200
+  costs ~12; the right U-turn exit 1150-1250 ~10; the rest ~1 tick per 10-20.
+- **Shaft (rt 1564-1730):** Teero double-kicks off tile (102,104), from a lob fired ~25 t earlier plus a point-blank,
+  to vy -45. During the climb he drifts right (vx 7 -> 16), exits the shaft diagonally where it opens (row 83), and
+  turns at the freeze ceiling with a point-blank (#21). We single-kicked to -34.5, killed vx in the shaft, and crept
+  across the top at 16 px/t.
+  - **seg's survival test was the blocker:** from Teero's own state (tp at k1587), seg reaches k1699 at rt 1737
+    (Teero 1696): it air-jumps at once (sets vy = -12), because every fast climb fails the held-input 30-tick
+    rollouts. With survevery=0: 1705.
+  - tp tests at our block (survevery=0): vy -46.5 (double) -> k1699 at 1721-1722 vs single 1734 (own 1731).
+  - New tool **lobscan** (`lobscan MAP RUN STRIP_RT T0 T1 EX EY R TE0 TE1 [N]`): exact lob aims from the run's own
+    states (shots stripped from STRIP_RT) that explode within R px of (EX,EY) at race ticks TE0..TE1. From 2630:
+    lobs fired at rt 1575-1579 land on the tile top (3270,3328) at 1601-1604.
+  - **Forced lob in the prefix (runs/shaft/mklob.py) + segf survevery=0:** lob at 1576 (aim 9837,-1797) -> double
+    kick 24 px/t at 1602 (|v| 23.6 -> 44.6), Teero-like climb, air-jump brake, ceiling point-blank at 1631
+    -> **k1699 at rt 1724 vs own 1731/1732** (L1576_0_0.txt). Lob 1577: 1726; lob 1578: 1729. With survevery=2:
+    1730-1733 or NOGATE.
+- Window comparison, survival on (sv2) vs off (sv0), from 2630 cuts: k1249->1399 1405 / NOGATE (own 1407);
+  k1399->1549 1574 / 1571 (own 1564); shaft 1735 / 1733 (own 1732); k1699->1849 1898 / 1894 (own 1890);
+  k1849->1999 2063 / NOGATE (own 2051). New seg option `survrisk=F`: up to F x beam doomed states still breed (capped
+  in the selection). 0.3: shaft 1733, k1249 window 1420 (worse). Not a general fix.

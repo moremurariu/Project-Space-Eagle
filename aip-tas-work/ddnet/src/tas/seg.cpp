@@ -69,6 +69,10 @@
 //   inc=FILE: incumbent (a run from spawn whose first inputs are the prefix): its continuation is kept in the beam
 //     every step (so with gate=finish the result is never later than it); SEG_TRACK=FILE (env): write the prefix's
 //     positions as a reference track ("k x y", k = race tick + 3 like Teero's labels) and exit
+//   survx=N: the N best-ranked beam states that fail the survival test get a second chance: an air jump now, or a direction
+//     held 5 / 12 ticks (hook kept) followed by any of the usual rollouts
+//   survrisk=F: up to F x beam states that fail the survival test (held-input rollouts; best-ranked first) still breed;
+//     the beam takes at most F x beam of their children (fast states that need an active brake/turn aren't all cut)
 //   latpen=0 latdz=8 latk0= latk1=: ticks of penalty per px of distance from the line beyond latdz (Teero ticks latk0..latk1)
 #define private public
 #define protected public
@@ -168,6 +172,8 @@ struct SParams
 	int m_PadTop = 300; // only the best this many beam states get them
 	int m_PadRange = 30; // pre-fired shots may explode up to this many ticks later
 	float m_PadRef = 0; // also keep pre-fire aims exploding within this many px of the reference line ~that many ticks ahead
+	int m_SurvXTop = 0; // survx=N: the N best beam states that fail the survival test get the SurvivesX second chance
+	float m_SurvRisk = 0; // survrisk=F: up to F x beam states that fail the survival test (best first) still breed
 	int m_SurvEvery = 2; // every this many steps, beam states that can't survive `survive` ticks stop breeding (0 = off)
 	int m_FireLook = 12;
 	int m_Survive = 20;
@@ -1586,6 +1592,53 @@ static bool Survives(const CGameT &G, int N)
 	return false;
 }
 
+// survx: second chance for a state that fails the held-input rollouts - an air jump now (sets vy = -12: a strong
+// vertical brake), or a direction held for a few ticks (hook kept) and then any single-phase policy of Survives
+static bool SurvivesX(const CGameT &G, int N)
+{
+	static thread_local CGameT s_A;
+	vec2 aPos[128];
+	N = std::min(N, 128);
+	STasInput In;
+	In.m_Fire = 0;
+	In.m_Weapon = G.HasGrenade() ? 3 : -1;
+	In.m_TX = 0;
+	In.m_TY = -1;
+	const bool CanJump = !G.m_LastJump && (G.Grounded() || !(G.Jumped() & 2));
+	if(CanJump)
+		for(int d = 1; d >= -1; d--)
+		{
+			s_A.CopyFrom(G);
+			In.m_Dir = d;
+			In.m_Jump = 1;
+			In.m_Hook = 0;
+			s_A.Step(In);
+			if(s_A.Frozen() || s_A.EnteredFreeze())
+				continue;
+			for(int d2 = 1; d2 >= -1; d2--)
+				if(s_A.Rollout(N - 1, d2, false, aPos) == N - 1)
+					return true;
+		}
+	static const int aK[] = {5, 12};
+	for(int K : aK)
+		for(int d = 1; d >= -1; d--)
+		{
+			s_A.CopyFrom(G);
+			In.m_Dir = d;
+			In.m_Jump = 0;
+			In.m_Hook = G.m_LastHook;
+			bool Dead = false;
+			for(int t = 0; t < K && !Dead; t++)
+			{
+				s_A.Step(In);
+				Dead = s_A.Frozen() || s_A.EnteredFreeze();
+			}
+			if(!Dead && Survives(s_A, N - K))
+				return true;
+		}
+	return false;
+}
+
 static int64_t QuotaKey(const CGameT &G)
 {
 	vec2 P = G.Pos(), V = G.Vel();
@@ -1625,6 +1678,7 @@ struct SCand
 	int64_t m_QKey = 0; // coarse position/velocity cell for the diversity quota
 	bool m_Inc = false; // the incumbent's own continuation
 	bool m_Loaded = false; // has the grenade with the reload at 0 (loadres)
+	bool m_Risky = false; // survrisk: child of a parent that failed the survival test
 	SRetro m_R; // retro shot applied to the parent first
 };
 
@@ -1983,6 +2037,8 @@ int main(int argc, const char **argv)
 		else if(K == "firealldirs") gs_P.m_FireAllDirs = std::stoi(V);
 		else if(K == "pendlook") gs_P.m_PendLook = std::stoi(V);
 		else if(K == "survevery") gs_P.m_SurvEvery = std::stoi(V);
+		else if(K == "survrisk") gs_P.m_SurvRisk = std::stof(V);
+		else if(K == "survx") gs_P.m_SurvXTop = std::stoi(V);
 		else if(K == "padaims") gs_P.m_PadAims = std::stoi(V);
 		else if(K == "padtop") gs_P.m_PadTop = std::stoi(V);
 		else if(K == "padrange") gs_P.m_PadRange = std::stoi(V);
@@ -2342,7 +2398,7 @@ int main(int argc, const char **argv)
 				int i = Next.fetch_add(1);
 				if(i >= (int)vBeam.size())
 					break;
-				if(!vDoomed.empty() && vDoomed[i])
+				if(!vDoomed.empty() && vDoomed[i] == 1)
 					continue;
 				const CGameT &G = *vBeam[i];
 				GenActions(G, vPrev[i], vActs, i < gs_P.m_PadTop);
@@ -2573,6 +2629,7 @@ int main(int argc, const char **argv)
 					S -= Tmp.m_Bonus;
 					vTC[T].push_back({S, i, In, CellKey(Tmp), Tmp.Hash(), Ee, Rt, Tmp.m_RefIdx, QuotaKey(Tmp)});
 					vTC[T].back().m_Loaded = Tmp.HasGrenade() && Tmp.ReloadTimer() == 0;
+					vTC[T].back().m_Risky = !vDoomed.empty() && vDoomed[i] == 2;
 					if(pR)
 						vTC[T].back().m_R = *pR;
 					if(!pR && IsInc && SameIn(In, IncIn))
@@ -2615,6 +2672,9 @@ int main(int argc, const char **argv)
 		std::unordered_set<uint64_t> Seen;
 		std::unordered_set<int64_t> Cells;
 		std::vector<SCand> vSel;
+		const int RiskCap = (int)(gs_P.m_SurvRisk * gs_P.m_Beam);
+		int NRisky = 0;
+		auto RiskOk = [&](const SCand &C) { return !C.m_Risky || NRisky < RiskCap; };
 		if(gs_P.m_LoadRes > 0)
 		{
 			// loadres: the best states that keep a loaded grenade get loadres x beam places first, so waiting for a
@@ -2624,8 +2684,9 @@ int main(int argc, const char **argv)
 			{
 				if((int)vSel.size() >= Res)
 					break;
-				if(!C.m_Loaded || !Seen.insert(C.m_Hash).second || !Cells.insert(C.m_Key).second)
+				if(!C.m_Loaded || !RiskOk(C) || !Seen.insert(C.m_Hash).second || !Cells.insert(C.m_Key).second)
 					continue;
+				NRisky += C.m_Risky;
 				vSel.push_back(C);
 			}
 		}
@@ -2634,7 +2695,7 @@ int main(int argc, const char **argv)
 			{
 				if((int)vSel.size() >= gs_P.m_Beam)
 					break;
-				if(!Seen.insert(C.m_Hash).second || !Cells.insert(C.m_Key).second)
+				if(!RiskOk(C) || !Seen.insert(C.m_Hash).second || !Cells.insert(C.m_Key).second)
 					continue;
 				if(gs_P.m_Dom)
 				{
@@ -2642,6 +2703,7 @@ int main(int argc, const char **argv)
 					if(it != Dom.end() && it->second <= C.m_S + 0.5f)
 						continue;
 				}
+				NRisky += C.m_Risky;
 				vSel.push_back(C);
 			}
 		else
@@ -2656,7 +2718,7 @@ int main(int argc, const char **argv)
 					const auto &C = vAll[ci];
 					if((int)vSel.size() >= gs_P.m_Beam)
 						break;
-					if(vTaken[ci] || Seen.count(C.m_Hash) || Cells.count(C.m_Key))
+					if(vTaken[ci] || !RiskOk(C) || Seen.count(C.m_Hash) || Cells.count(C.m_Key))
 						continue;
 					if(gs_P.m_Dom)
 					{
@@ -2674,6 +2736,7 @@ int main(int argc, const char **argv)
 					Seen.insert(C.m_Hash);
 					Cells.insert(C.m_Key);
 					vTaken[ci] = 1;
+					NRisky += C.m_Risky;
 					vSel.push_back(C);
 				}
 		}
@@ -2875,7 +2938,7 @@ int main(int argc, const char **argv)
 					int k = Next3.fetch_add(1);
 					if(k >= (int)vBeam.size())
 						break;
-					if(k != IncIdx && !Survives(*vBeam[k], gs_P.m_Survive))
+					if(k != IncIdx && !Survives(*vBeam[k], gs_P.m_Survive) && !(k < gs_P.m_SurvXTop && SurvivesX(*vBeam[k], gs_P.m_Survive)))
 					{
 						vDoomed[k] = 1;
 						NDoomed++;
@@ -2890,6 +2953,17 @@ int main(int argc, const char **argv)
 				Th.join();
 			if(NDoomed.load() == (int)vBeam.size())
 				vDoomed.assign(vBeam.size(), 0); // all doomed: keep searching anyway
+			else if(gs_P.m_SurvRisk > 0)
+			{
+				// survrisk: the best-ranked doomed states (beam order ~ score order) still breed, up to F x beam
+				int M = (int)(gs_P.m_SurvRisk * gs_P.m_Beam);
+				for(size_t k = 0; k < vDoomed.size() && M > 0; k++)
+					if(vDoomed[k] == 1)
+					{
+						vDoomed[k] = 2;
+						M--;
+					}
+			}
 		}
 		if(!gs_P.m_Quiet && (Step % 10 == 0 || getenv("SEG_DBG")) && !vSel.empty())
 		{
