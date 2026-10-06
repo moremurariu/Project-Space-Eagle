@@ -71,6 +71,8 @@
 //     positions as a reference track ("k x y", k = race tick + 3 like Teero's labels) and exit
 //   survx=N: the N best-ranked beam states that fail the survival test get a second chance: an air jump now, or a direction
 //     held 5 / 12 ticks (hook kept) followed by any of the usual rollouts
+//   plan lines "P fx fy D ex ey r": position entry - fire while the tee is within D px of (fx, fy) so the grenade explodes
+//     within r px of (ex, ey); with planfree=1 ordinary shots are held for the planlockpx=300 px before it (approaching)
 //   eres=F [ewin=15]: F x beam places for the highest-energy states within ewin reference ticks of the front
 //   survrisk=F: up to F x beam states that fail the survival test (held-input rollouts; best-ranked first) still breed;
 //     the beam takes at most F x beam of their children (fast states that need an active brake/turn aren't all cut)
@@ -1276,7 +1278,29 @@ struct SPlanEntry
 	float m_R;
 	bool m_Free;
 	int m_Te = -1, m_Tol = 2; // optional explosion race tick (and tolerance)
+	bool m_Pos = false; // position entry "P fx fy D ex ey r": active while the tee is within D px of (fx, fy)
+	vec2 m_F = vec2(0, 0);
+	float m_D = 48.0f;
 };
+static float gs_PlanLockPx = 300.0f; // position entries: ordinary shots are held this far before the fire point
+// is the plan entry active for this state (tick window, or position window for P entries)
+static bool PlanActive(const SPlanEntry &P, const CGameT &G, int Rt)
+{
+	if(P.m_Pos)
+		return distance(G.Pos(), P.m_F) <= P.m_D;
+	return Rt >= P.m_T0 && Rt <= P.m_T1;
+}
+static bool PlanLocked(const SPlanEntry &P, const CGameT &G, int Rt)
+{
+	if(P.m_Free)
+		return false;
+	if(P.m_Pos)
+	{
+		const float d = distance(G.Pos(), P.m_F);
+		return d > P.m_D && d <= P.m_D + gs_PlanLockPx && dot(G.Vel(), P.m_F - G.Pos()) > 0;
+	}
+	return Rt < P.m_T0 && Rt >= P.m_T0 - gs_P.m_PlanLock;
+}
 static std::vector<SPlanEntry> gs_vPlanE;
 static void LoadPlan(const char *pPath)
 {
@@ -1293,6 +1317,13 @@ static void LoadPlan(const char *pPath)
 			continue;
 		SPlanEntry P{0, 0, vec2(0, 0), 40.0f, false, -1, 2};
 		char aW[64] = "";
+		if(aLine[0] == 'P')
+		{
+			P.m_Pos = true;
+			if(std::sscanf(aLine + 1, "%f %f %f %f %f %f", &P.m_F.x, &P.m_F.y, &P.m_D, &P.m_E.x, &P.m_E.y, &P.m_R) == 6)
+				gs_vPlanE.push_back(P);
+			continue;
+		}
 		if(std::sscanf(aLine, "%d %d %63s", &P.m_T0, &P.m_T1, aW) < 3)
 			continue;
 		if(std::string(aW) == "free")
@@ -1410,7 +1441,7 @@ static void GenActions(const CGameT &G, const STasInput &Prev, std::vector<STasI
 			bool Free = false;
 			static thread_local std::vector<std::pair<int16_t, int16_t>> s_vPA;
 			for(const auto &P : gs_vPlanE)
-				if(Rt >= P.m_T0 && Rt <= P.m_T1)
+				if(PlanActive(P, G, Rt))
 				{
 					if(P.m_Free)
 						Free = true;
@@ -1429,9 +1460,9 @@ static void GenActions(const CGameT &G, const STasInput &Prev, std::vector<STasI
 				bool Active = false, Locked = false;
 				for(const auto &P : gs_vPlanE)
 				{
-					if(Rt >= P.m_T0 && Rt <= P.m_T1)
+					if(PlanActive(P, G, Rt))
 						Active = true;
-					if(!P.m_Free && Rt < P.m_T0 && Rt >= P.m_T0 - gs_P.m_PlanLock)
+					if(PlanLocked(P, G, Rt))
 						Locked = true;
 				}
 				Free = !Active && !Locked;
@@ -2030,6 +2061,7 @@ int main(int argc, const char **argv)
 		else if(K == "planacc") gs_P.m_PlanAcc = std::stof(V);
 		else if(K == "planfree") gs_P.m_PlanFree = std::stoi(V);
 		else if(K == "planlock") gs_P.m_PlanLock = std::stoi(V);
+		else if(K == "planlockpx") gs_PlanLockPx = std::stof(V);
 		else if(K == "jitter") gs_P.m_Jitter = std::stof(V);
 		else if(K == "seed") gs_P.m_Seed = std::stoi(V);
 		else if(K == "crashw") gs_P.m_CrashW = std::stof(V);
@@ -2450,7 +2482,7 @@ int main(int argc, const char **argv)
 						const int RtF = Tmp.m_Tick - Tmp.m_StartTick;
 						bool Missed = false;
 						for(const auto &P : gs_vPlanE)
-							if(!P.m_Free && RtF == P.m_T1 + 1)
+							if(!P.m_Free && !P.m_Pos && RtF == P.m_T1 + 1)
 								Missed = true;
 						if(Missed)
 							return;

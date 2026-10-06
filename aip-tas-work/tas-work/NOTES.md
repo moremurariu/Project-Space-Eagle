@@ -851,3 +851,7 @@ Teero played the **KoG** version of AiP-Gores (user, from Teero). Our runs so fa
   survevery=0 **2262**, retro + survx 2263. The lead holds at +4..+5 to rt 2230 and then dies at the bottom-left corner
   (2629: a 23-tick lob straight down landing at 2221, then a point-blank at 2233; ours: one strong kick at 2214 and a
   weak freeze-lined one at 2242; no lob from the free reload slot reaches the corner on our path).
+- seg plan entries by position (new: `P fx fy D ex ey r`, fire while within D px of 2629's fire position; planlockpx
+  holds ordinary shots while approaching; mkplan.py with PLANPOS=D): U-turn window from 2631 rt 1850 -> k2042:
+  D=48 NOGATE, D=96 2099 / 2107 (time-shifted plan: 2090). Bottom-left window (rt 2080 -> k2192) with the time plan
+  shifted 5 / 6 (+-3): 2263-2273 (best without a plan 2262; 2629 2259). Not solved.
