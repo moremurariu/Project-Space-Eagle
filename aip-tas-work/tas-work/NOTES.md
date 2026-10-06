@@ -864,3 +864,6 @@ Teero played the **KoG** version of AiP-Gores (user, from Teero). Our runs so fa
   +6 on the right straight (k1730-1880, where the box test showed +350 energy available), kept to the finish. It
   has the single kick at the shaft (1600). Our double-kick line (+10 at rt 1690) is complementary: hand-off
   candidate for their pipeline (start ~1690, prefix runs/shaft/L1576_0_0.txt cut at 1690).
+- gchain.py (gate-list chain: gates after the turns, 10 variants per window, half of them with a plan from the
+  incumbent's shots shifted -8): shaft line from rt 1690 vs 2622 -> k1849 1885 (= 2622), k1999 2051 (2622 2044, -7;
+  the left U-turn again). Stopped. 2622's better straight (k1730-1880) uses up the shaft gain by k1849.
