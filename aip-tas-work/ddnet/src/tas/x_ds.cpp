@@ -109,6 +109,9 @@ struct SPar
 	float m_EGain = 0.004f;
 	int m_GateSurv = 30;
 	int m_CommitK = -1;
+	std::string m_TRef;
+	float m_TTrack = 0, m_TOff = -1e9f, m_TCap = 96, m_TTrackV = 2, m_TDecay = 1.0f, m_TLag = 0.05f;
+	int m_TShift = 3, m_TSmooth = 2;
 	float m_Boost = 0; // diagnostics: add this many px/t along the root velocity (a hypothetical extra kick)
 	int m_NoFire0 = -1, m_NoFire1 = -1;
 	int m_NoKick0 = -1, m_NoKick1 = -1; // no explosions at all in these race ticks (keeps the slots for later stacks) // no shots fired in these race ticks (shadow / point-blank); retro slots there stay usable
@@ -326,6 +329,8 @@ struct SRefLine
 	}
 };
 static SRefLine gs_Line;
+static SRefLine gs_IncLine; // the incumbent's own path (shadow inputs are indexed on it)
+static bool gs_TRef = false;
 
 // ------------------------------------------------------------------------------------------------ search state
 enum
@@ -340,7 +345,9 @@ struct SState
 	int m_aFire[MAXFIRE]; // fire ticks (projectile start ticks) of the lineage, newest first
 	STasInput m_Prev; // last input
 	bool m_Inc = false; // on the incumbent's own path
-	float m_G0 = 0; // geodesic distance (cached)
+	float m_G0 = 0; // progress on the reference line
+	float m_KInc = 0; // progress on the incumbent's path (shadow index)
+	float m_TCost = 0; // time-indexed tracking cost (ttrack)
 	float m_Lag = 0, m_E = 0;
 };
 
@@ -388,6 +395,8 @@ struct SCand
 	float m_Jit = 0;
 	float m_Track = 0; // distance to the incumbent's state at the same progress
 	int m_G0Rt = 0; // race tick after the step
+	float m_KInc = 0;
+	float m_TCost = 0;
 	uint64_t m_Key;
 	int64_t m_Cell;
 	int64_t m_QCell;
@@ -415,6 +424,69 @@ static uint64_t StateKey(const CFastG &G)
 	Mix(&G.m_ReloadTimer, sizeof(int));
 	Mix(&G.m_NumProj, sizeof(int));
 	return h;
+}
+
+
+// reference line from a position track ("k x y" per race tick, k = race tick + shift): positions smoothed, velocities
+// recovered from the per-tick displacement by inverting the horizontal speed ramp, energy = v^2 - y
+static bool LoadTrackLine(const char *pPath, int Shift, int Smooth, SRefLine &L)
+{
+	FILE *f = std::fopen(pPath, "r");
+	if(!f)
+		return false;
+	std::vector<int> vK;
+	std::vector<vec2> vP;
+	int k;
+	float x, y;
+	char aLine[256];
+	while(std::fgets(aLine, sizeof(aLine), f))
+		if(std::sscanf(aLine, "%d %f %f", &k, &x, &y) == 3)
+		{
+			if(!vK.empty() && k != vK.back() + 1)
+				continue;
+			vK.push_back(k);
+			vP.emplace_back(x, y);
+		}
+	std::fclose(f);
+	if(vP.size() < 10)
+		return false;
+	const int n = (int)vP.size();
+	std::vector<vec2> vS(n);
+	for(int i = 0; i < n; i++)
+	{
+		vec2 Sum(0, 0);
+		int c = 0;
+		for(int j = std::max(0, i - Smooth); j <= std::min(n - 1, i + Smooth); j++)
+		{
+			Sum += vP[j];
+			c++;
+		}
+		vS[i] = Sum / (float)c;
+	}
+	auto Ramp = [](float v) { return v * 50 < 550 ? 1.0f : 1.0f / std::pow(1.4f, (v * 50 - 550) / 2000.0f); };
+	L.m_vP = vS;
+	L.m_vV.assign(n, vec2(0, 0));
+	L.m_vE.assign(n, 0);
+	for(int i = 0; i < n; i++)
+	{
+		vec2 D = (vS[std::min(n - 1, i + 1)] - vS[std::max(0, i - 1)]) / (float)(std::min(n - 1, i + 1) - std::max(0, i - 1));
+		// vx with vx * ramp(|(vx, vy)|) = dx (monotone below ~119 px/t)
+		float vy = D.y, lo = 0, hi = 119;
+		float ax = std::fabs(D.x);
+		for(int it = 0; it < 40; it++)
+		{
+			float m = 0.5f * (lo + hi);
+			if(m * Ramp(std::sqrt(m * m + vy * vy)) < ax)
+				lo = m;
+			else
+				hi = m;
+		}
+		vec2 V(D.x < 0 ? -lo : lo, vy);
+		L.m_vV[i] = V;
+		L.m_vE[i] = dot(V, V) - vS[i].y;
+	}
+	L.m_Rt0 = vK[0] - Shift;
+	return true;
 }
 
 // reload slot availability: a shot at tick Tau is allowed if it is >= 25 ticks away from every shot of the lineage
@@ -949,11 +1021,23 @@ static void Score(const CFastG &G, SCand &C, const SState &Par)
 	float Lat = 0;
 	C.m_G = gs_Line.Project(G.m_Core.m_Pos, Par.m_G0, &Lat);
 	C.m_Track = Lat + gs_P.m_TrackV * distance(G.m_Core.m_Vel, gs_Line.VelAt(C.m_G));
+	C.m_KInc = gs_TRef ? gs_IncLine.Project(G.m_Core.m_Pos, Par.m_KInc) : C.m_G;
 	C.m_G0Rt = G.RaceTick();
 	float Rt = (float)G.RaceTick();
 	C.m_Lag = Rt - C.m_G + gs_P.m_LatPen * std::max(0.0f, Lat - gs_P.m_LatDz);
 	C.m_E = Energy(G);
 	C.m_Opt = 0;
+	C.m_TCost = Par.m_TCost;
+	if(gs_P.m_TTrack > 0)
+	{
+		// time-indexed: distance to the reference's position at the same (offset) race tick
+		int i = std::clamp((int)std::lround(Rt - gs_P.m_TOff - gs_Line.m_Rt0), 0, (int)gs_Line.m_vP.size() - 1);
+		float d = distance(G.m_Core.m_Pos, gs_Line.m_vP[i]);
+		float dv = distance(G.m_Core.m_Vel, gs_Line.m_vV[i]);
+		float c = std::min(d, gs_P.m_TCap) + gs_P.m_TTrackV * std::min(dv, 20.0f);
+		C.m_TCost = Par.m_TCost * gs_P.m_TDecay + c * c / 1000.0f;
+		C.m_Lag = gs_P.m_TTrack * C.m_TCost + gs_P.m_TLag * C.m_Lag;
+	}
 }
 
 // ------------------------------------------------------------------------------------------------ rollout lookahead
@@ -1121,14 +1205,14 @@ static STasInput ShadowInput(long Idx, const CFastG &G, const STasInput &Prev)
 
 // shadow rollouts: follow the incumbent's own inputs (from the matched progress point, offsets 0..n-1) for H ticks on
 // the exact stepper; returns the best end lag and its energy (lag at H ticks: race tick - progress)
-static void ShadowEval(const CFastG &G0, float K0, int H, int NOff, float LamMid, float &LagOut, float &EOut, bool &Any)
+static void ShadowEval(const CFastG &G0, float K0, float KI0, int H, int NOff, float LamMid, float &LagOut, float &EOut, bool &Any)
 {
 	float BestS = 1e30f;
 	Any = false;
 	for(int o = 0; o < NOff; o++)
 	{
 		CFastG F = G0;
-		int Base = (int)std::floor(K0) + o - (NOff > 1 ? NOff / 2 : 0);
+		int Base = (int)std::floor(KI0) + o - (NOff > 1 ? NOff / 2 : 0);
 		bool Dead = false;
 		int t = 0;
 		float K = K0;
@@ -1220,6 +1304,15 @@ int main(int argc, const char **argv)
 		else if(K == "egain") gs_P.m_EGain = std::stof(V);
 		else if(K == "gatesurv") gs_P.m_GateSurv = std::stoi(V);
 		else if(K == "commitk") gs_P.m_CommitK = std::stoi(V);
+		else if(K == "tref") gs_P.m_TRef = V;
+		else if(K == "ttrack") gs_P.m_TTrack = std::stof(V);
+		else if(K == "toff") gs_P.m_TOff = std::stof(V);
+		else if(K == "tcap") gs_P.m_TCap = std::stof(V);
+		else if(K == "ttrackv") gs_P.m_TTrackV = std::stof(V);
+		else if(K == "tdecay") gs_P.m_TDecay = std::stof(V);
+		else if(K == "tlag") gs_P.m_TLag = std::stof(V);
+		else if(K == "tshift") gs_P.m_TShift = std::stoi(V);
+		else if(K == "tsmooth") gs_P.m_TSmooth = std::stoi(V);
 		else if(K == "sinkh") gs_Line.m_SinkH = std::stof(V);
 		else if(K == "boost") gs_P.m_Boost = std::stof(V);
 		else if(K == "sinkmin") gs_Line.m_SinkMin = std::stof(V);
@@ -1354,6 +1447,20 @@ int main(int argc, const char **argv)
 		// gs_Ref index 0 = race tick m_Rt0 + 1
 		gs_Ref.m_Rt0 += 1;
 		gs_Line.m_Rt0 = gs_Ref.m_Rt0;
+		gs_IncLine = gs_Line;
+		if(!gs_P.m_TRef.empty())
+		{
+			SRefLine T;
+			if(!LoadTrackLine(gs_P.m_TRef.c_str(), gs_P.m_TShift, gs_P.m_TSmooth, T))
+			{
+				std::printf("cannot read %s\n", gs_P.m_TRef.c_str());
+				return 1;
+			}
+			T.m_SinkH = gs_Line.m_SinkH;
+			T.m_SinkMin = gs_Line.m_SinkMin;
+			gs_Line = T;
+			gs_TRef = true;
+		}
 		gs_Line.FindSinks();
 		gs_Ref.m_vEnv.resize(gs_Ref.m_vG.size());
 		float m = 1e9f;
@@ -1405,7 +1512,14 @@ int main(int argc, const char **argv)
 		std::printf("boost: v %.1f %.1f -> %.1f %.1f\n", V.x, V.y, Root.m_G.m_Core.m_Vel.x, Root.m_G.m_Core.m_Vel.y);
 	}
 	gs_T0 = Root.m_G.m_Tick;
-	Root.m_G0 = gs_P.m_Prefix.empty() ? (float)Root.m_G.RaceTick() : gs_Line.Project(Root.m_G.m_Core.m_Pos, (float)Root.m_G.RaceTick() - 60, nullptr, 60, 80);
+	Root.m_KInc = gs_P.m_Prefix.empty() ? (float)Root.m_G.RaceTick() : gs_IncLine.Project(Root.m_G.m_Core.m_Pos, (float)Root.m_G.RaceTick() - 60, nullptr, 60, 80);
+	if(gs_TRef)
+		Root.m_G0 = gs_Line.Project(Root.m_G.m_Core.m_Pos, (float)Root.m_G.RaceTick() - 60, nullptr, 160, 70);
+	else
+		Root.m_G0 = Root.m_KInc;
+	if(gs_P.m_TOff < -1e8f)
+		gs_P.m_TOff = std::round(Root.m_G.RaceTick() - Root.m_G0);
+	std::printf("root progress %.1f (incumbent path %.1f), time offset vs reference %.0f\n", Root.m_G0, Root.m_KInc, gs_P.m_TOff);
 	gs_RootPos = Root.m_G.m_Pos;
 	gs_RootRt = Root.m_G.RaceTick();
 	Root.m_Inc = gs_P.m_Prefix.empty();
@@ -1582,7 +1696,7 @@ int main(int argc, const char **argv)
 				// shadow: the incumbent's own inputs where it was at this progress (time-shifted imitation)
 				if(gs_P.m_Shadow > 0)
 				{
-					const float Kf = S.m_G0; // incumbent race tick here
+					const float Kf = S.m_KInc; // incumbent race tick here
 					const int K0 = (int)std::floor(Kf);
 					const int RtRoot = gs_RootRt;
 					for(int d = -gs_P.m_ShadowBack; d < gs_P.m_Shadow; d++)
@@ -1876,7 +1990,7 @@ int main(int argc, const char **argv)
 					{
 						float L2 = 0, E2 = 0;
 						bool Any = false;
-						ShadowEval(S.m_G, c.m_G, gs_P.m_ShH, gs_P.m_ShOff, gs_P.m_RollLam, L2, E2, Any);
+						ShadowEval(S.m_G, c.m_G, c.m_KInc, gs_P.m_ShH, gs_P.m_ShOff, gs_P.m_RollLam, L2, E2, Any);
 						if(Any && (gs_P.m_RollH <= 0 || L2 - gs_P.m_RollLam * E2 < Lag - gs_P.m_RollLam * E))
 						{
 							Lag = L2;
@@ -2008,6 +2122,8 @@ int main(int argc, const char **argv)
 					S.m_Inc = c.m_Inc;
 					S.m_Node = j;
 					S.m_G0 = c.m_G;
+					S.m_KInc = c.m_KInc;
+					S.m_TCost = c.m_TCost;
 					S.m_Lag = c.m_Lag;
 					S.m_E = c.m_E;
 					Nd.m_In = c.m_In;
@@ -2172,7 +2288,7 @@ int main(int argc, const char **argv)
 		G.Spawn(CTasGame::Map().m_vSpawns[0]);
 		bool Dead = false;
 		int GateRt = -1;
-		float VK = (float)gs_RootRt;
+		float VK = Root.m_G0;
 		int CommitAt = -1;
 		for(size_t n = 0; n < vFull.size(); n++)
 		{
