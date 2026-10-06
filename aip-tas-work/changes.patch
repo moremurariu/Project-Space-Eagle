@@ -538,7 +538,7 @@
  }
 --- a/tas-work/NOTES.md
 +++ b/tas-work/NOTES.md
-@@ -84,3 +84,646 @@
+@@ -84,3 +84,647 @@
  - Corridor 1 from a Teero-like crossing (900,465,25,-13 spent): 294-296 (Teero 298). Our pre-start crossing gives ~306.
  - TileExists lookup cache in CCollision (opt-in flag, TAS only): step 1.54 -> 1.20 us, identical replays.
  - chain.py: segment chain over distance gates with several configs (gains ~1-2 ticks/gate; slow).
@@ -1185,3 +1185,4 @@
 +- Prediction world fixed too (game/client/prediction/entities/projectile.cpp: return after a destroying hit, like the
 +  server; backup .bak_dblexpl): nadelab demo now 2165 px on CTasGame (was 3185; server 2166 from the standing y),
 +  best_height 2413 unchanged, kog_full_best still replays to 2663. Patch included in changes.patch.
++- LNS lnsr1 (retro variants, on the r1b 2663 run): **2661 (53.22 s)** at cut 2403 (retro=3 loadres=0.2 quota=30, beam 8000), server-identical (start 68, finish 2729, no freeze, no double start) -> kog_full_best.txt. (autoaccept's first check got an empty testrunner output - transient; re-checked by hand.)
