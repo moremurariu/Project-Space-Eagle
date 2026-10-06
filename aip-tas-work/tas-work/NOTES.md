@@ -881,3 +881,4 @@ Teero played the **KoG** version of AiP-Gores (user, from Teero). Our runs so fa
 - **2621 (52.42 s), server-checked** (testrunner TasReplay: start tick 68, finish tick 2689 -> 2621 ticks; srvcheck:
   frozen ticks 0, double start False, died False): 2622 (other agent) with a new ending from a finish search on its
   rt-2500 cut (segx survx=300 jitter=1 seed=406, inc=2622) -> kog_full_2621.txt = kog_full_best.txt.
+- lateloop l1: **2620 (52.40 s), server-checked** (start 68, no freeze, no double start): cut 2530 of the previous best, segx [survx=300] seed 565 -> kog_full_2620.txt = kog_full_best.txt.
