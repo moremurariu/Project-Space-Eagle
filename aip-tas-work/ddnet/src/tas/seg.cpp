@@ -71,6 +71,7 @@
 //     positions as a reference track ("k x y", k = race tick + 3 like Teero's labels) and exit
 //   survx=N: the N best-ranked beam states that fail the survival test get a second chance: an air jump now, or a direction
 //     held 5 / 12 ticks (hook kept) followed by any of the usual rollouts
+//   eres=F [ewin=15]: F x beam places for the highest-energy states within ewin reference ticks of the front
 //   survrisk=F: up to F x beam states that fail the survival test (held-input rollouts; best-ranked first) still breed;
 //     the beam takes at most F x beam of their children (fast states that need an active brake/turn aren't all cut)
 //   latpen=0 latdz=8 latk0= latk1=: ticks of penalty per px of distance from the line beyond latdz (Teero ticks latk0..latk1)
@@ -173,6 +174,8 @@ struct SParams
 	int m_PadRange = 30; // pre-fired shots may explode up to this many ticks later
 	float m_PadRef = 0; // also keep pre-fire aims exploding within this many px of the reference line ~that many ticks ahead
 	int m_SurvXTop = 0; // survx=N: the N best beam states that fail the survival test get the SurvivesX second chance
+	float m_ERes = 0; // eres=F [ewin=W]: F x beam places for the highest-energy states within W reference ticks of the front
+	int m_EWin = 15;
 	float m_SurvRisk = 0; // survrisk=F: up to F x beam states that fail the survival test (best first) still breed
 	int m_SurvEvery = 2; // every this many steps, beam states that can't survive `survive` ticks stop breeding (0 = off)
 	int m_FireLook = 12;
@@ -2038,6 +2041,8 @@ int main(int argc, const char **argv)
 		else if(K == "pendlook") gs_P.m_PendLook = std::stoi(V);
 		else if(K == "survevery") gs_P.m_SurvEvery = std::stoi(V);
 		else if(K == "survrisk") gs_P.m_SurvRisk = std::stof(V);
+		else if(K == "eres") gs_P.m_ERes = std::stof(V);
+		else if(K == "ewin") gs_P.m_EWin = std::stoi(V);
 		else if(K == "survx") gs_P.m_SurvXTop = std::stoi(V);
 		else if(K == "padaims") gs_P.m_PadAims = std::stoi(V);
 		else if(K == "padtop") gs_P.m_PadTop = std::stoi(V);
@@ -2675,6 +2680,31 @@ int main(int argc, const char **argv)
 		const int RiskCap = (int)(gs_P.m_SurvRisk * gs_P.m_Beam);
 		int NRisky = 0;
 		auto RiskOk = [&](const SCand &C) { return !C.m_Risky || NRisky < RiskCap; };
+		if(gs_P.m_ERes > 0 && !vAll.empty())
+		{
+			// eres: energy reserve - near the front (reference progress within ewin of the best), the states with the
+			// most effective energy get eres x beam places first, so a faster line survives the ticks where it is not
+			// yet ahead (Teero carries 300-650 more energy on every straight)
+			int Front = 0;
+			for(const auto &C : vAll)
+				Front = std::max(Front, C.m_Ref);
+			std::vector<int> vIdx;
+			for(int ci = 0; ci < (int)vAll.size(); ci++)
+				if(vAll[ci].m_Ref >= Front - gs_P.m_EWin)
+					vIdx.push_back(ci);
+			std::sort(vIdx.begin(), vIdx.end(), [&](int a, int b) { return vAll[a].m_Ee > vAll[b].m_Ee; });
+			const int Res = (int)(gs_P.m_ERes * gs_P.m_Beam);
+			for(int ci : vIdx)
+			{
+				if((int)vSel.size() >= Res)
+					break;
+				const SCand &C = vAll[ci];
+				if(!RiskOk(C) || !Seen.insert(C.m_Hash).second || !Cells.insert(C.m_Key).second)
+					continue;
+				NRisky += C.m_Risky;
+				vSel.push_back(C);
+			}
+		}
 		if(gs_P.m_LoadRes > 0)
 		{
 			// loadres: the best states that keep a loaded grenade get loadres x beam places first, so waiting for a

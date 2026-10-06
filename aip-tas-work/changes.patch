@@ -668,7 +668,7 @@
  }
 --- a/tas-work/NOTES.md
 +++ b/tas-work/NOTES.md
-@@ -84,3 +84,730 @@
+@@ -84,3 +84,747 @@
  - Corridor 1 from a Teero-like crossing (900,465,25,-13 spent): 294-296 (Teero 298). Our pre-start crossing gives ~306.
  - TileExists lookup cache in CCollision (opt-in flag, TAS only): step 1.54 -> 1.20 us, identical replays.
  - chain.py: segment chain over distance gates with several configs (gains ~1-2 ticks/gate; slow).
@@ -1399,3 +1399,20 @@
 +- Hook audit (eaudit EA_HOOK=1): 197 of 582 fast hook ticks turn almost for free (876 deg for 17 px/t of speed);
 +  385 brake (273 px/t for 1290 deg). Above 15 px/t a hook pull is applied only if |v| doesn't grow, so a rope just
 +  behind perpendicular turns at up to |h|/|v| rad/tick at near-zero cost; a backward rope just brakes.
++- **Shaft lead transfer with x_tig at beam 3000** (tigseg.py seg=80 back=20, ~35 s per segment, runs/tx/g3): lead vs
++  2629 +10.3 (rt 1690) -> +6.8 (1750) -> +6.7 (1810) -> +6.1 (1870) -> +7.7 (1930) -> +6.7 (1990), then **lost in the
++  left U-turn at rt 1995-2015** (5 -> -0.7). Other x_tig seeds and segx variants (survx / retro + loadres) from the
++  rt-1990 state also end at -3..+0.7 after that U-turn. 2629's U-turn there is very precise, and an early-arriving
++  state probably has a different reload phase for its kicks. Hand-off for a bigger budget: runs/shaft/L1576_0_0.txt
++  (lob at 1576 + point-blank double kick) and runs/shaft/shaft_lead_rt1990.txt (lead +6.7 by x_ds root progress).
++- Box gate at the end of the right straight (from 2629 cut rt 1740, box x 8400-8520): segx survx reaches x 8418 at
++  rt 1797 with E = v^2/2 - 0.5y = 484 (2629: about rt 1798.5 there with E ~140). Better states exist on the
++  straights, but the beam ranking doesn't keep them. New seg option `eres=F [ewin=15]`: F x beam places for the
++  highest effective-energy states within ewin reference ticks of the front.
++- eres tests (windows from 2629 cuts): k1249 window 1409 / eres 0.2: 1411 / eres 0.3 ewin 30: 1410 (own 1407);
++  k1699 window 1895 / 1898 / 1912 (own 1890). No help.
++- Per-shot re-aim check (lobscan self mode with DX=DY=0 = along the tee's own velocity; same-tick point-blank kicks
++  are not seen by the scan): several 2629 shots have a much stronger delayed kick on the unchanged path (1158 7.5 ->
++  10.2, 1236 6.7 -> 10.8, 1348 5.8 -> 12.0, 1574 6.4 -> 10.3, 1807 8.5 -> 11.4, 2261 4.6 -> 11.4). Applied
++  (kickfix.py RUN T0 T1 GATEK): the 1348 re-aim (full kick at 1356) -> k1449 at 1491-1496 vs own 1458. The weak
++  kick was deliberate: it sets up the left U-turn. Kick strength along v is the wrong objective near turns.

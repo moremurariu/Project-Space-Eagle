@@ -56,7 +56,9 @@ int main(int argc, const char **argv)
 	const float R = std::atof(argv[8]);
 	const int Te0 = std::atoi(argv[9]), Te1 = std::atoi(argv[10]), N = argc > 11 ? std::atoi(argv[11]) : 7200;
 	const bool Self = std::string(argv[6]) == "self";
-	const vec2 Want = Self ? normalize(vec2(std::atof(argv[7]), std::atof(argv[8]))) : vec2(0, 0);
+	const vec2 WantRaw = Self ? vec2(std::atof(argv[7]), std::atof(argv[8])) : vec2(0, 0);
+	const bool AlongV = Self && length(WantRaw) < 1e-6f; // DX = DY = 0: along the tee's own velocity
+	const vec2 Want = AlongV ? vec2(0, 0) : (Self ? normalize(WantRaw) : vec2(0, 0));
 	CTasGame G;
 	G.Spawn(CTasGame::Map().m_vSpawns[0]);
 	const int Cut = Strip + 67; // 0-based line index of race tick Strip
@@ -111,7 +113,7 @@ int main(int argc, const char **argv)
 						if(length(Dv) > 0.5f)
 						{
 							if(Strip + j >= Te0 && !T2.m_Dead)
-								vR.push_back({dot(Dv, Want), S.m_TX, S.m_TY, Strip + j, Dv});
+								vR.push_back({dot(Dv, AlongV ? normalize(vBase[j - 1]) : Want), S.m_TX, S.m_TY, Strip + j, Dv});
 							break;
 						}
 					}
