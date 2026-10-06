@@ -2204,6 +2204,7 @@ int main(int argc, const char **argv)
 		{
 			// best by lag (lam 0)
 			float BL = 1e9f, BE = 0, BG = 0, BV = 0, IL = 0;
+			vec2 BP(0, 0);
 			int NMatch = 0;
 			for(auto &S : vBeam)
 			{
@@ -2216,14 +2217,15 @@ int main(int argc, const char **argv)
 					BE = S.m_E;
 					BG = S.m_G0;
 					BV = length(S.m_G.m_Core.m_Vel);
+					BP = S.m_G.m_Pos;
 				}
 				if(S.m_Inc)
 					IL = S.m_Lag;
 			}
 			std::printf("  retro found %ld emitted %ld | fire aims %ld emitted %ld | pre %ld sel %ld surv %ld\n", gs_NRetroFound.load(), gs_NRetroEmit.load(), gs_NFireTry.load(), gs_NFireEmit.load(), gs_NPre, gs_NSel, gs_NSurv);
 			std::printf("  on-incumbent states: %d\n", NMatch);
-			std::printf("step %4d rt %d beam %zu cand %zu | best lag %.2f geo %.0f E %.0f |v| %.1f | inc lag %.2f | %.0fs\n", Step,
-				vBeam.empty() ? -1 : vBeam[0].m_G.RaceTick(), vBeam.size(), vAll.size(), BL, BG, BE, BV, IL,
+			std::printf("step %4d rt %d beam %zu cand %zu | best lag %.2f geo %.0f E %.0f |v| %.1f pos %.0f %.0f | inc lag %.2f | %.0fs\n", Step,
+				vBeam.empty() ? -1 : vBeam[0].m_G.RaceTick(), vBeam.size(), vAll.size(), BL, BG, BE, BV, BP.x, BP.y, IL,
 				std::chrono::duration<double>(std::chrono::steady_clock::now() - t0).count());
 			std::fflush(stdout);
 		}

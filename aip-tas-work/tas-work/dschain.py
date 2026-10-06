@@ -13,7 +13,7 @@ inc, cut, name = sys.argv[1], int(sys.argv[2]), sys.argv[3]
 kw, extra = {}, []
 for a in sys.argv[4:]:
     k, _, v = a.partition('=')
-    if k in ('W', 'C', 'n', 'workers', 'beam', 'egain', 'seed0', 'finishat', 'sinks'):
+    if k in ('W', 'C', 'n', 'workers', 'beam', 'egain', 'seed0', 'finishat', 'sinks', 'prefix0', 'anc0'):
         kw[k] = v
     else:
         extra.append(a)
@@ -82,7 +82,15 @@ if kw.get('sinks') == 'auto':
 else:
     SINKS = [int(x) for x in kw['sinks'].split(',')] if 'sinks' in kw else None
 prefix = None
+anc = None
 K = cut  # committed progress
+if 'prefix0' in kw:
+    # start from a separate prefix (a run that left the incumbent); its root progress on the incumbent path is K
+    prefix, anc = kw['prefix0'], kw.get('anc0')
+    r0 = subprocess.run([BIN, 'AiP-Gores.map', f'inc={inc}', f'prefix={prefix}', 'gate=finish', 'maxsteps=0', 'verbose=0'],
+                        capture_output=True, text=True).stdout
+    K = int(float(re.search(r'root progress ([\d.]+)', r0).group(1)))
+    log(f'prefix0 {prefix}: root progress {K}')
 w = 0
 while True:
     if SINKS:
@@ -105,7 +113,7 @@ while True:
         if prefix is None:
             args += [f'cut={cut}', 'incforce=1']
         else:
-            args += [f'prefix={prefix}', f'anc={anc}']
+            args += [f'prefix={prefix}'] + ([f'anc={anc}'] if anc else [])
         if not last:
             args.append(f'commitk={commit}')
         t0 = time.time()
