@@ -652,3 +652,4 @@ Teero played the **KoG** version of AiP-Gores (user, from Teero). Our runs so fa
 - physlab6 (agent): Teero's shaft double kick (2x2 block at x~3251, k1583) from cuts >= 1450 of the best run.
 - LNS lnsinc2: **2668 (53.36 s)** at cut 2060 (Teero ref, beam 8000, survive 20, kcredit 0), server-identical (start 68, finish 2736, no freeze, no double start) -> kog_full_best.txt.
 - LNS lnsinc2: **2666 (53.32 s)** at cut 2598 (Teero ref, beam 20000), server-identical -> kog_full_best.txt.
+- LNS lnsinc2: **2664 (53.28 s)** at cut 2454 (own ref, beam 15000), server-identical -> kog_full_best.txt.
