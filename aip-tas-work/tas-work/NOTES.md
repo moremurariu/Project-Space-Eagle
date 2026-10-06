@@ -741,3 +741,4 @@ Teero played the **KoG** version of AiP-Gores (user, from Teero). Our runs so fa
   child is never dropped by the look (evaluated without it). Beam-1 incumbent replays now reach 2653/2663 from cuts
   1100/1984 (before: NOGATE). New tool fgcheck (CTasGame vs CTasFast tick by tick from a cut, freeze flags): no
   mismatch on kog_full_best / kog_full_2663.
+- auto-accepted lnsr1/best_2652.txt: **2652 (53.04 s)**, server-identical (start tick 68 finish tick 2720 -> 2652 ticks = 53.04 s; no freeze, no double start) -> kog_full_best.txt.
