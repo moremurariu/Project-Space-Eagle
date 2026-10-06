@@ -423,6 +423,7 @@ int main(int argc, const char **argv)
 	// shadow run (e.g. the incumbent): its inputs at the matched place of its own path are extra candidates
 	std::vector<STasInput> vSh;
 	std::vector<vec2> vShP; // position after step i (index = step from the shadow's grenade pickup)
+	std::vector<vec2> vShV; // velocity after step i
 	int ShRt0 = 0; // race tick after shadow step 0
 	size_t ShI0 = 0; // index of the first post-pickup input
 	if(Kv.count("shadow"))
@@ -442,6 +443,7 @@ int main(int argc, const char **argv)
 			if(vShP.empty())
 				ShRt0 = Fs.RaceTick();
 			vShP.push_back(Fs.m_Pos);
+			vShV.push_back(Fs.m_Core.m_Vel);
 			if(Fs.m_FinishTick >= 0)
 				break;
 		}
@@ -1078,8 +1080,16 @@ int main(int argc, const char **argv)
 			{
 				if(NSh >= ShKeep)
 					break;
-				if(!Nd.m_Sh) // the shadow run survived where it goes: no survival check for its own inputs
+				if(!Nd.m_Sh)
 					continue;
+				if(vDoomed[&Nd - vAll.data()])
+				{
+					// the shadow run survived where it goes: no survival check for its own inputs, but only on (nearly)
+					// its own state - far from it, its inputs can steer straight into freeze
+					int i = (int)std::lround(Nd.m_ShI);
+					if(i < 0 || i >= (int)vShP.size() || distance(Nd.m_G.m_Pos, vShP[i]) > 3.0f || distance(Nd.m_G.m_Core.m_Vel, vShV[i]) > 1.5f)
+						continue;
+				}
 				if(!Seen.emplace(Key(Nd), 0).second)
 					continue;
 				vU.push_back(Nd);
