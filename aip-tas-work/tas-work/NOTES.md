@@ -729,3 +729,46 @@ Teero played the **KoG** version of AiP-Gores (user, from Teero). Our runs so fa
   best_height 2413 unchanged, kog_full_best still replays to 2663. Patch included in changes.patch.
 - LNS lnsr1 (retro variants, on the r1b 2663 run): **2661 (53.22 s)** at cut 2403 (retro=3 loadres=0.2 quota=30, beam 8000), server-identical (start 68, finish 2729, no freeze, no double start) -> kog_full_best.txt. (autoaccept's first check got an empty testrunner output - transient; re-checked by hand.)
 - auto-accepted lnsr1/best_2653.txt: **2653 (53.06 s)**, server-identical (start tick 68 finish tick 2721 -> 2653 ticks = 53.06 s; no freeze, no double start) -> kog_full_best.txt.
+
+## Post-nade vs Teero, tracker-seeded search (Oct 6)
+
+Start: kog_full_2639 (52.78 s). Teero data (local only, gitignored): teero/teero_inputs_0-3131.csv (per video frame:
+dir, jump, cursor aim, shots with aim, certainties; best effort, not exact) and teero_track.txt (position per label,
++-10 px). Label == csv race time (s_since_start * 50).
+
+### Facts measured
+- Our pickup (rt 971) is at Teero's label ~982.5: we start the post-nade ~11.5 ticks ahead. His finish is label ~2542,
+  so his post-nade is ~108 ticks faster than ours (from our pickup it would finish ~2530).
+- Lag profile (2639 run vs Teero, monotone projection): 971-1160 +5, U-turn 1160-1240 +10, 1240-1520 +7, shaft
+  1520-1640 +18, channel 1640-1680 +6, 1680-1800 ~0, 1800-2240 +43, 2240-2600 +16.
+- 1800-2240: same route as ours (overlay: viz.py with TREF=teero_track.txt:L0:L1), he is 5-10% faster per tick
+  everywhere. Our kicks average |f| 10.9 of 12 (28 of 55 at full force); the solid walls sit behind a freeze tile, so
+  a full kick needs the tee skimming the freeze.
+- Velocity ramp: factor from |v| (total), applied to the horizontal movement only (vertical never ramped). v^2 - y
+  is the right stored energy but over-credits speed as progress (x movement saturates at ~48 px/t, |v| ~119).
+- Shaft (rt ~1600): Teero does a double kick on the single tile at (3264, 3328): a lob fired ~25 ticks earlier lands
+  in the same step as his point-blank (vy -47 after). From our path lobs reach that tile only at rt 1601-1602
+  (x_lob); x_dbl builds our version (vy -40) but nothing downstream turned it into time.
+- Hook pull: applied only if |v| stays < 15 or does not grow; the downward part is scaled by 0.3, so hooking
+  below-right while climbing builds vx cheaply (Teero's shaft climb).
+
+### Tools (src/tas)
+- x_lob: exact lob scan from a run's own positions into a box/tick range.
+- x_dbl: double-kick rendezvous (approach search so a point-blank lands in the same step as a lob in flight).
+- x_win: windowed beam with a linear or geodesic objective (probe what a section allows).
+- x_tig: tracker of a reference run (Teero's video, or one of our runs via run2ref.py). Position-indexed hints
+  (each state looks up the reference's jump/shot ticks and aims at its own place on the reference line), lateral
+  cost with dead zone, signed lag reward (lagw), reserved shot slots resolved as retro lobs (also stacked with a
+  point-blank), survival check (simple hook/dir/jump/point-blank policies, with an all-doomed fallback), diversity
+  quota, seeded jitter (results vary a lot with tie-breaking: run several seeds). Speed/energy credits (sw, ew) did
+  not help on 1800-2300.
+- run2ref.py: one of our runs as an x_tig reference (track + inputs csv, all certain).
+- tigloop.py: the pipeline below, looped over start points with server-checked promotion.
+
+### Pipeline that produced 2633 (52.66 s, server-checked)
+1. x_tig follows Teero from the 2639 run's state at rt 1800 (off = Teero label - rt = -35.9): 8.2 ticks ahead of
+   the 2639 run by rt 2050 (it then falls behind after ~2150 and does not finish well on its own).
+2. x_tig from that rt-2050 state following the 2639 run itself (run2ref.py reference, off 8.2): full runs 2647-2660.
+3. dschain from rt 2050 with prefix0 = the 2647 run's prefix, anc0 = the 2647 run (forced lineage), inc = 2639:
+   2633. Without a forced lineage, chains from any novel prefix lost 25-34 ticks in the first window - that was the
+   blocker for every earlier rejoin attempt (double kick, channel, tracker cut points).

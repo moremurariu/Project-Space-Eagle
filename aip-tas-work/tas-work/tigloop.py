@@ -1,9 +1,12 @@
 #!/usr/bin/env python3
-"""Tracker-seeded improvement loop. For segment starts s along the incumbent: run x_tig (follow Teero's video run) from
-the incumbent's state at s, measure its lead over the incumbent (x_ds root progress) at cut points, rejoin the
-incumbent's line from the best cuts with short x_ds windows, then chain to the finish (dschain, prefix0 = the rejoin).
+"""Tracker-seeded improvement loop. For each segment start s along the incumbent:
+ 1. x_tig follows Teero's video run (position-indexed hints) from the incumbent's state at s, for SEG ticks, with
+    several seeds; the lead over the incumbent (x_ds root progress) is measured at cut points every 10 ticks;
+ 2. from the best (seed, cut), x_tig follows the incumbent itself (run2ref.py reference) to the finish, several seeds:
+    a full run T that keeps the lead for a while;
+ 3. dschain from the cut with T as forced lineage (prefix0/anc0) and the incumbent as reference, to the finish.
 A finish better than the incumbent's is checked on the real server (TasReplay) and becomes the new incumbent.
-usage: tigloop.py INC NAME [starts=1800,1600,...] [seg=220] [tbeam=3000] [cuts=3] [rgate=100] [hours=3] [workers=4]"""
+usage: tigloop.py INC NAME [starts=1800,2000,...] [seg=300] [seeds=4] [minlead=2] [hours=4]"""
 import math, os, re, subprocess, sys, time
 from concurrent.futures import ThreadPoolExecutor
 
@@ -12,14 +15,13 @@ os.chdir(HERE)
 B = '../ddnet/build-sim/'
 inc, name = sys.argv[1], sys.argv[2]
 kw = dict(a.split('=', 1) for a in sys.argv[3:])
-SEG, TBEAM, NCUT, RGATE = int(kw.get('seg', 220)), kw.get('tbeam', '3000'), int(kw.get('cuts', 3)), int(kw.get('rgate', 100))
-NW = int(kw.get('workers', 4))
-T_END = time.time() + float(kw.get('hours', 3)) * 3600
+SEG, NSEED, MINLEAD = int(kw.get('seg', 300)), int(kw.get('seeds', 4)), float(kw.get('minlead', 2))
+T_END = time.time() + float(kw.get('hours', 4)) * 3600
 D = f'runs/tig/{name}'
 os.makedirs(D, exist_ok=True)
 LOG = f'{D}/loop.log'
 CSV, TRACK = 'teero/teero_inputs_0-3131.csv', 'teero_track.txt'
-TIGARGS = ['tolf=3', 'tolj=2', 'pendwin=6', 'lagw=0.3', 'pendb=4', 'freeb=2', 'warp=2', 'every=1000']
+TIG = ['beam=3000', 'every=1000', 'tolf=3', 'tolj=2', 'pendwin=6', 'lagw=0.3', 'pendb=4', 'freeb=2', 'threads=1']
 
 
 def log(s):
@@ -37,7 +39,7 @@ def trace(run):
     for l in sh([B + 'x_trace', 'AiP-Gores.map', run]).splitlines():
         a = l.split()
         if a and a[0] == 'T':
-            T[int(a[2])] = (float(a[3]), float(a[4]), float(a[5]), float(a[6]))
+            T[int(a[2])] = (float(a[3]), float(a[4]))
     return T
 
 
@@ -48,11 +50,11 @@ for l in open(TRACK):
         TRK[int(a[0])] = (float(a[1]), float(a[2]))
 
 
-def teero_labels(T, rt0, rt1, lab0):
+def teero_labels(T):
     """monotone projection of a run's positions onto Teero's track: rt -> label"""
-    lab, out = lab0, {}
-    for rt in range(rt0, rt1 + 1):
-        if rt not in T:
+    lab, out = 982.0, {}
+    for rt in sorted(T):
+        if rt < 971:
             continue
         q = T[rt]
         best, bl = 1e18, None
@@ -72,7 +74,7 @@ def teero_labels(T, rt0, rt1, lab0):
     return out
 
 
-def prefix(run, rt, path):
+def cut(run, rt, path):
     L = [l for l in open(run).read().splitlines() if l.strip()]
     open(path, 'w').write('\n'.join(L[:rt + 68]) + '\n')
     return path
@@ -91,66 +93,81 @@ def finish_of(run):
     return int(m.group(2)) if ok else None
 
 
+def tig(pre, csv, track, off, maxt, out, seed):
+    j = '0' if seed == 0 else '3'
+    r = sh([B + 'x_tig', 'AiP-Gores.map', pre, f'csv={csv}', f'track={track}', f'off={off:.1f}', f'maxt={maxt}', f'out={out}',
+            f'seed={seed}', f'jitter={j}'] + TIG)
+    m = re.search(r'finish (-?\d+)', r)
+    return int(m.group(1)) if m else -1
+
+
 F = finish_of(inc)
 log(f'tigloop {name}: incumbent {inc} server finish {F}')
-IT = trace(inc)
-LAB = teero_labels(IT, 975, max(IT), 982.0)
+
+
+def refresh():
+    global LAB
+    LAB = teero_labels(trace(inc))
+    sh(['python3', 'run2ref.py', inc, f'{D}/inc_track.txt', f'{D}/inc.csv'])
+
+
+refresh()
 starts = [int(x) for x in kw.get('starts', '1800').split(',')]
 for s in starts:
     if time.time() > T_END:
         break
-    off = LAB[s] - s
-    tg = f'{D}/s{s}_tig.txt'
     t0 = time.time()
-    r = sh([B + 'x_tig', 'AiP-Gores.map', prefix(inc, s, f'{D}/s{s}_pre.txt'), f'csv={CSV}', f'track={TRACK}', f'off={off:.1f}',
-            f'beam={TBEAM}', f'maxt={s + SEG}', f'out={tg}'] + TIGARGS)
-    # lead over the incumbent at cuts every 10 ticks
-    leads = []
-    for c in range(s + 20, s + SEG, 10):
-        p = root_progress(prefix(tg, c, f'{D}/s{s}_c{c}.txt'))
-        if p > 0:
-            leads.append((p - c, c))
-    log(f'start {s} (off {off:.1f}): tracker {time.time() - t0:.0f}s, leads ' + ' '.join(f'{c}:{l:+.1f}' for l, c in leads))
-    good = sorted([x for x in leads if x[0] >= 1.0], reverse=True)[:NCUT]
-    if not good:
+    off = LAB[s] - s
+    pre = cut(inc, s, f'{D}/s{s}_pre.txt')
+    # 1. follow Teero
+    with ThreadPoolExecutor(NSEED) as ex:
+        list(ex.map(lambda sd: tig(pre, CSV, TRACK, off, s + SEG, f'{D}/s{s}_t{sd}.txt', sd), range(NSEED)))
+    best = (-99, None, None)
+    for sd in range(NSEED):
+        tf = f'{D}/s{s}_t{sd}.txt'
+        if not os.path.exists(tf):
+            continue
+        n = sum(1 for l in open(tf) if l.strip())
+        for c in range(s + 20, min(s + SEG, n - 68), 10):
+            p = root_progress(cut(tf, c, f'{D}/s{s}_t{sd}_c.txt'))
+            if p > 0 and p - c > best[0]:
+                best = (p - c, sd, c)
+    log(f'start {s} (off {off:.1f}): best Teero-tracker lead {best[0]:+.1f} (seed {best[1]}, cut {best[2]}) ({time.time() - t0:.0f}s)')
+    if best[0] < MINLEAD:
         continue
-
-    def rejoin(lc):
-        l, c = lc
-        out = f'{D}/s{s}_c{c}_rj.txt'
-        r = sh([B + 'x_ds', 'AiP-Gores.map', f'inc={inc}', f'prefix={D}/s{s}_c{c}.txt', f'gate=rt{c + RGATE}', 'beam=1500', 'threads=1',
-                'verbose=0', 'surv=16', 'shadow=2', 'trackfrac=0.3', f'out={out}'])
-        m = re.search(r'GATE t ([\d.]+) \(incumbent ([\d.]+)\)', r)
-        mv = re.search(r'verify \(CTasGame\): gate rt (-?\d+) end rt (-?\d+) geo \S+ finish (-?\d+) dead (\d)', r)
-        if not m or not mv or mv.group(4) != '0':
-            return (-99, c, out)
-        return (float(m.group(2)) - float(m.group(1)), c, out)
-
-    with ThreadPoolExecutor(NW) as ex:
-        R = sorted(ex.map(rejoin, good), reverse=True)
-    log(f'  rejoins (gate +{RGATE}): ' + ' '.join(f'{c}:{l:+.2f}' for l, c, _ in R))
-    if R[0][0] < 0.5:
+    lead, sd, c = best
+    pre2 = cut(f'{D}/s{s}_t{sd}.txt', c, f'{D}/s{s}_cut.txt')
+    # 2. follow the incumbent from there to the finish
+    with ThreadPoolExecutor(NSEED) as ex:
+        fins = list(ex.map(lambda q: tig(pre2, f'{D}/inc.csv', f'{D}/inc_track.txt', lead, 2800, f'{D}/s{s}_r{q}.txt', q), range(NSEED)))
+    ok = [(f, q) for q, f in enumerate(fins) if f > 0]
+    log(f'  incumbent-tracker finishes: {fins}')
+    if not ok:
         continue
-    l, c, rj = R[0]
-    gate_rt = int(re.search(r'end rt (\d+)', sh([B + 'x_ds', 'AiP-Gores.map', f'inc={inc}', f'prefix={rj}', 'gate=finish', 'maxsteps=0', 'verbose=0'])).group(1)) \
-        if False else None
+    fT, q = min(ok)
+    T = f'{D}/s{s}_r{q}.txt'
+    # 3. chain with T as forced lineage
     tag = f'{name}_s{s}'
-    out = sh(['python3', 'dschain.py', inc, str(c), tag, f'prefix0={rj}', 'sinks=auto', 'n=4', f'workers={NW}', 'beam=1000', 'egain=0.002'])
+    out = sh(['python3', 'dschain.py', inc, str(c), tag, f'prefix0={pre2}', f'anc0={T}', 'sinks=auto', 'n=4', 'workers=4', 'beam=1000',
+              'egain=0.002'])
     m = re.search(r'FINISH (\d+) \(incumbent (\d+)\) -> (\S+)', out)
     if not m:
         log(f'  chain {tag}: no finish')
         continue
     fin, run = int(m.group(1)), m.group(3)
-    log(f'  chain {tag}: finish {fin} (incumbent {F})')
-    if fin < F:
-        sf = finish_of(run)
+    log(f'  chain {tag}: finish {fin} (T {fT}, incumbent {F}) ({time.time() - t0:.0f}s)')
+    cand = [(fin, run), (fT, T)]
+    for fc, rc in sorted(cand):
+        if fc >= F:
+            break
+        sf = finish_of(rc)
         if sf is not None and sf < F:
             F = sf
             newb = f'kog_full_{F}.txt'
-            subprocess.run(['cp', run, newb])
+            subprocess.run(['cp', rc, newb])
+            subprocess.run(['cp', rc, 'kog_full_best.txt'])
             log(f'NEW BEST {F} (server-checked) -> {newb}')
             inc = newb
-            IT = trace(inc)
-            LAB = teero_labels(IT, 975, max(IT), 982.0)
-        else:
-            log(f'  server check failed / not better: {sf}')
+            refresh()
+            break
+        log(f'  server check failed / not better: {sf}')
