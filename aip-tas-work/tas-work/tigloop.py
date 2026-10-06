@@ -18,6 +18,7 @@ kw = dict(a.split('=', 1) for a in sys.argv[3:])
 SEG, NSEED, MINLEAD = int(kw.get('seg', 300)), int(kw.get('seeds', 4)), float(kw.get('minlead', 0.5))
 JUDGE = int(kw.get('judge', 150))
 NPICK = int(kw.get('pick', 8))
+SEED0 = int(kw.get('seed0', 0))  # seed offset: re-runs explore other tie-breaks
 TIGX = kw.get('tigx', '').split()  # extra x_tig args for the Teero-tracker stage
 T_END = time.time() + float(kw.get('hours', 4)) * 3600
 D = f'runs/tig/{name}'
@@ -97,6 +98,7 @@ def finish_of(run):
 
 
 def tig(pre, csv, track, off, maxt, out, seed, extra=()):
+    seed += SEED0
     j = '0' if seed == 0 else '3'
     r = sh([B + 'x_tig', 'AiP-Gores.map', pre, f'csv={csv}', f'track={track}', f'off={off:.1f}', f'maxt={maxt}', f'out={out}',
             f'seed={seed}', f'jitter={j}'] + TIG + list(extra))
