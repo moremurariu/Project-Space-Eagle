@@ -54,6 +54,10 @@ def variant(i, w):
         'shh': r.choice(['30', '40', '40', '60']),
         'rollpre': '4',
         'shmode': r.choice(['1', '2']),
+        'kcred': r.choice(['0', '0.5', '1']),
+        'kready': r.choice(['0', '3', '6']),
+        'sinkh': r.choice(['0', '0', '40']),
+        'retro': r.choice(['3', '4']),
     }
 
 

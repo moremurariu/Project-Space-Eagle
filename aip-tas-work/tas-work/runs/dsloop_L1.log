@@ -1,0 +1,11 @@
+11:47:39 loop L1: best kog_full_2647.txt server finish 2647
+11:49:19 L1_001 start 2351: finish 2646 (best 2647) (100s)
+11:49:19 NEW BEST 2646 (server-checked) -> kog_full_2646.txt
+11:50:59 L1_002 start 2351: finish 2646 (best 2646) (99s)
+11:54:28 L1_003 start 2167: finish 2646 (best 2646) (210s)
+11:59:33 L1_004 start 2038: finish 2645 (best 2646) (305s)
+11:59:33 NEW BEST 2645 (server-checked) -> kog_full_2645.txt
+12:01:11 L1_005 start 2350: finish 2645 (best 2645) (98s)
+12:04:34 L1_006 start 2167: finish 2645 (best 2645) (203s)
+12:09:42 L1_007 start 2038: finish 2645 (best 2645) (308s)
+12:16:29 L1_008 start 1829: finish 2645 (best 2645) (406s)

@@ -99,6 +99,8 @@ struct SPar
 	int m_Seed = 0;
 	int m_Rot = 1;
 	float m_CredW = 0;
+	float m_KCred = 0;
+	int m_KReady = 0;
 	int m_Quota = 0;
 	int m_RollH = 0;
 	int m_ShH = 0, m_ShOff = 2; // shadow rollouts (lookahead by following the incumbent's inputs)
@@ -107,6 +109,9 @@ struct SPar
 	float m_EGain = 0.004f;
 	int m_GateSurv = 30;
 	int m_CommitK = -1;
+	float m_Boost = 0; // diagnostics: add this many px/t along the root velocity (a hypothetical extra kick)
+	int m_NoFire0 = -1, m_NoFire1 = -1;
+	int m_NoKick0 = -1, m_NoKick1 = -1; // no explosions at all in these race ticks (keeps the slots for later stacks) // no shots fired in these race ticks (shadow / point-blank); retro slots there stay usable
 	float m_TrackFrac = 0, m_TrackV = 3, m_TrackLag = 2;
 	int m_Shadow = 0; // add the incumbent's inputs at the matched progress point (this many, from the next one)
 	int m_ShadowBack = 1;
@@ -285,6 +290,40 @@ struct SRefLine
 		int i = std::clamp((int)std::lround(K - m_Rt0), 0, (int)m_vE.size() - 1);
 		return m_vE[i];
 	}
+	std::vector<float> m_vSinks; // incumbent race ticks of its speed minima (U-turn exits)
+	// energy weight: energy just before a sink gets braked away; 1 far from it, down to m_SinkMin at the sink
+	float m_SinkH = 0, m_SinkMin = 0.25f;
+	float EWeight(float K) const
+	{
+		if(m_SinkH <= 0)
+			return 1.0f;
+		for(float Sk : m_vSinks)
+			if(Sk >= K)
+				return std::clamp((Sk - K) / m_SinkH, m_SinkMin, 1.0f);
+		return 1.0f;
+	}
+	void FindSinks()
+	{
+		const int n = (int)m_vV.size();
+		std::vector<float> Sp(n);
+		for(int i = 0; i < n; i++)
+			Sp[i] = length(m_vV[i]);
+		for(int i = 15; i + 15 < n; i++)
+		{
+			bool Min = true;
+			for(int j = i - 15; j <= i + 15 && Min; j++)
+				Min = Sp[j] >= Sp[i];
+			if(!Min)
+				continue;
+			float L = 0, R = 0;
+			for(int j = std::max(0, i - 60); j < i; j++)
+				L = std::max(L, Sp[j]);
+			for(int j = i + 1; j < std::min(n, i + 61); j++)
+				R = std::max(R, Sp[j]);
+			if(std::min(L, R) - Sp[i] > 8 && (m_vSinks.empty() || m_Rt0 + i - m_vSinks.back() > 30))
+				m_vSinks.push_back((float)(m_Rt0 + i));
+		}
+	}
 };
 static SRefLine gs_Line;
 
@@ -329,6 +368,7 @@ struct SNode
 
 static std::vector<std::vector<SNode>> gs_vHist; // per step
 static long gs_NPre = 0, gs_NSel = 0, gs_NSurv = 0;
+static std::atomic<long> gs_NStackTry{0}, gs_NStackEmit{0}, gs_NCanPB{0}, gs_NOldR{0}, gs_NPBAims{0};
 static std::atomic<long> gs_NRetroFound{0}, gs_NRetroEmit{0}, gs_NFireEmit{0}, gs_NFireTry{0};
 static int gs_T0 = 0; // tick of the root state
 static vec2 gs_RootPos;
@@ -831,9 +871,17 @@ static void RetroFind(const SState &S, int Step, vec2 RouteDir, std::vector<SRet
 		St--;
 	}
 	std::sort(s_vC.begin(), s_vC.end(), [](const SRetroShot &a, const SRetroShot &b) { return a.m_Val > b.m_Val; });
-	// keep the best per fire tick region (different taus give different stack options)
-	for(int k = 0; k < (int)s_vC.size() && (int)vOut.size() < gs_P.m_Retro * 2; k++)
-		vOut.push_back(s_vC[k]);
+	// keep the best recent ones and the best old ones (25+ ticks: they can stack with a point-blank shot now)
+	int NRecent = 0, NOld = 0;
+	for(int k = 0; k < (int)s_vC.size(); k++)
+	{
+		bool Old = t - s_vC[k].m_Tau >= 25;
+		if(Old ? NOld < gs_P.m_Retro : NRecent < gs_P.m_Retro)
+		{
+			vOut.push_back(s_vC[k]);
+			(Old ? NOld : NRecent)++;
+		}
+	}
 }
 
 static void ApplyRetro(SState &S, const SRetroShot &R)
@@ -864,6 +912,38 @@ static void ApplyRetro(SState &S, const SRetroShot &R)
 }
 
 // ------------------------------------------------------------------------------------------------ scoring
+// energy-equivalent value of the best point-blank kick available right now (loaded grenade, solid within ~45 px)
+static float KickCredit(const CFastG &G)
+{
+	const SMapInfo &M = CTasGame::Map();
+	vec2 P = G.m_Pos, V = G.m_Core.m_Vel;
+	if(!CTasGame::Collision()->FastAnySolid(P.x - 48, P.y - 48, P.x + 48, P.y + 48))
+		return 0;
+	vec2 Rd = gs_Geo.Dir(P);
+	float L = std::max(length(V), 10.0f);
+	float Best = 0;
+	for(int a = 0; a < 24; a++)
+	{
+		float Ang = 2 * pi * a / 24;
+		vec2 D(std::cos(Ang), std::sin(Ang));
+		bool Hit = false;
+		for(float r = 6.0f; r <= 44.0f; r += 4.0f)
+		{
+			vec2 Q = P + D * r;
+			if(M.Tile((int)std::floor(Q.x / 32), (int)std::floor(Q.y / 32)) == TILE_SOLID)
+			{
+				Hit = true;
+				break;
+			}
+		}
+		if(!Hit)
+			continue;
+		float c = dot(-D, Rd);
+		Best = std::max(Best, 24.0f * L * c + 144.0f);
+	}
+	return Best;
+}
+
 static void Score(const CFastG &G, SCand &C, const SState &Par)
 {
 	float Lat = 0;
@@ -1127,6 +1207,8 @@ int main(int argc, const char **argv)
 		else if(K == "jitter") gs_P.m_Jitter = std::stof(V);
 		else if(K == "seed") gs_P.m_Seed = std::stoi(V);
 		else if(K == "credw") gs_P.m_CredW = std::stof(V);
+		else if(K == "kcred") gs_P.m_KCred = std::stof(V);
+		else if(K == "kready") gs_P.m_KReady = std::stoi(V);
 		else if(K == "quota") gs_P.m_Quota = std::stoi(V);
 		else if(K == "rollh") gs_P.m_RollH = std::stoi(V);
 		else if(K == "shh") gs_P.m_ShH = std::stoi(V);
@@ -1138,6 +1220,11 @@ int main(int argc, const char **argv)
 		else if(K == "egain") gs_P.m_EGain = std::stof(V);
 		else if(K == "gatesurv") gs_P.m_GateSurv = std::stoi(V);
 		else if(K == "commitk") gs_P.m_CommitK = std::stoi(V);
+		else if(K == "sinkh") gs_Line.m_SinkH = std::stof(V);
+		else if(K == "boost") gs_P.m_Boost = std::stof(V);
+		else if(K == "sinkmin") gs_Line.m_SinkMin = std::stof(V);
+		else if(K == "nofire") std::sscanf(V.c_str(), "%d,%d", &gs_P.m_NoFire0, &gs_P.m_NoFire1);
+		else if(K == "nokick") std::sscanf(V.c_str(), "%d,%d", &gs_P.m_NoKick0, &gs_P.m_NoKick1);
 		else if(K == "trackfrac") gs_P.m_TrackFrac = std::stof(V);
 		else if(K == "trackv") gs_P.m_TrackV = std::stof(V);
 		else if(K == "tracklag") gs_P.m_TrackLag = std::stof(V);
@@ -1267,6 +1354,7 @@ int main(int argc, const char **argv)
 		// gs_Ref index 0 = race tick m_Rt0 + 1
 		gs_Ref.m_Rt0 += 1;
 		gs_Line.m_Rt0 = gs_Ref.m_Rt0;
+		gs_Line.FindSinks();
 		gs_Ref.m_vEnv.resize(gs_Ref.m_vG.size());
 		float m = 1e9f;
 		for(size_t k = 0; k < gs_Ref.m_vG.size(); k++)
@@ -1310,6 +1398,12 @@ int main(int argc, const char **argv)
 	for(int f : vIncFires)
 		if(f < Root.m_G.m_Tick)
 			AddFire(Root, f);
+	if(gs_P.m_Boost != 0)
+	{
+		vec2 V = Root.m_G.m_Core.m_Vel;
+		Root.m_G.m_Core.m_Vel = V + normalize(V) * gs_P.m_Boost;
+		std::printf("boost: v %.1f %.1f -> %.1f %.1f\n", V.x, V.y, Root.m_G.m_Core.m_Vel.x, Root.m_G.m_Core.m_Vel.y);
+	}
 	gs_T0 = Root.m_G.m_Tick;
 	Root.m_G0 = gs_P.m_Prefix.empty() ? (float)Root.m_G.RaceTick() : gs_Line.Project(Root.m_G.m_Core.m_Pos, (float)Root.m_G.RaceTick() - 60, nullptr, 60, 80);
 	gs_RootPos = Root.m_G.m_Pos;
@@ -1384,6 +1478,10 @@ int main(int argc, const char **argv)
 				const bool Grounded = CTasGame::Collision()->IsOnGround(G.m_Pos, 28.0f);
 				const bool CanJump = !Prev.m_Jump && (Grounded || !(G.m_Core.m_Jumped & 2));
 				auto Emit = [&](const STasInput &In, const SRetroShot *pR1, const SRetroShot *pR2, bool ImmFire, bool IsInc) {
+					if(In.m_Fire && G.RaceTick() + 1 >= gs_P.m_NoFire0 && G.RaceTick() + 1 <= gs_P.m_NoFire1 && !IsInc)
+						return;
+					if((In.m_Fire || pR1) && G.RaceTick() + 1 >= gs_P.m_NoKick0 && G.RaceTick() + 1 <= gs_P.m_NoKick1 && !IsInc)
+						return;
 					Tmp = S;
 					if(pR1)
 						ApplyRetro(Tmp, *pR1);
@@ -1417,6 +1515,8 @@ int main(int argc, const char **argv)
 						gs_NRetroEmit++;
 					if(ImmFire)
 						gs_NFireEmit++;
+					if(ImmFire && pR1)
+						gs_NStackEmit++;
 					SCand C;
 					C.m_Parent = i;
 					C.m_In = In;
@@ -1426,6 +1526,8 @@ int main(int argc, const char **argv)
 					if(pR2)
 						C.m_aR[C.m_NR++] = *pR2;
 					Score(Tmp.m_G, C, S);
+					if(gs_P.m_KCred > 0 && Tmp.m_G.m_ReloadTimer <= gs_P.m_KReady)
+						C.m_Opt += gs_P.m_KCred * KickCredit(Tmp.m_G);
 					if(gs_P.m_CredW > 0)
 					{
 						int aF[MAXFIRE + 1];
@@ -1434,7 +1536,7 @@ int main(int argc, const char **argv)
 							aF[k] = Tmp.m_aFire[k];
 						if(Tmp.m_G.m_ReloadTimer > 0 && ReloadFrom(Tmp, Tmp.m_G.m_Tick) == 0)
 							aF[NF++] = Tk; // a shot of this step (point-blank or the incumbent's)
-						C.m_Opt = SlotCredit(aF, NF, Tmp.m_G.m_Tick, length(Tmp.m_G.m_Core.m_Vel));
+						C.m_Opt += SlotCredit(aF, NF, Tmp.m_G.m_Tick, length(Tmp.m_G.m_Core.m_Vel));
 					}
 					C.m_Key = StateKey(Tmp.m_G) ^ (uint64_t)(In.m_Hook * 7 + In.m_Jump * 13 + In.m_Fire * 31);
 					if(gs_P.m_Jitter > 0)
@@ -1546,7 +1648,9 @@ int main(int argc, const char **argv)
 					}
 				}
 				// point-blank shots (explode in this step)
-				if(G.m_ReloadTimer == 0 && ReloadFrom(S, G.m_Tick) == 0 && G.m_NumProj < CFastG::MAX_PROJ)
+				vFire.clear();
+				const bool CanPB = G.m_ReloadTimer == 0 && ReloadFrom(S, G.m_Tick) == 0 && G.m_NumProj < CFastG::MAX_PROJ;
+				if(CanPB)
 				{
 					FireAims(G, RouteDir, vFire);
 					gs_NFireTry += (long)vFire.size();
@@ -1569,6 +1673,34 @@ int main(int argc, const char **argv)
 				{
 					RetroFind(S, Step - 1, RouteDir, vR);
 					gs_NRetroFound += (long)vR.size();
+					if(CanPB)
+					{
+						gs_NCanPB++;
+						if(!vFire.empty())
+							gs_NPBAims++;
+						for(auto &R : vR)
+							if(G.m_Tick - R.m_Tau >= 25)
+							{
+								gs_NOldR++;
+								break;
+							}
+					}
+					// lob + point-blank double kicks: an old retro shot (25+ ticks, reload back) with a shot now
+					if(CanPB)
+						for(auto &R : vR)
+							if(G.m_Tick - R.m_Tau >= 25)
+								for(auto [TX, TY] : vFire)
+								{
+									gs_NStackTry++;
+									STasInput F = Base;
+									F.m_Dir = Prev.m_Dir;
+									F.m_Jump = 0;
+									F.m_Hook = Hooking;
+									F.m_Fire = 1;
+									F.m_TX = TX;
+									F.m_TY = TY;
+									Emit(F, &R, nullptr, true, false);
+								}
 					int Used = 0;
 					for(int r = 0; r < (int)vR.size() && Used < gs_P.m_Retro; r++)
 					{
@@ -1696,7 +1828,7 @@ int main(int argc, const char **argv)
 				if(c.m_Gate)
 					continue;
 				float Eref = gs_Line.EnergyAt(c.m_G);
-				float S = c.m_Lag + c.m_Jit - Lam * (c.m_E + c.m_Opt - Eref);
+				float S = c.m_Lag + c.m_Jit - Lam * (gs_Line.EWeight(c.m_G) * (c.m_E - Eref) + c.m_Opt);
 				v.push_back({S, (int)k});
 			}
 			int Want = std::min((int)v.size(), gs_P.m_Beam * 20 / NL + 256);
@@ -1773,7 +1905,7 @@ int main(int argc, const char **argv)
 				{
 					const SCand &c = vAll[k];
 					float Eref = gs_Line.EnergyAt(c.m_G);
-					v.push_back({c.m_Lag + c.m_Jit - Lam * (c.m_E + c.m_Opt - Eref), k});
+					v.push_back({c.m_Lag + c.m_Jit - Lam * (gs_Line.EWeight(c.m_G) * (c.m_E - Eref) + c.m_Opt), k});
 				}
 				std::sort(v.begin(), v.end());
 				vOrder[l].clear();
@@ -2009,6 +2141,29 @@ int main(int argc, const char **argv)
 	}
 	std::vector<STasInput> vFull = vPrefix;
 	vFull.insert(vFull.end(), vOut.begin(), vOut.end());
+	{
+		// trace of the found path from the root state (as searched, boost included)
+		std::string Tf = gs_P.m_Out + ".trace";
+		FILE *f = std::fopen(Tf.c_str(), "w");
+		if(f)
+		{
+			CFastG F = Root.m_G;
+			std::vector<SExplLog> vL;
+			for(size_t k = 0; k < vOut.size(); k++)
+			{
+				vL.clear();
+				CFastG::ms_pLog = &vL;
+				F.Step(vOut[k]);
+				CFastG::ms_pLog = nullptr;
+				std::fprintf(f, "T %d %d %.2f %.2f %.3f %.3f %.3f hs %d hp %.0f %.0f in %d %d %d %d %d %d rl %d np %d\n", (int)(vPrefix.size() + k), F.RaceTick(), F.m_Core.m_Pos.x,
+					F.m_Core.m_Pos.y, F.m_Core.m_Vel.x, F.m_Core.m_Vel.y, length(F.m_Core.m_Vel), F.m_Core.m_HookState, F.m_Core.m_HookPos.x, F.m_Core.m_HookPos.y, vOut[k].m_Dir,
+					vOut[k].m_Jump, vOut[k].m_Hook, vOut[k].m_Fire, vOut[k].m_TX, vOut[k].m_TY, F.m_ReloadTimer, F.m_NumProj);
+				for(auto &E : vL)
+					std::fprintf(f, "E %d %d ex %.1f %.1f tee %.1f %.1f dist %.1f |f| %.2f\n", (int)(vPrefix.size() + k), E.m_Tick - F.m_StartTick, E.m_E.x, E.m_E.y, E.m_Tee.x, E.m_Tee.y, E.m_Dist, length(E.m_Force));
+			}
+			std::fclose(f);
+		}
+	}
 	// verify on the full prediction world
 	int VerRt = -1;
 	float VerG = 0;
@@ -2046,6 +2201,7 @@ int main(int argc, const char **argv)
 			length(G.Vel()), dot(G.Vel(), G.Vel()) - G.Pos().y);
 	}
 	WriteInputs(gs_P.m_Out.c_str(), vFull);
+	std::printf("stacks: tried %ld emitted %ld | retro found %ld emitted %ld | canpb %ld with pb aims %ld with old retro %ld\n", gs_NStackTry.load(), gs_NStackEmit.load(), gs_NRetroFound.load(), gs_NRetroEmit.load(), gs_NCanPB.load(), gs_NPBAims.load(), gs_NOldR.load());
 	std::printf("GATE t %.3f (incumbent %.3f) E %.0f retro patches %zu -> %s (%.0fs)\n", gs_vHist.empty() ? 0.0f : Best.m_T + (GateG >= 0 ? gs_P.m_EGain * (Best.m_E - gs_Line.EnergyAt(GateG)) : 0.0f),
 		GateG >= 0 ? GateG : (float)IncFinish, Best.m_E, vPatches.size(), gs_P.m_Out.c_str(),
 		std::chrono::duration<double>(std::chrono::steady_clock::now() - t0).count());
