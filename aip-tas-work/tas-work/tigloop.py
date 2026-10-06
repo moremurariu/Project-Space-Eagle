@@ -16,6 +16,7 @@ B = '../ddnet/build-sim/'
 inc, name = sys.argv[1], sys.argv[2]
 kw = dict(a.split('=', 1) for a in sys.argv[3:])
 SEG, NSEED, MINLEAD = int(kw.get('seg', 300)), int(kw.get('seeds', 4)), float(kw.get('minlead', 2))
+JUDGE = int(kw.get('judge', 150))
 T_END = time.time() + float(kw.get('hours', 4)) * 3600
 D = f'runs/tig/{name}'
 os.makedirs(D, exist_ok=True)
@@ -93,10 +94,10 @@ def finish_of(run):
     return int(m.group(2)) if ok else None
 
 
-def tig(pre, csv, track, off, maxt, out, seed):
+def tig(pre, csv, track, off, maxt, out, seed, extra=()):
     j = '0' if seed == 0 else '3'
     r = sh([B + 'x_tig', 'AiP-Gores.map', pre, f'csv={csv}', f'track={track}', f'off={off:.1f}', f'maxt={maxt}', f'out={out}',
-            f'seed={seed}', f'jitter={j}'] + TIG)
+            f'seed={seed}', f'jitter={j}'] + TIG + list(extra))
     m = re.search(r'finish (-?\d+)', r)
     return int(m.group(1)) if m else -1
 
@@ -122,7 +123,7 @@ for s in starts:
     # 1. follow Teero
     with ThreadPoolExecutor(NSEED) as ex:
         list(ex.map(lambda sd: tig(pre, CSV, TRACK, off, s + SEG, f'{D}/s{s}_t{sd}.txt', sd), range(NSEED)))
-    best = (-99, None, None)
+    cands = []
     for sd in range(NSEED):
         tf = f'{D}/s{s}_t{sd}.txt'
         if not os.path.exists(tf):
@@ -130,16 +131,42 @@ for s in starts:
         n = sum(1 for l in open(tf) if l.strip())
         for c in range(s + 20, min(s + SEG, n - 68), 10):
             p = root_progress(cut(tf, c, f'{D}/s{s}_t{sd}_c.txt'))
-            if p > 0 and p - c > best[0]:
-                best = (p - c, sd, c)
-    log(f'start {s} (off {off:.1f}): best Teero-tracker lead {best[0]:+.1f} (seed {best[1]}, cut {best[2]}) ({time.time() - t0:.0f}s)')
-    if best[0] < MINLEAD:
+            if p > 0:
+                cands.append((p - c, sd, c))
+    cands.sort(reverse=True)
+    # the best few cuts (at least 30 ticks apart) are judged by a short follower run: a position lead at the cut can
+    # hide a state that loses it right after
+    pick = []
+    for l, sd, c in cands:
+        if l < MINLEAD or len(pick) >= 3:
+            break
+        if all(abs(c - c2) >= 30 for _, _, c2 in pick):
+            pick.append((l, sd, c))
+    log(f'start {s} (off {off:.1f}): Teero-tracker cuts ' + ' '.join(f'{c}(s{sd}):{l:+.1f}' for l, sd, c in pick) +
+        f' ({time.time() - t0:.0f}s)')
+    if not pick:
         continue
-    lead, sd, c = best
+
+    def judge(x):
+        l, sd, c = x
+        pre2 = cut(f'{D}/s{s}_t{sd}.txt', c, f'{D}/s{s}_c{c}.txt')
+        out = f'{D}/s{s}_c{c}_j.txt'
+        tig(pre2, f'{D}/inc.csv', f'{D}/inc_track.txt', l, c + JUDGE, out, 0, ['shadow=' + inc])
+        n = sum(1 for z in open(out) if z.strip())
+        e = min(c + JUDGE, n - 68)
+        return (root_progress(cut(out, e, f'{D}/s{s}_c{c}_je.txt')) - e, l, sd, c)
+
+    with ThreadPoolExecutor(NSEED) as ex:
+        J = sorted(ex.map(judge, pick), reverse=True)
+    log('  after a follower: ' + ' '.join(f'{c}:{l0:+.1f}->{j:+.1f}' for j, l0, sd, c in J))
+    if J[0][0] < 1.0:
+        continue
+    _, lead, sd, c = J[0]
     pre2 = cut(f'{D}/s{s}_t{sd}.txt', c, f'{D}/s{s}_cut.txt')
     # 2. follow the incumbent from there to the finish
     with ThreadPoolExecutor(NSEED) as ex:
-        fins = list(ex.map(lambda q: tig(pre2, f'{D}/inc.csv', f'{D}/inc_track.txt', lead, 2800, f'{D}/s{s}_r{q}.txt', q), range(NSEED)))
+        fins = list(ex.map(lambda q: tig(pre2, f'{D}/inc.csv', f'{D}/inc_track.txt', lead, 2800, f'{D}/s{s}_r{q}.txt', q, ['shadow=' + inc]),
+                           range(NSEED)))
     ok = [(f, q) for q, f in enumerate(fins) if f > 0]
     log(f'  incumbent-tracker finishes: {fins}')
     if not ok:
