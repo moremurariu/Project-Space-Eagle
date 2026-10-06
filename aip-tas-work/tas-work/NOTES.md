@@ -646,3 +646,7 @@ Teero played the **KoG** version of AiP-Gores (user, from Teero). Our runs so fa
   -10 k1324, -13 k1399, -16 k1474, -23 k1549, -37 k1624 (shaft double kick), -45 k1699, -49 k1774, -54 k1849,
   -60 k1924, -80 k1999 (S-bend), -83, -87 k2149, -97, -106, -111, -120, -127 k2524, finish 2677 vs Teero 2536.
   (old best kog_full_2693.txt). Post-grenade from the exit: 2677-1012 = 1665 ticks vs Teero's ~1503.
+- **Incumbent LNS (lnsinc.py, runs/lnsinc2, 2 workers, cuts >= 1900) on 2677: 2669 (53.38 s)** at cut 2304 (Teero
+  ref, beam 8000), server-identical (start 68, finish 2737, no freeze, no double start) -> kog_full_best.txt.
+  Other iterations: 2677 (cut 2379 own, cut 2068 own), 2673 (cut 2035 own, on the 2677 incumbent), 2669 (cuts 2305, 2279).
+- physlab6 (agent): Teero's shaft double kick (2x2 block at x~3251, k1583) from cuts >= 1450 of the best run.
