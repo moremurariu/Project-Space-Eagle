@@ -5,10 +5,10 @@ Map: KoG AiP-Gores, sha256 `353b27cf72168cd0bb917c56eb46a83ef8d4266f310ec79b68db
 `aip-tas-fast/kog.map`).
 
 ## Result (metric: race tick of the grenade pickup)
-- **964** (`runs/kog_pregren_964.txt`), previous best 978 → **−14 ticks** (also 965, 966, 967, 968).
+- **963** (`runs/kog_pregren_963.txt`), previous best 978 → **−15 ticks** (also 964, 965, 966, 967, 968).
   Checked on DDNet's prediction code (`replay`) and on the real server code (`testrunner` `TasServer.Run`): start tick 68,
-  pickup at input 1032 = race tick 964, no freeze, no double start up to the pickup.
-- Like all runs from this search (977 … 964), the tee arrives at ~37 px/tick diving down-right with both jumps spent and
+  pickup at input 1031 = race tick 963, no freeze, no double start up to the pickup.
+- Like all runs from this search (977 … 963), the tee arrives at ~37 px/tick diving down-right with both jumps spent and
   freezes on the pocket floor right after the pickup. This is accepted for this metric (a separate step turns such
   arrivals into viable ones for a few ticks). `viacheck` measures the exit: from the 978 run the climb point
   (5254, 2176) is reached at race tick 1011; from the 977 … 966 runs it is not reachable.
@@ -77,6 +77,8 @@ Drivers (run from a folder next to `ddnet/` and `kog.map`): `tools/splice.py BES
   loses the lead at the ground jump near x 2734 and over the peak at rt 870–890.
 - **964**: `tools/glns.py` on 965 (cuts at rt 700–960), guided by 966 aligned at the cut, with 966's own inputs offered
   as shadow candidates (`GLNS_SHADOW=0.7`: `shadowfile=` / `shadowshift=`); found at cut 780.
+- **963**: the same guided LNS on 964 (cuts at rt 440–960, guides 966/965/967 and older runs), found at cut 719
+  guided by 967 aligned 3 ticks early.
 - `tools/pipe.py` chains the whole rebuild (Teero-style corridor search, turn exit, follow stages, completion) so a
   better upstream can be carried to the pickup with one command.
 - Tools: `tools/leadat.py` / `tools/leadtrace.py` (lead over a reference run by nearest point), `tools/tlag.py` (lead
