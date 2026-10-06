@@ -640,3 +640,9 @@ Teero played the **KoG** version of AiP-Gores (user, from Teero). Our runs so fa
   padref 80/120 with pre-fire aims: 1656/1656/1657. => double kicks need the line and the shot schedule planned
   together (as Teero does); not reachable with seg + plans.
 - Chain g2 step 10: k1849 at 1900 (54 behind Teero). Projected finish ~2630.
+- **Chain g2 finished: kog_full_best.txt = 2677 race ticks (53.54 s), server-identical (TasReplay: start 68, finish
+  2745, no freeze, no double start)** - F1010 exit (968-based prefix) + 20 windows (p8 step 1, p9 step 2, p10 steps
+  3-5, p11 steps 6-9, p11 + pre-fire variants 10-20). Lead vs Teero by window end (true ticks): +4 k1174, -4 k1249,
+  -10 k1324, -13 k1399, -16 k1474, -23 k1549, -37 k1624 (shaft double kick), -45 k1699, -49 k1774, -54 k1849,
+  -60 k1924, -80 k1999 (S-bend), -83, -87 k2149, -97, -106, -111, -120, -127 k2524, finish 2677 vs Teero 2536.
+  (old best kog_full_2693.txt). Post-grenade from the exit: 2677-1012 = 1665 ticks vs Teero's ~1503.
