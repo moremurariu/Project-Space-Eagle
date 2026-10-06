@@ -728,3 +728,4 @@ Teero played the **KoG** version of AiP-Gores (user, from Teero). Our runs so fa
   server; backup .bak_dblexpl): nadelab demo now 2165 px on CTasGame (was 3185; server 2166 from the standing y),
   best_height 2413 unchanged, kog_full_best still replays to 2663. Patch included in changes.patch.
 - LNS lnsr1 (retro variants, on the r1b 2663 run): **2661 (53.22 s)** at cut 2403 (retro=3 loadres=0.2 quota=30, beam 8000), server-identical (start 68, finish 2729, no freeze, no double start) -> kog_full_best.txt. (autoaccept's first check got an empty testrunner output - transient; re-checked by hand.)
+- auto-accepted lnsr1/best_2653.txt: **2653 (53.06 s)**, server-identical (start tick 68 finish tick 2721 -> 2653 ticks = 53.06 s; no freeze, no double start) -> kog_full_best.txt.
