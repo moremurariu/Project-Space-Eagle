@@ -5,10 +5,10 @@ Map: KoG AiP-Gores, sha256 `353b27cf72168cd0bb917c56eb46a83ef8d4266f310ec79b68db
 `aip-tas-fast/kog.map`).
 
 ## Result (metric: race tick of the grenade pickup)
-- **966** (`runs/kog_pregren_966.txt`), previous best 978 → **−12 ticks** (also 967, 968).
+- **965** (`runs/kog_pregren_965.txt`), previous best 978 → **−13 ticks** (also 966, 967, 968).
   Checked on DDNet's prediction code (`replay`) and on the real server code (`testrunner` `TasServer.Run`): start tick 68,
-  pickup at input 1034 = race tick 966, no freeze, no double start up to the pickup.
-- Like all runs from this search (977 … 966), the tee arrives at ~37 px/tick diving down-right with both jumps spent and
+  pickup at input 1033 = race tick 965, no freeze, no double start up to the pickup.
+- Like all runs from this search (977 … 965), the tee arrives at ~37 px/tick diving down-right with both jumps spent and
   freezes on the pocket floor right after the pickup. This is accepted for this metric (a separate step turns such
   arrivals into viable ones for a few ticks). `viacheck` measures the exit: from the 978 run the climb point
   (5254, 2176) is reached at race tick 1011; from the 977 … 966 runs it is not reachable.
@@ -55,3 +55,25 @@ Drivers (run from a folder next to `ddnet/` and `kog.map`): `tools/splice.py BES
   +2 at the turn exit (race tick 403 vs 405), but no fresh search carries that through corridor 2 as well as 967's.
 - **966**: `tools/glns.py` (guided LNS: incumbent-kept searches from random cuts, the time model following another run's
   track aligned at the cut) on 967, guided by older runs that were faster in the left-U-turn exit / corridor 3.
+
+## 965: Teero's upstream carried through our downstream (Oct 6, later)
+- Where the time is: Teero's new run leads 966 by ~6.5 ticks at race tick 260 (corridor 1) and ~7.5 after the right
+  U-turn, then loses ~8 in corridor 2 (x 4400 → 1200) where our line keeps much more energy (block touch at x 5490).
+  Note: his run is from frametee, whose README says its physics are deliberately altered; the speed he gains around the
+  floor touch at x ≈ 2250 (≈ +1.3 px/tick within 3 ticks, more than DDNet's hook/jump rules seem to allow) is not
+  reproduced by any of our searches, so part of his corridor-1 lead may not exist under real DDNet physics.
+- Our Teero-style prefix (`AT`: his line and aims through corridor 1 and the turn top, +3.5 at rt 250) used to lose its
+  lead at the turn exit. The cause was the search objective: cutting earlier (rt 320–345) with a stronger energy weight
+  (`ge=0.08`) keeps +3.1 at rt 440.
+- Carrying a lead through 966's polished downstream needs the search to *follow* 966 a few ticks early. New `ddsearch`
+  keys: `shadow=N` (also offer the reference run's own inputs at the matched reference point, offsets 1-N..N;
+  `shadowfile=`/`shadowshift=` take them from another run), `velw=` / `velsym=` (penalise velocity differences to the
+  reference: sideways and slower, or all), `latq=` (squared lateral distance), and `track=FILE` (pure time-indexed
+  tracking of another trajectory, optional velocities: `trackv`, `trackoff`, `trackdecay`, `trackw`, `tracklook`,
+  `trackend`). `tools/stage.py` runs this stage by stage, restarting each stage 15 ticks before the previous dump so
+  the last decisions before a boundary can be revised (a hook fired one tick early at a boundary cost a full tick).
+- Chain: `AT` → turn exit (+3.1 at rt 440) → corridor 2 with shadow inputs (+2.96 at rt 640) → left U-turn (+2.93 at
+  rt 760) → a plain time-model search with `shadow=2` to the pickup: **965**. Following 966 further (rt 760 → 900)
+  loses the lead at the ground jump near x 2734 and over the peak at rt 870–890.
+- Tools: `tools/leadat.py` / `tools/leadtrace.py` (lead over a reference run by nearest point), `tools/tlag.py` (lead
+  against a "race_tick x y" track), `tools/trk.py` (track-then-splice), `replay` now also prints the hook position.

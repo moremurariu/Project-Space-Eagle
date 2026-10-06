@@ -1,5 +1,5 @@
 diff --git a/CMakeLists.txt b/CMakeLists.txt
-index 10942e0..764c3e3 100644
+index 10942e0..ad684e7 100644
 --- a/CMakeLists.txt
 +++ b/CMakeLists.txt
 @@ -3486,6 +3486,7 @@ if((GTEST_FOUND OR DOWNLOAD_GTEST) AND SERVER)
@@ -18,7 +18,7 @@ index 10942e0..764c3e3 100644
 +    src/game/client/laser_data.cpp src/game/client/pickup_data.cpp src/game/client/projectile_data.cpp
 +    src/tas/sim.cpp src/tas/fast.cpp)
 +  list(APPEND TAS_EXTRA_SRC ${PROJECT_BINARY_DIR}/src/generated/client_data.cpp ${PROJECT_BINARY_DIR}/src/generated/client_data.h)
-+  foreach(TAS_TOOL replay fastcheck eacct ddsearch viacheck)
++  foreach(TAS_TOOL replay fastcheck eacct ddsearch viacheck brute)
 +    if(EXISTS ${PROJECT_SOURCE_DIR}/src/tas/${TAS_TOOL}.cpp)
 +      add_executable(${TAS_TOOL} EXCLUDE_FROM_ALL src/tas/${TAS_TOOL}.cpp ${TAS_EXTRA_SRC}
 +        $<TARGET_OBJECTS:engine-shared> $<TARGET_OBJECTS:game-shared> $<TARGET_OBJECTS:rust-bridge-shared> ${DEPS})
@@ -217,12 +217,260 @@ index 18019f5..49e23bd 100644
  	CCollision();
  	~CCollision();
  
+diff --git a/src/tas/brute.cpp b/src/tas/brute.cpp
+new file mode 100644
+index 0000000..5f893e8
+--- /dev/null
++++ b/src/tas/brute.cpp
+@@ -0,0 +1,242 @@
++// brute: TrackMania-style bruteforce of a pre-grenade run on the exact fast stepper (CFast).
++//
++//   brute MAP INPUTS OUT [seconds=S] [threads=N] [from=RT] [to=RT] [window=W] [seed=K]
++//
++// Random small edits to the run's inputs in a window (direction, jump, hook press/release moved by a tick, hook aim
++// nudged by a fraction of a degree or replaced), each replayed exactly from a cached state to the grenade pickup.
++// Objective, lexicographic: earlier pickup tick, then the tee's distance to the grenade one tick before the pickup
++// (closer = nearer to picking it up a tick earlier). Improvements are written to OUT (verified on CTasGame with the
++// fast collision paths off).
++#include "fast.h"
++#include "tasio.h"
++
++#include <game/collision.h>
++
++#include <atomic>
++#include <chrono>
++#include <cmath>
++#include <cstdio>
++#include <cstdlib>
++#include <cstring>
++#include <mutex>
++#include <random>
++#include <string>
++#include <thread>
++#include <vector>
++
++struct SEval
++{
++	int m_Rt = 1 << 30; // pickup race tick
++	float m_D = 1e9f; // distance to the grenade one tick before the pickup
++	bool Better(const SEval &o) const { return m_Rt < o.m_Rt || (m_Rt == o.m_Rt && m_D < o.m_D - 1e-4f); }
++};
++
++static vec2 gs_Grenade;
++
++// replay from state F (after input index Start-1) with inputs v[Start..]; returns the objective
++static SEval Eval(CFast F, const std::vector<STasInput> &v, int Start)
++{
++	SEval R;
++	vec2 Prev = F.m_Core.m_Pos;
++	for(int i = Start; i < (int)v.size() + 40; i++)
++	{
++		const STasInput &In = i < (int)v.size() ? v[i] : v.back();
++		vec2 Before = F.m_Core.m_Pos;
++		F.Step(In);
++		if(F.m_Dead)
++			return R;
++		if(F.m_Got)
++		{
++			R.m_Rt = F.RaceTick();
++			R.m_D = distance(Prev, gs_Grenade);
++			return R;
++		}
++		Prev = Before;
++	}
++	return R;
++}
++
++int main(int argc, const char **argv)
++{
++	if(argc < 4)
++	{
++		std::printf("usage: brute MAP INPUTS OUT [seconds= threads= from= to= window= seed=]\n");
++		return 1;
++	}
++	double Seconds = 600;
++	int Threads = 4, From = 0, To = 100000, Window = 40;
++	unsigned Seed = 1;
++	for(int i = 4; i < argc; i++)
++	{
++		std::string A = argv[i];
++		size_t Eq = A.find('=');
++		if(Eq == std::string::npos)
++			continue;
++		std::string K = A.substr(0, Eq);
++		const char *v = A.c_str() + Eq + 1;
++		if(K == "seconds")
++			Seconds = atof(v);
++		else if(K == "threads")
++			Threads = atoi(v);
++		else if(K == "from")
++			From = atoi(v);
++		else if(K == "to")
++			To = atoi(v);
++		else if(K == "window")
++			Window = atoi(v);
++		else if(K == "seed")
++			Seed = atoi(v);
++	}
++	if(!CTasGame::LoadMap(argv[1]))
++		return 1;
++	CFast::Init();
++	CCollision::ms_FastPaths = true;
++	const SMapInfo &M = CTasGame::Map();
++	gs_Grenade = vec2(170 * 32 + 16, 77 * 32 + 16);
++	std::vector<STasInput> vBest = ReadInputs(argv[2]);
++	CTasGame G;
++	G.Spawn(M.m_vSpawns[0]);
++	CFast F0;
++	F0.FromGame(G);
++
++	// states before each input of the current best
++	std::mutex Mtx;
++	std::vector<CFast> vStates;
++	auto Rebuild = [&](const std::vector<STasInput> &v) {
++		std::vector<CFast> vS;
++		CFast F = F0;
++		for(const STasInput &In : v)
++		{
++			vS.push_back(F);
++			F.Step(In);
++			if(F.m_Got || F.m_Dead)
++				break;
++		}
++		return vS;
++	};
++	vStates = Rebuild(vBest);
++	SEval Best = Eval(F0, vBest, 0);
++	int StartTick = vStates.back().m_StartTick;
++	std::printf("start: pickup race tick %d, distance before %.2f, start tick %d\n", Best.m_Rt, Best.m_D, StartTick);
++	std::fflush(stdout);
++	if(Best.m_Rt >= (1 << 30))
++		return 1;
++	vBest.resize(vStates.size());
++
++	std::atomic<long> Trials(0), Accepts(0);
++	auto T0 = std::chrono::steady_clock::now();
++	auto Worker = [&](int Th) {
++		std::mt19937 Rng(Seed * 1000003u + Th * 7919u);
++		std::vector<STasInput> v;
++		std::vector<CFast> vS;
++		SEval Cur;
++		int Version = -1;
++		static std::atomic<int> s_Version(0);
++		while(std::chrono::duration<double>(std::chrono::steady_clock::now() - T0).count() < Seconds)
++		{
++			if(Version != s_Version.load())
++			{
++				std::lock_guard<std::mutex> L(Mtx);
++				v = vBest;
++				vS = vStates;
++				Cur = Best;
++				Version = s_Version.load();
++			}
++			int N = (int)v.size();
++			// window start (input index), in [From, To] race ticks
++			int Lo = std::max(0, From + StartTick - 1), Hi = std::min(N - 2, To + StartTick - 1);
++			if(Lo > Hi)
++				return;
++			int S = Lo + (int)(Rng() % (unsigned)(Hi - Lo + 1));
++			std::vector<STasInput> w(v.begin() + S, v.end());
++			int Edits = 1 + Rng() % 3;
++			for(int e = 0; e < Edits; e++)
++			{
++				int k = (int)(Rng() % (unsigned)std::min(Window, (int)w.size()));
++				STasInput &In = w[k];
++				int Kind = Rng() % 8;
++				if(Kind == 0)
++					In.m_Dir = (int)(Rng() % 3) - 1;
++				else if(Kind == 1)
++					In.m_Jump ^= 1;
++				else if(Kind == 2)
++				{
++					// move a hook press/release by one tick
++					if(k + 1 < (int)w.size() && w[k].m_Hook != w[k + 1].m_Hook)
++						std::swap(w[k].m_Hook, w[k + 1].m_Hook);
++					else if(k > 0 && w[k].m_Hook != w[k - 1].m_Hook)
++						std::swap(w[k].m_Hook, w[k - 1].m_Hook);
++					else
++						In.m_Hook ^= 1;
++				}
++				else if(Kind <= 5)
++				{
++					// nudge the aim (it matters on the tick the hook is fired)
++					float A = std::atan2((float)In.m_TY, (float)In.m_TX);
++					float Step = (Kind == 3 ? 0.002f : Kind == 4 ? 0.01f : 0.05f) * (Rng() % 2 ? 1 : -1);
++					A += Step;
++					In.m_TX = (int)std::lround(std::cos(A) * 10000);
++					In.m_TY = (int)std::lround(std::sin(A) * 10000);
++				}
++				else if(Kind == 6)
++				{
++					float A = (Rng() % 36000) / 36000.0f * 2 * pi;
++					In.m_TX = (int)std::lround(std::cos(A) * 10000);
++					In.m_TY = (int)std::lround(std::sin(A) * 10000);
++				}
++				else
++					In.m_Dir = w[std::max(0, k - 1)].m_Dir; // copy the previous direction
++			}
++			std::vector<STasInput> Cand(v.begin(), v.begin() + S);
++			Cand.insert(Cand.end(), w.begin(), w.end());
++			SEval E = Eval(vS[S], Cand, S);
++			Trials++;
++			if(E.Better(Cur))
++			{
++				std::lock_guard<std::mutex> L(Mtx);
++				if(E.Better(Best))
++				{
++					std::vector<CFast> vNS = Rebuild(Cand);
++					Cand.resize(vNS.size());
++					Best = E;
++					vBest = Cand;
++					vStates = vNS;
++					s_Version++;
++					Accepts++;
++					double Sec = std::chrono::duration<double>(std::chrono::steady_clock::now() - T0).count();
++					std::printf("[%6.0fs %9ld trials] pickup %d, distance before %.3f (edit at race tick %d)\n", Sec, Trials.load(), Best.m_Rt, Best.m_D,
++						S + 1 - StartTick);
++					std::fflush(stdout);
++					// write if verified on the plain prediction code
++					CCollision::ms_FastPaths = false;
++					CTasGame V;
++					V.Spawn(M.m_vSpawns[0]);
++					bool Ok = false;
++					for(const STasInput &In : vBest)
++					{
++						V.Step(In);
++						if(V.Frozen() || V.EnteredFreeze() || V.m_StartTick == -2)
++							break;
++						if(V.HasGrenade())
++						{
++							Ok = V.m_Tick - V.m_StartTick == Best.m_Rt;
++							break;
++						}
++					}
++					CCollision::ms_FastPaths = true;
++					if(Ok)
++						WriteInputs(argv[3], vBest);
++					else
++						std::printf("  (verification failed)\n");
++				}
++			}
++		}
++	};
++	std::vector<std::thread> vTh;
++	for(int t = 0; t < Threads; t++)
++		vTh.emplace_back(Worker, t);
++	for(auto &T : vTh)
++		T.join();
++	std::printf("end: pickup %d, distance before %.3f, %ld trials, %ld accepted\n", Best.m_Rt, Best.m_D, Trials.load(), Accepts.load());
++	return 0;
++}
 diff --git a/src/tas/ddsearch.cpp b/src/tas/ddsearch.cpp
 new file mode 100644
-index 0000000..543c883
+index 0000000..6bd1118
 --- /dev/null
 +++ b/src/tas/ddsearch.cpp
-@@ -0,0 +1,1055 @@
+@@ -0,0 +1,1249 @@
 +// ddsearch: beam search to the grenade pickup on the exact fast stepper (CFast).
 +//
 +//   ddsearch MAP best=FILE cut=RT [key=value ...]
@@ -245,6 +493,8 @@ index 0000000..543c883
 +//       gateend=1 [gater=R] (goal: the reference's last position instead of the pickup; for post-pickup checks)
 +//       geogoal=X,Y [geol=L geos=S geor=R geoge=G geovmin=V geojump=1 geovref=VX,VY geovtol=T] (short windows: rank by race tick + geodesic distance from the position
 +//       extrapolated L ticks ahead to the gate point / S; stop when within R px of it; writes the inputs to OUT)
++//       aimfile=FILE [aimwin=W] (another player's aim per race tick "rt degrees" (y down): his aims around the matched
++//       reference time, +-W ticks and +-0.5 deg, are added to the hook fire options)
 +//       ref=FILE (reference track "race_tick x y" per line on our race clock, e.g. another player's run; replaces the
 +//       best run's positions as the time model's reference inside its time range)
 +//       prefix=FILE (start at the end of FILE instead of a cut of the best run; reference = best, no incumbent unless
@@ -299,12 +549,20 @@ index 0000000..543c883
 +static float gs_Lp = 0.0f;
 +static float gs_Jw = 0.0f; // energy credit for an unused air jump (jw=144 ~ its impulse)
 +static float gs_LatDz = 24.0f;
++static float gs_LatQ = 0.0f; // latq: + latq * lateral distance^2 (follow the reference's path closely)
++static int gs_Shadow = 0; // shadow=N: add the best run's inputs at the matched reference index (offsets 1-N .. N)
++static std::vector<STasInput> gs_vShadowIn;
++static int gs_ShadowShift = 0; // shadowfile=FILE shadowshift=S: shadow inputs from another run whose track is shifted by S ticks in ref=
++static float gs_VelW = 0.0f;
++static int gs_VelSym = 0; // velsym=1: velw also penalises being faster than the reference // velw: + velw * (sideways^2 + slower^2) velocity difference to the reference
 +static int gs_Threads = 1;
 +static float gs_Jitter = 0.0f;
 +static float gs_CellPos = 8.0f;
 +static float gs_CellVel = 1.0f;
 +static float gs_Abort = 25.0f; // give up when the best estimate is this many ticks behind the reference
-+static int gs_RotHook = 1; // add rotation-pulse hook aims (towards the reference tangent)
++static int gs_RotHook = 1;
++static std::vector<float> gs_vAimRef; // aimfile: another player's aim (radians) per reference race tick (index = race tick + 100)
++static int gs_AimWin = 3; // add rotation-pulse hook aims (towards the reference tangent)
 +
 +static float RampScale(vec2 Vel)
 +{
@@ -325,6 +583,7 @@ index 0000000..543c883
 +	float m_Score;
 +	int m_LastHook;
 +	int m_LastJump;
++	float m_Acc = 0.0f; // track mode: decayed sum of squared position errors
 +};
 +
 +static int gs_Geo = 0; // geogoal=X,Y: rank by race tick + geodesic distance to a gate point, stop at the gate
@@ -339,8 +598,42 @@ index 0000000..543c883
 +
 +static bool AtGoal(const CFast &F);
 +
++// track=FILE ("race_tick x y", any spacing, e.g. another player's run on our race clock): rank by how closely the tee
++// follows that trajectory in time (target = the track at race tick rt + trackoff): decayed sum of squared position
++// errors (trackdecay) + trackw * squared error of the position extrapolated tracklook ticks ahead. Stops at
++// race tick trackend and dumps the best states like dumpat.
++static std::vector<vec2> gs_vTrack; // index = race tick + 100 (target already shifted by trackoff)
++static std::vector<vec2> gs_vTrackVel; // optional target velocities (track lines "race_tick x y vx vy")
++static float gs_TrackOff = 0.0f, gs_TrackDecay = 0.9f, gs_TrackW = 0.5f, gs_TrackV = 0.0f; // trackv: weight of squared velocity errors
++static int gs_TrackLook = 4;
++static vec2 TrackAt(int Rt)
++{
++	int k = std::clamp(Rt + 100, 0, (int)gs_vTrack.size() - 1);
++	return gs_vTrack[k];
++}
++
 +static float Score(SState &S, std::mt19937 *pRng)
 +{
++	if(!gs_vTrack.empty())
++	{
++		const CFast &F = S.m_F;
++		vec2 P = F.m_Core.m_Pos, V = F.m_Core.m_Vel;
++		int Rt = F.RaceTick();
++		vec2 T = TrackAt(Rt);
++		S.m_Acc = S.m_Acc * gs_TrackDecay + dot(P - T, P - T);
++		if(gs_TrackV > 0 && !gs_vTrackVel.empty())
++		{
++			vec2 Dv = V - gs_vTrackVel[std::clamp(Rt + 100, 0, (int)gs_vTrackVel.size() - 1)];
++			S.m_Acc += gs_TrackV * dot(Dv, Dv);
++		}
++		vec2 Vd(V.x * RampScale(V), V.y);
++		vec2 L = P + Vd * (float)gs_TrackLook - TrackAt(Rt + gs_TrackLook);
++		S.m_RefIdx = Rt + (int)std::lround(gs_TrackOff) + gs_RefStart - 1; // for aimfile: the tracked player's time
++		float Est = S.m_Acc + gs_TrackW * dot(L, L);
++		if(pRng && gs_Jitter > 0)
++			Est += std::uniform_real_distribution<float>(-gs_Jitter, gs_Jitter)(*pRng);
++		return Est;
++	}
 +	if(gs_Geo)
 +	{
 +		const CFast &F = S.m_F;
@@ -393,6 +686,16 @@ index 0000000..543c883
 +	Est -= gs_Ge * (E - R.m_E);
 +	if(gs_Lp > 0 && Lat > gs_LatDz)
 +		Est += gs_Lp * (Lat - gs_LatDz);
++	if(gs_LatQ > 0)
++		Est += gs_LatQ * BestD;
++	if(gs_VelW > 0)
++	{
++		// follow the reference's velocity: penalise sideways and slower deviations (not faster ones)
++		vec2 Dv = V - R.m_Vel;
++		float Along = dot(Dv, R.m_Tan);
++		vec2 Perp = Dv - R.m_Tan * Along;
++		Est += gs_VelW * (dot(Perp, Perp) + (Along < 0 || gs_VelSym ? Along * Along : 0.0f));
++	}
 +	if(pRng && gs_Jitter > 0)
 +		Est += std::uniform_real_distribution<float>(-gs_Jitter, gs_Jitter)(*pRng);
 +	return Est;
@@ -501,7 +804,8 @@ index 0000000..543c883
 +		std::printf("usage: ddsearch MAP best=FILE cut=RT [beam= angles= hnow= ge= lp= latdz= threads= seed= jitter= out= cellpos= cellvel= abort= rothook=]\n");
 +		return 1;
 +	}
-+	std::string BestFile, PrefixFile, RefFile, Out = "ddsearch_out.txt";
++	std::string BestFile, PrefixFile, RefFile, TrackFile, ShadowFile, Out = "ddsearch_out.txt";
++	int TrackEnd = 1 << 30;
 +	int Cut = 100;
 +	unsigned Seed = 1;
 +	for(int i = 2; i < argc; i++)
@@ -587,8 +891,53 @@ index 0000000..543c883
 +			gs_GateEnd = atoi(v);
 +		else if(K == "gater")
 +			gs_GateR = atof(v);
++		else if(K == "track")
++			TrackFile = V;
++		else if(K == "trackoff")
++			gs_TrackOff = atof(v);
++		else if(K == "trackdecay")
++			gs_TrackDecay = atof(v);
++		else if(K == "trackw")
++			gs_TrackW = atof(v);
++		else if(K == "tracklook")
++			gs_TrackLook = atoi(v);
++		else if(K == "latq")
++			gs_LatQ = atof(v);
++		else if(K == "shadow")
++			gs_Shadow = atoi(v);
++		else if(K == "shadowfile")
++			ShadowFile = V;
++		else if(K == "shadowshift")
++			gs_ShadowShift = atoi(v);
++		else if(K == "velsym")
++			gs_VelSym = atoi(v);
++		else if(K == "velw")
++			gs_VelW = atof(v);
++		else if(K == "trackv")
++			gs_TrackV = atof(v);
++		else if(K == "trackend")
++			TrackEnd = atoi(v);
 +		else if(K == "ref")
 +			RefFile = V;
++		else if(K == "aimwin")
++			gs_AimWin = atoi(v);
++		else if(K == "aimfile")
++		{
++			FILE *pA = std::fopen(v, "r");
++			int k;
++			float a;
++			while(pA && std::fscanf(pA, "%d %f", &k, &a) == 2)
++			{
++				if(k + 100 < 0)
++					continue;
++				if((int)gs_vAimRef.size() <= k + 100)
++					gs_vAimRef.resize(k + 101, std::nanf(""));
++				gs_vAimRef[k + 100] = a * pi / 180.0f;
++			}
++			if(pA)
++				std::fclose(pA);
++			std::printf("aims from %s: %zu ticks\n", v, gs_vAimRef.size());
++		}
 +		else if(K == "dumpk")
 +			gs_DumpK = atoi(v);
 +		else if(K == "dumpat")
@@ -612,6 +961,7 @@ index 0000000..543c883
 +	CFast::Init();
 +	CCollision::ms_FastPaths = true;
 +	std::vector<STasInput> vBest = ReadInputs(BestFile.c_str());
++	gs_vShadowIn = ShadowFile.empty() ? vBest : ReadInputs(ShadowFile.c_str());
 +	if(vBest.empty())
 +	{
 +		std::printf("no inputs in %s\n", BestFile.c_str());
@@ -707,6 +1057,57 @@ index 0000000..543c883
 +			Used++;
 +		}
 +		std::printf("reference track %s: %zu points, race ticks %.1f .. %.1f\n", RefFile.c_str(), vT.size(), vT.front()[0], vT.back()[0]);
++	}
++	if(!TrackFile.empty())
++	{
++		std::vector<std::array<float, 3>> vT;
++		std::vector<std::array<float, 3>> vTV; // race tick, vx, vy (5-column track files)
++		FILE *pF = std::fopen(TrackFile.c_str(), "r");
++		char aLine[256];
++		while(pF && std::fgets(aLine, sizeof(aLine), pF))
++		{
++			float a, b, c, d, e;
++			int n = std::sscanf(aLine, "%f %f %f %f %f", &a, &b, &c, &d, &e);
++			if(n >= 3)
++				vT.push_back({a, b, c});
++			if(n == 5)
++				vTV.push_back({a, d, e});
++		}
++		if(pF)
++			std::fclose(pF);
++		if(vTV.size() == vT.size() && !vTV.empty())
++		{
++			// velocities are only meaningful at the track's own (integer) race ticks
++			for(int Rt = -100; Rt < 2000; Rt++)
++			{
++				float Want = Rt + gs_TrackOff;
++				size_t j = 0;
++				while(j + 1 < vTV.size() && vTV[j + 1][0] <= Want)
++					j++;
++				gs_vTrackVel.push_back(vec2(vTV[j][1], vTV[j][2]));
++			}
++		}
++		if(vT.size() < 10)
++		{
++			std::printf("bad track %s\n", TrackFile.c_str());
++			return 1;
++		}
++		auto At = [&](float Rt) {
++			if(Rt <= vT.front()[0])
++				return vec2(vT.front()[1], vT.front()[2]);
++			if(Rt >= vT.back()[0])
++				return vec2(vT.back()[1], vT.back()[2]);
++			size_t j = 1;
++			while(vT[j][0] < Rt)
++				j++;
++			float u = (Rt - vT[j - 1][0]) / std::max(1e-6f, vT[j][0] - vT[j - 1][0]);
++			return vec2(vT[j - 1][1] + (vT[j][1] - vT[j - 1][1]) * u, vT[j - 1][2] + (vT[j][2] - vT[j - 1][2]) * u);
++		};
++		for(int Rt = -100; Rt < 2000; Rt++)
++			gs_vTrack.push_back(At(Rt + gs_TrackOff));
++		gs_DumpAt = std::min(TrackEnd, (int)vT.back()[0] - 2);
++		gs_Incumbent = 0;
++		std::printf("track %s (offset %+.2f): race ticks %.1f .. %.1f, dump at %d\n", TrackFile.c_str(), gs_TrackOff, vT.front()[0], vT.back()[0], gs_DumpAt);
 +	}
 +	int CutInput = Cut + gs_RefStart - 1;
 +	if(CutInput < 0 || CutInput >= (int)vStates.size() - 1)
@@ -866,6 +1267,7 @@ index 0000000..543c883
 +		uint64_t m_Key;
 +		int m_Parent; // beam index
 +		int m_RefIdx;
++		float m_Acc;
 +		STasInput m_In;
 +	};
 +
@@ -941,6 +1343,24 @@ index 0000000..543c883
 +								In.m_TY = A.second;
 +								vIn.push_back(In);
 +							}
++							if(!gs_vAimRef.empty())
++							{
++								// the other player's aims around the matched reference time
++								int RtRef = S.m_RefIdx + 1 - gs_RefStart;
++								for(int dk = -gs_AimWin; dk <= gs_AimWin; dk++)
++								{
++									int k = RtRef + dk + 100;
++									if(k < 0 || k >= (int)gs_vAimRef.size() || std::isnan(gs_vAimRef[k]))
++										continue;
++									for(float Off : {0.0f, -0.009f, 0.009f})
++									{
++										float Ang = gs_vAimRef[k] + Off;
++										In.m_TX = (int)std::lround(std::cos(Ang) * 10000);
++										In.m_TY = (int)std::lround(std::sin(Ang) * 10000);
++										vIn.push_back(In);
++									}
++								}
++							}
 +							if(gs_RotHook == 2)
 +							{
 +								// rotation pulses: aims at the edge of the region where the pull is accepted
@@ -1000,6 +1420,23 @@ index 0000000..543c883
 +							}
 +						}
 +					}
++				if(gs_Shadow > 0)
++				{
++					// shadow: the reference run's own inputs at the matched reference point (the input that followed it,
++					// and its neighbours), so a state that is close to the reference can repeat what the reference did
++					for(int dk = 1 - gs_Shadow; dk <= gs_Shadow; dk++)
++					{
++						int k = S.m_RefIdx + 1 + dk - gs_ShadowShift;
++						if(k < 0 || k >= (int)gs_vShadowIn.size())
++							continue;
++						STasInput In = gs_vShadowIn[k];
++						In.m_Fire = 0;
++						In.m_Weapon = -1;
++						if(In.m_Hook && !S.m_LastHook && In.m_TX == 0 && In.m_TY == -1)
++							continue;
++						vIn.push_back(In);
++					}
++				}
 +				if(i == IncBeamIdx && Step < (int)vIncIn.size())
 +					vIn.push_back(vIncIn[Step]);
 +				for(const STasInput &In : vIn)
@@ -1013,6 +1450,7 @@ index 0000000..543c883
 +					N2.m_LastHook = In.m_Hook;
 +					N2.m_LastJump = In.m_Jump;
 +					N2.m_Node = -1;
++					N2.m_Acc = S.m_Acc;
 +					float Sc = Score(N2, &TRng);
 +					if(AtGoal(N2.m_F))
 +					{
@@ -1030,6 +1468,7 @@ index 0000000..543c883
 +					Cd.m_Key = CellKey(N2);
 +					Cd.m_Parent = i;
 +					Cd.m_RefIdx = N2.m_RefIdx;
++					Cd.m_Acc = N2.m_Acc;
 +					Cd.m_In = In;
 +					Cand.push_back(Cd);
 +				}
@@ -1133,6 +1572,7 @@ index 0000000..543c883
 +					N2.m_F = P.m_F;
 +					N2.m_F.Step(Cd.m_In);
 +					N2.m_RefIdx = Cd.m_RefIdx;
++					N2.m_Acc = Cd.m_Acc;
 +					N2.m_LastHook = Cd.m_In.m_Hook;
 +					N2.m_LastJump = Cd.m_In.m_Jump;
 +					N2.m_Score = Cd.m_Score;
@@ -1191,6 +1631,8 @@ index 0000000..543c883
 +			double Sec = std::chrono::duration<double>(std::chrono::steady_clock::now() - T0).count();
 +			std::printf("rt %d best est %.2f (ref idx %d) pos %.0f %.0f |v| %.1f cand %zu cells %zu [%.0fs]\n", B.m_F.RaceTick(), B.m_Score, B.m_RefIdx,
 +				B.m_F.m_Core.m_Pos.x, B.m_F.m_Core.m_Pos.y, length(B.m_F.m_Core.m_Vel), Total, Cells, Sec);
++			if(!gs_vTrack.empty())
++				std::printf("   target %.0f %.0f err %.1f\n", TrackAt(B.m_F.RaceTick()).x, TrackAt(B.m_F.RaceTick()).y, distance(TrackAt(B.m_F.RaceTick()), B.m_F.m_Core.m_Pos));
 +			std::fflush(stdout);
 +		}
 +		if(B.m_F.RaceTick() >= gs_DumpAt)
@@ -1225,7 +1667,7 @@ index 0000000..543c883
 +			}
 +			return 0;
 +		}
-+		if(B.m_Score > gs_RefEnd + gs_Abort)
++		if(gs_vTrack.empty() && B.m_Score > gs_RefEnd + gs_Abort)
 +		{
 +			std::printf("RESULT none (abort: best estimate %.1f at rt %d)\n", B.m_Score, B.m_F.RaceTick());
 +			return 2;
@@ -1773,7 +2215,7 @@ index 0000000..d6b9a61
 +}
 diff --git a/src/tas/replay.cpp b/src/tas/replay.cpp
 new file mode 100644
-index 0000000..e35ab27
+index 0000000..f694664
 --- /dev/null
 +++ b/src/tas/replay.cpp
 @@ -0,0 +1,72 @@
@@ -1844,7 +2286,7 @@ index 0000000..e35ab27
 +			std::printf("GRENADE at input %d (tick %d, start %d, race tick %d)\n", t, G.m_Tick, G.m_StartTick, G.m_Tick - G.m_StartTick);
 +		Got = G.HasGrenade();
 +		if(t % Every == 0 || G.Frozen())
-+			std::printf("t %d pos %.2f %.2f vel %.5f %.5f hook %d jumped %d frz %d start %d\n", t, G.Pos().x, G.Pos().y, G.Vel().x, G.Vel().y, G.HookState(), G.Jumped(), G.Frozen(), G.m_StartTick);
++			std::printf("t %d pos %.2f %.2f vel %.5f %.5f hook %d jumped %d frz %d start %d hp %.0f %.0f\n", t, G.Pos().x, G.Pos().y, G.Vel().x, G.Vel().y, G.HookState(), G.Jumped(), G.Frozen(), G.m_StartTick, G.HookPos().x, G.HookPos().y);
 +	}
 +	std::printf("end t %d start %d\n", t, G.m_StartTick);
 +	return 0;

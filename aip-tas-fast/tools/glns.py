@@ -112,10 +112,21 @@ def main():
 			if rng.random() < 0.85:
 				v['lp'] = rng.choice([0.03, 0.05, 0.1, 0.2])
 				v['latdz'] = rng.choice([16, 24, 32])
+			extra = []
+			aims = os.environ.get('GLNS_AIMS')
+			if aims and 'teero' in os.path.basename(gname):
+				af = os.path.join(d, f'aims_{w}.txt')
+				with open(af, 'w') as fa:
+					for l in open(aims):
+						k, a = l.split()
+						fa.write(f'{int(k) + shift} {a}\n')
+				extra = [f'aimfile={af}', f'aimwin={rng.choice([3, 6])}']
+				if rng.random() < 0.5:
+					extra.append('jw=144')
 			out = os.path.join(d, f'out_{w}.txt')
 			if os.path.exists(out):
 				os.remove(out)
-			args = [TOOL, MAP, f'best={src}', f'ref={ref}', f'cut={cut}', f'threads={threads}', f'out={out}'] + [f'{k}={x}' for k, x in v.items()]
+			args = [TOOL, MAP, f'best={src}', f'ref={ref}', f'cut={cut}', f'threads={threads}', f'out={out}'] + [f'{k}={x}' for k, x in v.items()] + extra
 			t0 = time.time()
 			txt = subprocess.run(args, capture_output=True, text=True).stdout
 			m = re.search(r'RESULT (.*)', txt)
