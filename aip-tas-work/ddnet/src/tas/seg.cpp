@@ -38,6 +38,8 @@
 //   shotref=teero/catalog/shots.tsv shotbonus=3 shotrad=64: a shot whose explosion lands within shotrad px of one of
 //     Teero's explosion points (later than the last one matched) earns shotbonus ticks
 //   erel=1: (ghost 1-3) the energy credit counts our energy minus the reference's own energy at the matched point
+//   loadres=F: reserve F x beam places for the best-ranked states that hold a loaded grenade (horizon effect: a kick
+//     saved for the next bend looks worse than firing now until the bend)
 //   firemax=N: drop states that keep a loaded grenade (reload 0) for more than N ticks (kick as often as possible)
 //   kfut=W [kfutn=25]: while the reload is in (kready, kfutn], credit W x the point-blank kick available where a
 //     ballistic flight puts the tee when the reload is back (be next to a surface when the grenade is loaded)
@@ -186,6 +188,7 @@ struct SParams
 	float m_QCell = 32, m_QVel = 6;
 	float m_KCredit = 0; // energy credit for the point-blank kick available when the grenade is (nearly) loaded
 	int m_KReady = 4;
+	float m_LoadRes = 0; // loadres=F: reserve F x beam places for the best states holding a loaded grenade
 	float m_BoxE = 0; // boxe=L: box gate value = race tick - L x (v^2 - y) (L large: most energy at the box)
 	float m_ERel = 0; // erel=1: ghost energy credit relative to the reference's own energy at the matched point
 	int m_FireMax = -1; // firemax=N: drop states that keep a loaded grenade for more than N ticks
@@ -1554,6 +1557,7 @@ struct SCand
 	int m_Ref;
 	int64_t m_QKey = 0; // coarse position/velocity cell for the diversity quota
 	bool m_Inc = false; // the incumbent's own continuation
+	bool m_Loaded = false; // has the grenade with the reload at 0 (loadres)
 };
 
 struct SGate
@@ -1689,6 +1693,7 @@ int main(int argc, const char **argv)
 		else if(K == "firemax") gs_P.m_FireMax = std::stoi(V);
 		else if(K == "erel") gs_P.m_ERel = std::stof(V);
 		else if(K == "boxe") gs_P.m_BoxE = std::stof(V);
+		else if(K == "loadres") gs_P.m_LoadRes = std::stof(V);
 		else if(K == "kfutn") gs_P.m_KFutN = std::stoi(V);
 		else if(K == "tp") std::sscanf(V.c_str(), "%f,%f,%f,%f", &gs_P.m_TpPos.x, &gs_P.m_TpPos.y, &gs_P.m_TpVel.x, &gs_P.m_TpVel.y);
 		else if(K == "latdz") gs_P.m_LatDz = std::stof(V);
@@ -2080,6 +2085,7 @@ int main(int argc, const char **argv)
 						S = Tmp.m_TrackCost + gs_P.m_TrackTie * S;
 					S -= Tmp.m_Bonus;
 					vTC[T].push_back({S, i, In, CellKey(Tmp), Tmp.Hash(), Ee, Rt, Tmp.m_RefIdx, QuotaKey(Tmp)});
+					vTC[T].back().m_Loaded = Tmp.HasGrenade() && Tmp.ReloadTimer() == 0;
 					if(IsInc && SameIn(In, IncIn))
 						vTC[T].back().m_Inc = true;
 				}
@@ -2101,6 +2107,20 @@ int main(int argc, const char **argv)
 		std::unordered_set<uint64_t> Seen;
 		std::unordered_set<int64_t> Cells;
 		std::vector<SCand> vSel;
+		if(gs_P.m_LoadRes > 0)
+		{
+			// loadres: the best states that keep a loaded grenade get loadres x beam places first, so waiting for a
+			// better kick (e.g. a turning kick at the next bend) survives the ticks where firing now looks better
+			const int Res = (int)(gs_P.m_LoadRes * gs_P.m_Beam);
+			for(const auto &C : vAll)
+			{
+				if((int)vSel.size() >= Res)
+					break;
+				if(!C.m_Loaded || !Seen.insert(C.m_Hash).second || !Cells.insert(C.m_Key).second)
+					continue;
+				vSel.push_back(C);
+			}
+		}
 		if(gs_P.m_Quota <= 0)
 			for(const auto &C : vAll)
 			{

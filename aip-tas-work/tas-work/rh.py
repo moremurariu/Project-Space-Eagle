@@ -272,7 +272,8 @@ if args.get('vset') == 'p11':
     B0 = f'{SV} {G3} kcredit=2 kready=10 {RQ} latpen=0.1 latdz=32 quota=6'
     POST = [f'{B1} jitter=1 seed={sd}' for sd in (1, 2, 3)] + [f'{B1} vcap=1.1 jitter=1 seed={sd}' for sd in (1, 2)] + \
            [f'{B1} vcap=1.0 brakepen=10 jitter=1 seed=1', f'{B3} jitter=1 seed=1'] + \
-           [f'{B1L} jitter=1 seed={sd}' for sd in (1, 2, 3)] + [f'{B1L} vcap=1.1 jitter=1 seed=1', f'{B0} jitter=1 seed=1']
+           ([f'{B1} prefire=1 padaims=48 padtop=300 padrange=30 jitter=1 seed={sd}' for sd in (1, 2, 3)] if args.get('pf11') else
+            [f'{B1L} jitter=1 seed={sd}' for sd in (1, 2, 3)]) + [f'{B1L} vcap=1.1 jitter=1 seed=1', f'{B0} jitter=1 seed=1']
     WIDE = [
         f'beam=20000 survevery=1 survive=40 {G3} {RQ} latpen=0.1 latdz=32 quota=6',
         f'beam=20000 survevery=2 survive=30 ghost=3 hnow=600 ghoste=0.0 sinks={PS2} brake=2 {RQ} latpen=0.2 latdz=24 quota=3',

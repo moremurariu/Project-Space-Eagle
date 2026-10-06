@@ -606,3 +606,26 @@ Teero played the **KoG** version of AiP-Gores (user, from Teero). Our runs so fa
   Winning setups: always latpen 0.2/24 (vcap 1.25 or 1.1); quota / brake=2 / Teero-plan variants never win in the
   corridors -> vset p11 (B1 x seeds, vcap 1.1 / 1.0+bp10, ghostsink 3000, one quota for the maze). Resumed after step 5.
 - Map settings: only `sv_kog_map_quests Q_NO_HAMMER,Q_NO_PLATFORM,Q_TEAM_15` (no tune commands).
+- Equal-state benchmark rerun on segf (tp at Teero's k1220 state, his reload phase, gate k1285, Teero 1285): B1
+  1290/1291, vcap 1.1 1288, ghostsink 3000 1289, b7 (ghost=3 hnow=600 ghoste=0 brake=2) 1287, b7 + latpen 1287.
+  seg kicks at 1241 to |v| 67 and hook-brakes to 33 into the dip; Teero kicks at the ceiling at k1256 (down into the
+  dip) and is also at |v| ~34 there. Forcing his structure with a plan (no shot before 1249, point-blank 1249-1258):
+  1286-1289 -> not the missing piece; the 2-5 ticks are spread over path/hook details through the valley.
+- seg `loadres=F` (new: reserve F x beam for the best states holding a loaded grenade, against the horizon effect):
+  equal-state 1291-1293 [1287-1290], step-4 window 1410/1409 [1410/1409] -> off.
+- Own-run reference on the step-4 window (ref = 2693 track, gate own k1432 = Teero k1399): ghost=1 erel=1 latpen 0.2
+  or 0.05: 1417/1417; ghost=3 vcap 1.5: 1409 [Teero ref 1409-1410] -> no gain.
+- Chain g2 step 6 (k1399 -> k1549, left U-turn): 1569 (23 behind Teero). Projection at ~6% loss over the rest:
+  finish ~2615-2630.
+- fireangles 96/144: step-4 window 1409/1407 [1410], equal-state 1289/1292 [1290] (noise level).
+- Chain g2 steps 7-9: k1624 1658 (-14 in one window), k1699 1741, k1774 1820 (49 behind Teero true). All 12
+  variants within ~5 ticks of each other per window (systematic loss); ghostsink 3000 variants identical to base there.
+- **Step-7 loss = Teero's double-kick launch up the shaft at x~3300 (k1583):** a grenade lobbed ~25 ticks earlier lands
+  on the small 2x2 block just as he fires point-blank down at it -> two explosions under him, ~+22 px/t upward, he
+  flies the 1000 px shaft at ~50; we fire one kick there (27.6 -> 37.1) and lose 12 ticks climbing. seg cannot find
+  it: prefire variants 1656/1659 [1658] (they find a pre-fire + point-blank pair at the U-turn exit instead), Teero's
+  schedule as a plan 1668, hand lob plans (fire 1576-1594 -> explode at the block 1603-1610): the lob is never fired
+  (no aim reaches the block from our lower/later line; his extracted lob aim collides early in simulation) 1663-1682,
+  planrv (rendezvous credit) 1661/1663, padtop 1500 1656. Double kicks need a planner that picks the lob and the
+  approach line together.
+- Chain g2 resumed after step 9 with pre-fire variants (rh.py p11 pf11=1).
