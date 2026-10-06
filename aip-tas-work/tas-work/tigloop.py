@@ -15,8 +15,10 @@ os.chdir(HERE)
 B = '../ddnet/build-sim/'
 inc, name = sys.argv[1], sys.argv[2]
 kw = dict(a.split('=', 1) for a in sys.argv[3:])
-SEG, NSEED, MINLEAD = int(kw.get('seg', 300)), int(kw.get('seeds', 4)), float(kw.get('minlead', 2))
+SEG, NSEED, MINLEAD = int(kw.get('seg', 300)), int(kw.get('seeds', 4)), float(kw.get('minlead', 0.5))
 JUDGE = int(kw.get('judge', 150))
+NPICK = int(kw.get('pick', 8))
+TIGX = kw.get('tigx', '').split()  # extra x_tig args for the Teero-tracker stage
 T_END = time.time() + float(kw.get('hours', 4)) * 3600
 D = f'runs/tig/{name}'
 os.makedirs(D, exist_ok=True)
@@ -122,7 +124,7 @@ for s in starts:
     pre = cut(inc, s, f'{D}/s{s}_pre.txt')
     # 1. follow Teero
     with ThreadPoolExecutor(NSEED) as ex:
-        list(ex.map(lambda sd: tig(pre, CSV, TRACK, off, s + SEG, f'{D}/s{s}_t{sd}.txt', sd), range(NSEED)))
+        list(ex.map(lambda sd: tig(pre, CSV, TRACK, off, s + SEG, f'{D}/s{s}_t{sd}.txt', sd, TIGX), range(NSEED)))
     cands = []
     for sd in range(NSEED):
         tf = f'{D}/s{s}_t{sd}.txt'
@@ -138,9 +140,9 @@ for s in starts:
     # hide a state that loses it right after
     pick = []
     for l, sd, c in cands:
-        if l < MINLEAD or len(pick) >= 3:
+        if l < MINLEAD or len(pick) >= NPICK:
             break
-        if all(abs(c - c2) >= 30 for _, _, c2 in pick):
+        if all(abs(c - c2) >= 15 for _, _, c2 in pick):
             pick.append((l, sd, c))
     log(f'start {s} (off {off:.1f}): Teero-tracker cuts ' + ' '.join(f'{c}(s{sd}):{l:+.1f}' for l, sd, c in pick) +
         f' ({time.time() - t0:.0f}s)')

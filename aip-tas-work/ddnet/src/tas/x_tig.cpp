@@ -470,6 +470,7 @@ int main(int argc, const char **argv)
 	const float EW = std::stof(Get("ew", "0"));
 	const float SW = std::stof(Get("sw", "0"));
 	const float Jitter = std::stof(Get("jitter", "0"));
+	const float VW = std::stof(Get("vw", "0")), VDz = std::stof(Get("vdz", "5")); // velocity-match weight (px per px/t)
 	const int Seed = std::stoi(Get("seed", "0")); // ticks per px/t of ramped speed along the route
 	std::vector<STasInput> vPre = ReadInputs(argv[2]);
 	CTasGame Gm;
@@ -732,6 +733,20 @@ int main(int argc, const char **argv)
 								d = std::min(d, distance(G.m_Pos, RP) + WarpPen * std::abs(w));
 						}
 						d = std::min(std::max(0.0f, d - Dz), Cap);
+					}
+					if(VW > 0 && ProjMode)
+					{
+						// velocity match: our displacement per tick (horizontal ramped) vs the reference's at our place
+						vec2 A0, A1;
+						if(RefPos(CLab - 2, A0) && RefPos(CLab + 2, A1))
+						{
+							vec2 V = G.m_Core.m_Vel;
+							float Lv = length(V) * 50;
+							float Ramp = Lv < 550 ? 1.0f : 1.0f / std::pow(1.4f, (Lv - 550) / 2000.0f);
+							float dv = distance(vec2(V.x * Ramp, V.y), (A1 - A0) * 0.25f);
+							float e = std::max(0.0f, dv - VDz);
+							d = std::sqrt(d * d + VW * e * e);
+						}
 					}
 					float Cost = Nd.m_Cost + d * d / 100.0f;
 					float Rank = Cost - (PendTau >= 0 ? PendB : 0) - (G.m_ReloadTimer == 0 && PendTau < 0 ? FreeB : 0);
