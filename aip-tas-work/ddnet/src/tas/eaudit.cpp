@@ -58,6 +58,10 @@ int main(int argc, const char **argv)
 	F.FromGameFull(G);
 	SStepAudit A;
 	CFastG::ms_pAudit = &A;
+	std::vector<SExplLog> vLog;
+	if(getenv("EA_SURF"))
+		CFastG::ms_pLog = &vLog;
+	size_t NLog = 0;
 	enum { EXPL, HOOK, DIR, JUMP, COLL, REST, NUM };
 	const char *apN[NUM] = {"expl", "hook", "dir", "jump", "coll", "grav/rest"};
 	double aSec[NUM] = {0}, aTot[NUM] = {0};
@@ -68,7 +72,33 @@ int main(int argc, const char **argv)
 		const int Rt = i - 67;
 		if(Rt > To || F.m_FinishTick >= 0)
 			break;
+		const int NP0 = F.NumProjectiles();
 		F.Step(vIn[i]);
+		if(getenv("EA_SHOTS") && F.NumProjectiles() > NP0)
+		{
+			// a new grenade this tick: where and when it explodes (all grenades in flight; the earliest is reported)
+			vec2 E;
+			int Tk;
+			if(F.NextExplosion(E, Tk))
+				std::printf("S %d te %d expl %.1f %.1f tee %.1f %.1f aim %d %d\n", Rt, Rt + (Tk - F.m_Tick), E.x, E.y, F.Pos().x, F.Pos().y, vIn[i].m_TX, vIn[i].m_TY);
+		}
+		for(; NLog < vLog.size(); NLog++)
+		{
+			// explosion surface: walk from the explosion point toward the tee; a freeze tile on the way = freeze-lined
+			const SExplLog &L = vLog[NLog];
+			int Frz = 0;
+			const vec2 Dd = L.m_Tee - L.m_E;
+			for(float f = 0; f <= 1.0f; f += 0.02f)
+			{
+				const vec2 P = L.m_E + Dd * f;
+				const int T = CTasGame::Map().Tile((int)std::floor(P.x / 32), (int)std::floor(P.y / 32));
+				if(T == TILE_FREEZE)
+					Frz = 1;
+			}
+			const float Fl = length(L.m_Force), V0 = length(L.m_VelBefore);
+			const float C = (Fl > 0 && V0 > 0.1f) ? dot(L.m_Force, L.m_VelBefore) / (Fl * V0) : 0;
+			std::printf("X %d dist %.1f force %.2f cos %+.2f surf %s along %.2f\n", Rt, L.m_Dist, Fl, C, Frz ? "freeze-lined" : "bare", Fl * C);
+		}
 		float d[NUM];
 		d[EXPL] = En(A.m_VExpl) - En(A.m_V0);
 		auto TickWith = [&](auto Mod) {
@@ -91,6 +121,14 @@ int main(int argc, const char **argv)
 		{
 			aSec[k] += d[k];
 			aTot[k] += d[k];
+		}
+		if(getenv("EA_HOOK") && length(A.m_VTick - Vnh) > 0.01f)
+		{
+			// hook effect this tick: velocity with the hook vs without, split into speed change and rotation
+			const float S1 = length(A.m_VTick), S0 = length(Vnh);
+			const float Ang = std::atan2(A.m_VTick.y, A.m_VTick.x) - std::atan2(Vnh.y, Vnh.x);
+			float Rot = std::fabs(std::remainder(Ang, 2 * pi));
+			std::printf("H %d |v| %.1f dspeed %+.3f rot %.4f (%.2f deg) hookstate %d dir %d\n", Rt, S0, S1 - S0, Rot, Rot * 180 / pi, F.HookState(), vIn[i].m_Dir);
 		}
 		if(getenv("EA_KICKS") && length(A.m_VExpl - A.m_V0) > 0.5f)
 		{

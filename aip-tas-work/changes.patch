@@ -158,7 +158,7 @@
      if(EXISTS ${PROJECT_SOURCE_DIR}/src/tas/${TAS_TOOL}.cpp)
        add_executable(${TAS_TOOL} EXCLUDE_FROM_ALL
          src/tas/${TAS_TOOL}.cpp
-@@ -3554,6 +3557,132 @@
+@@ -3554,6 +3557,197 @@
        list(APPEND TARGETS_LINK ${TAS_TOOL})
      endif()
    endforeach()
@@ -200,6 +200,71 @@
 +    target_include_directories(fgcheck BEFORE PRIVATE src/tas/shim)
 +    list(APPEND TARGETS_OWN fgcheck)
 +    list(APPEND TARGETS_LINK fgcheck)
++    add_executable(x_lob EXCLUDE_FROM_ALL
++      src/tas/x_lob.cpp
++      src/tas/fastg.cpp
++      ${TAS_EXTRA_SRC}
++      $<TARGET_OBJECTS:engine-shared>
++      $<TARGET_OBJECTS:game-shared>
++      $<TARGET_OBJECTS:rust-bridge-shared>
++      ${DEPS}
++    )
++    target_link_libraries(x_lob ${LIBS_SERVER})
++    target_include_directories(x_lob BEFORE PRIVATE src/tas/shim)
++    list(APPEND TARGETS_OWN x_lob)
++    list(APPEND TARGETS_LINK x_lob)
++    add_executable(x_dbl EXCLUDE_FROM_ALL
++      src/tas/x_dbl.cpp
++      src/tas/fastg.cpp
++      ${TAS_EXTRA_SRC}
++      $<TARGET_OBJECTS:engine-shared>
++      $<TARGET_OBJECTS:game-shared>
++      $<TARGET_OBJECTS:rust-bridge-shared>
++      ${DEPS}
++    )
++    target_link_libraries(x_dbl ${LIBS_SERVER})
++    target_include_directories(x_dbl BEFORE PRIVATE src/tas/shim)
++    list(APPEND TARGETS_OWN x_dbl)
++    list(APPEND TARGETS_LINK x_dbl)
++    add_executable(x_ds EXCLUDE_FROM_ALL
++      src/tas/x_ds.cpp
++      src/tas/fastg.cpp
++      ${TAS_EXTRA_SRC}
++      $<TARGET_OBJECTS:engine-shared>
++      $<TARGET_OBJECTS:game-shared>
++      $<TARGET_OBJECTS:rust-bridge-shared>
++      ${DEPS}
++    )
++    target_link_libraries(x_ds ${LIBS_SERVER})
++    target_include_directories(x_ds BEFORE PRIVATE src/tas/shim)
++    list(APPEND TARGETS_OWN x_ds)
++    list(APPEND TARGETS_LINK x_ds)
++    add_executable(x_trace EXCLUDE_FROM_ALL
++      src/tas/x_trace.cpp
++      src/tas/fastg.cpp
++      ${TAS_EXTRA_SRC}
++      $<TARGET_OBJECTS:engine-shared>
++      $<TARGET_OBJECTS:game-shared>
++      $<TARGET_OBJECTS:rust-bridge-shared>
++      ${DEPS}
++    )
++    target_link_libraries(x_trace ${LIBS_SERVER})
++    target_include_directories(x_trace BEFORE PRIVATE src/tas/shim)
++    list(APPEND TARGETS_OWN x_trace)
++    list(APPEND TARGETS_LINK x_trace)
++    add_executable(x_tig EXCLUDE_FROM_ALL
++      src/tas/x_tig.cpp
++      src/tas/fastg.cpp
++      ${TAS_EXTRA_SRC}
++      $<TARGET_OBJECTS:engine-shared>
++      $<TARGET_OBJECTS:game-shared>
++      $<TARGET_OBJECTS:rust-bridge-shared>
++      ${DEPS}
++    )
++    target_link_libraries(x_tig ${LIBS_SERVER})
++    target_include_directories(x_tig BEFORE PRIVATE src/tas/shim)
++    list(APPEND TARGETS_OWN x_tig)
++    list(APPEND TARGETS_LINK x_tig)
 +    add_executable(lobscan EXCLUDE_FROM_ALL
 +      src/tas/lobscan.cpp
 +      src/tas/fastg.cpp
@@ -603,7 +668,7 @@
  }
 --- a/tas-work/NOTES.md
 +++ b/tas-work/NOTES.md
-@@ -84,3 +84,710 @@
+@@ -84,3 +84,730 @@
  - Corridor 1 from a Teero-like crossing (900,465,25,-13 spent): 294-296 (Teero 298). Our pre-start crossing gives ~306.
  - TileExists lookup cache in CCollision (opt-in flag, TAS only): step 1.54 -> 1.20 us, identical replays.
  - chain.py: segment chain over distance gates with several configs (gains ~1-2 ticks/gate; slow).
@@ -1314,3 +1379,23 @@
 +  k1399->1549 1574 / 1571 (own 1564); shaft 1735 / 1733 (own 1732); k1699->1849 1898 / 1894 (own 1890);
 +  k1849->1999 2063 / NOGATE (own 2051). New seg option `survrisk=F`: up to F x beam doomed states still breed (capped
 +  in the selection). 0.3: shaft 1733, k1249 window 1420 (worse). Not a general fix.
++- **Carrying a local gain into the polished run (the knife edge):** a fresh continuation from the double-kick state
++  loses the lead within ~1-2 windows (chain sh1/sh2: +8 at k1699, +5 at k1817, ~0 at k1892; with sv0 commits a
++  later window can fail completely). The other agent's branch (compassionate-davinci, read only) hit the same wall
++  and solved it with a tracker plus a forced lineage (tigloop: x_tig follows the incumbent with its inputs as hints,
++  then dschain with the tracker run as forced lineage; 2639 -> 2633 -> 2630 -> 2629). Their x_tig / x_trace / x_ds /
++  x_dbl / x_lob build unchanged in our tree (sources copied, CMake targets added). By x_ds root progress, our
++  double-kick line (L1576) leads 2629 by 10.3 ticks at rt 1690. Following 2629 with x_tig (beam 800-1000, in
++  < 60 s segments, tigseg.py) keeps 4.5 of it by rt 1840, then loses it: +1.7 at 1890, -8 at 2090, -30 at 2290.
++  Their pipeline uses beam 3000 and several seeds per stage; it doesn't fit the 1-minute budget.
++- **Energy along the path (ecomp.py; E = v^2/2 - 0.5 y, Teero's from his track with the ramp undone):** at every
++  turn our energy equals Teero's (within ~100). On every straight Teero gains 300-650 more and then brakes later and
++  harder to the same turn energy (e.g. right U-turn: Teero 727 -> -1054, us 135 -> -1122).
++- Kick surfaces (eaudit EA_SURF=1, from the explosion log): of our 56 post-nade kicks, 37 are off bare gray blocks
++  (28 at full force, mean cos with v 0.80, push along v 9.1 px/t) and 19 off freeze-lined surfaces (3 full, cos
++  0.59, 5.9 along v). A full kick off a freeze-lined surface is >= 42 deg off the surface's tangent (the tee center
++  can't come closer than the 32 px freeze tile), so it pushes <= ~9 px/t along a corridor. Teero also uses bare
++  blocks for ~2/3 of his kicks; our bare kicks are mostly well aligned (0.88-0.92). The weak ones are turning kicks.
++- Hook audit (eaudit EA_HOOK=1): 197 of 582 fast hook ticks turn almost for free (876 deg for 17 px/t of speed);
++  385 brake (273 px/t for 1290 deg). Above 15 px/t a hook pull is applied only if |v| doesn't grow, so a rope just
++  behind perpendicular turns at up to |h|/|v| rad/tick at near-zero cost; a backward rope just brakes.

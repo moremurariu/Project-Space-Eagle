@@ -791,3 +791,23 @@ Teero played the **KoG** version of AiP-Gores (user, from Teero). Our runs so fa
   k1399->1549 1574 / 1571 (own 1564); shaft 1735 / 1733 (own 1732); k1699->1849 1898 / 1894 (own 1890);
   k1849->1999 2063 / NOGATE (own 2051). New seg option `survrisk=F`: up to F x beam doomed states still breed (capped
   in the selection). 0.3: shaft 1733, k1249 window 1420 (worse). Not a general fix.
+- **Carrying a local gain into the polished run (the knife edge):** a fresh continuation from the double-kick state
+  loses the lead within ~1-2 windows (chain sh1/sh2: +8 at k1699, +5 at k1817, ~0 at k1892; with sv0 commits a
+  later window can fail completely). The other agent's branch (compassionate-davinci, read only) hit the same wall
+  and solved it with a tracker plus a forced lineage (tigloop: x_tig follows the incumbent with its inputs as hints,
+  then dschain with the tracker run as forced lineage; 2639 -> 2633 -> 2630 -> 2629). Their x_tig / x_trace / x_ds /
+  x_dbl / x_lob build unchanged in our tree (sources copied, CMake targets added). By x_ds root progress, our
+  double-kick line (L1576) leads 2629 by 10.3 ticks at rt 1690. Following 2629 with x_tig (beam 800-1000, in
+  < 60 s segments, tigseg.py) keeps 4.5 of it by rt 1840, then loses it: +1.7 at 1890, -8 at 2090, -30 at 2290.
+  Their pipeline uses beam 3000 and several seeds per stage; it doesn't fit the 1-minute budget.
+- **Energy along the path (ecomp.py; E = v^2/2 - 0.5 y, Teero's from his track with the ramp undone):** at every
+  turn our energy equals Teero's (within ~100). On every straight Teero gains 300-650 more and then brakes later and
+  harder to the same turn energy (e.g. right U-turn: Teero 727 -> -1054, us 135 -> -1122).
+- Kick surfaces (eaudit EA_SURF=1, from the explosion log): of our 56 post-nade kicks, 37 are off bare gray blocks
+  (28 at full force, mean cos with v 0.80, push along v 9.1 px/t) and 19 off freeze-lined surfaces (3 full, cos
+  0.59, 5.9 along v). A full kick off a freeze-lined surface is >= 42 deg off the surface's tangent (the tee center
+  can't come closer than the 32 px freeze tile), so it pushes <= ~9 px/t along a corridor. Teero also uses bare
+  blocks for ~2/3 of his kicks; our bare kicks are mostly well aligned (0.88-0.92). The weak ones are turning kicks.
+- Hook audit (eaudit EA_HOOK=1): 197 of 582 fast hook ticks turn almost for free (876 deg for 17 px/t of speed);
+  385 brake (273 px/t for 1290 deg). Above 15 px/t a hook pull is applied only if |v| doesn't grow, so a rope just
+  behind perpendicular turns at up to |h|/|v| rad/tick at near-zero cost; a backward rope just brakes.
