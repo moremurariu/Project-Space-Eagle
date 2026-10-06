@@ -106,10 +106,19 @@ struct SNode
 	int m_Parent;
 	float m_Cost;
 	float m_Rank;
+	float m_Lab = 0; // place on the reference line (label, by projection)
+	float m_ShI = 0; // place on the shadow path (step index)
 	int m_PendTau = -1; // reserved shot: fired from m_PendPos in the step from tick m_PendTau, aim decided at its explosion
 	vec2 m_PendPos = vec2(0, 0);
 	int m_PatchTau = -1; // this step resolved the reserved shot: fire + aim go into the input of the step from that tick
 	int16_t m_PatchTX = 0, m_PatchTY = 0;
+};
+
+struct SHint
+{
+	bool m_JumpNear = false, m_FireNear = false;
+	std::vector<float> m_vHA, m_vFA;
+	size_t m_NSeenFA = 0;
 };
 
 // retro shot: a grenade fired from APos in the step from tick Tau that explodes in the step from G (tick t) to t+1 at a
@@ -387,6 +396,81 @@ int main(int argc, const char **argv)
 		return BestL;
 	};
 
+	// projection onto the reference line within a label window; distance out
+	auto RefProjW = [&](vec2 Q, float L0, float L1, float *pDist) {
+		float BestD = 1e18f, BestL = L0;
+		for(int a = (int)std::floor(L0); a <= (int)std::ceil(L1); a++)
+		{
+			if(a < 0 || a + 1 >= 6000 || !vTOk[a] || !vTOk[a + 1])
+				continue;
+			vec2 A = vTP[a], B = vTP[a + 1];
+			vec2 AB = B - A;
+			float l2 = dot(AB, AB);
+			float f = l2 > 0 ? std::clamp(dot(Q - A, AB) / l2, 0.0f, 1.0f) : 0;
+			float d = distance(Q, A + AB * f);
+			if(d < BestD)
+			{
+				BestD = d;
+				BestL = a + f;
+			}
+		}
+		if(pDist)
+			*pDist = BestD;
+		return BestL;
+	};
+	const bool ProjMode = Get("mode", "proj") == "proj";
+	// shadow run (e.g. the incumbent): its inputs at the matched place of its own path are extra candidates
+	std::vector<STasInput> vSh;
+	std::vector<vec2> vShP; // position after step i (index = step from the shadow's grenade pickup)
+	int ShRt0 = 0; // race tick after shadow step 0
+	size_t ShI0 = 0; // index of the first post-pickup input
+	if(Kv.count("shadow"))
+	{
+		vSh = ReadInputs(Kv["shadow"].c_str());
+		CTasGame Gs;
+		Gs.Spawn(CTasGame::Map().m_vSpawns[0]);
+		size_t j = 0;
+		for(; j < vSh.size() && !Gs.HasGrenade(); j++)
+			Gs.Step(vSh[j]);
+		CFastG Fs;
+		Fs.FromGame(Gs);
+		ShI0 = j;
+		for(; j < vSh.size(); j++)
+		{
+			Fs.Step(vSh[j]);
+			if(vShP.empty())
+				ShRt0 = Fs.RaceTick();
+			vShP.push_back(Fs.m_Pos);
+			if(Fs.m_FinishTick >= 0)
+				break;
+		}
+		std::printf("shadow %s: %zu post-pickup steps from rt %d\n", Kv["shadow"].c_str(), vShP.size(), ShRt0);
+	}
+	// place on the shadow path (step index, fractional) near I0
+	auto ShProj = [&](vec2 Q, float I0) {
+		float BestD = 1e18f, BestI = I0;
+		for(int a = (int)I0 - 3; a <= (int)I0 + 12; a++)
+		{
+			if(a < 0 || a + 1 >= (int)vShP.size())
+				continue;
+			vec2 A = vShP[a], B = vShP[a + 1];
+			vec2 AB = B - A;
+			float l2 = dot(AB, AB);
+			float f = l2 > 0 ? std::clamp(dot(Q - A, AB) / l2, 0.0f, 1.0f) : 0;
+			float d = distance(Q, A + AB * f);
+			if(d < BestD)
+			{
+				BestD = d;
+				BestI = a + f;
+			}
+		}
+		return BestI;
+	};
+	const int SurvH = std::stoi(Get("surv", "25")), SurvM = std::stoi(Get("survm", "3"));
+	const float EW = std::stof(Get("ew", "0"));
+	const float SW = std::stof(Get("sw", "0"));
+	const float Jitter = std::stof(Get("jitter", "0"));
+	const int Seed = std::stoi(Get("seed", "0")); // ticks per px/t of ramped speed along the route
 	std::vector<STasInput> vPre = ReadInputs(argv[2]);
 	CTasGame Gm;
 	Gm.Spawn(CTasGame::Map().m_vSpawns[0]);
@@ -411,70 +495,86 @@ int main(int argc, const char **argv)
 
 	std::vector<std::vector<SNode>> vL;
 	vL.push_back({{G0, vPre.empty() ? STasInput() : vPre.back(), -1, 0, 0}});
+	vL[0][0].m_Lab = RefProjW(G0.m_Pos, G0.RaceTick() + Off - 30, G0.RaceTick() + Off + 30, nullptr);
+	if(!vShP.empty())
+		vL[0][0].m_ShI = ShProj(G0.m_Pos, std::max(0, G0.RaceTick() - ShRt0 - 10));
+	std::printf("root label %.1f (clock label %.1f)\n", vL[0][0].m_Lab, G0.RaceTick() + Off);
 	int BestFin = -1, BestFinIdx = -1, FinLayer = -1;
 	for(int t = 0; G0.RaceTick() + t < MaxT; t++)
 	{
 		const std::vector<SNode> &L = vL[t];
 		const int Rt = L[0].m_G.RaceTick(); // all nodes share the tick
 		const float Lab = Rt + 1 + Off; // label of the state after this step
-		// reference facts near this step
-		int LabI = (int)std::lround(Lab);
-		bool JumpNear = false, FireNear = false;
-		std::vector<float> vHookAim, vFireAim;
-		bool FireUnsure = false;
-		for(int d = -std::max(TolJ, TolF) - 1; d <= std::max(TolJ, TolF) + 1; d++)
-		{
-			int k = LabI + d;
-			if(k < 0 || k >= (int)vRef.size())
-				continue;
-			const SRefTick &R = vRef[k];
-			if(R.m_Jump && std::abs(d) <= TolJ)
-				JumpNear = true;
-			if(R.m_Fire && std::abs(d) <= TolF)
+		// reference facts near a label: jump / shot ticks, hook aims, shot aims
+		auto MakeHint = [&](int LabI) {
+			SHint H;
+			std::vector<float> vHookAim, vFireAim;
+			for(int d = -std::max(TolJ, TolF) - 1; d <= std::max(TolJ, TolF) + 1; d++)
 			{
-				FireNear = true;
-				if(R.m_FireCert >= 0.5f)
-					vFireAim.push_back(R.m_FireAim);
-				else
-					FireUnsure = true;
-			}
-			if(std::abs(d) <= 1 && R.m_AimCert >= 0.5f)
-			{
-				vHookAim.push_back(R.m_Aim);
-				if(R.m_Fire)
-					vFireAim.push_back(R.m_Aim);
-			}
-		}
-		std::vector<float> vHA; // hook press aims
-		for(float a : vHookAim)
-		{
-			vHA.push_back(a);
-			for(float p : vPert)
-			{
-				vHA.push_back(a + p);
-				vHA.push_back(a - p);
-			}
-		}
-		for(int r = 0; r < Ring; r++)
-			vHA.push_back(360.0f * r / Ring);
-		std::vector<float> vFA; // shot aims: the seen ones (with perturbations), then a ring (point-blank only)
-		size_t NSeenFA = 0;
-		if(FireNear)
-		{
-			for(float a : vFireAim)
-			{
-				vFA.push_back(a);
-				for(float p : vFPert)
+				int k = LabI + d;
+				if(k < 0 || k >= (int)vRef.size())
+					continue;
+				const SRefTick &R = vRef[k];
+				if(R.m_Jump && std::abs(d) <= TolJ)
+					H.m_JumpNear = true;
+				if(R.m_Fire && std::abs(d) <= TolF)
 				{
-					vFA.push_back(a + p);
-					vFA.push_back(a - p);
+					H.m_FireNear = true;
+					if(R.m_FireCert >= 0.5f)
+						vFireAim.push_back(R.m_FireAim);
+				}
+				if(std::abs(d) <= 1 && R.m_AimCert >= 0.5f)
+				{
+					vHookAim.push_back(R.m_Aim);
+					if(R.m_Fire)
+						vFireAim.push_back(R.m_Aim);
 				}
 			}
-			NSeenFA = vFA.size();
-			(void)FireUnsure;
-			for(int r = 0; r < FRing; r++)
-				vFA.push_back(360.0f * r / FRing);
+			for(float a : vHookAim)
+			{
+				H.m_vHA.push_back(a);
+				for(float p : vPert)
+				{
+					H.m_vHA.push_back(a + p);
+					H.m_vHA.push_back(a - p);
+				}
+			}
+			for(int r = 0; r < Ring; r++)
+				H.m_vHA.push_back(360.0f * r / Ring);
+			if(H.m_FireNear)
+			{
+				for(float a : vFireAim)
+				{
+					H.m_vFA.push_back(a);
+					for(float p : vFPert)
+					{
+						H.m_vFA.push_back(a + p);
+						H.m_vFA.push_back(a - p);
+					}
+				}
+				H.m_NSeenFA = H.m_vFA.size();
+				for(int r = 0; r < FRing; r++)
+					H.m_vFA.push_back(360.0f * r / FRing);
+			}
+			return H;
+		};
+		// per label (position-indexed mode: each node's own place on the reference line) or one for the layer (clock)
+		std::map<int, SHint> HintCache;
+		if(ProjMode)
+		{
+			for(const SNode &Nd : L)
+			{
+				int LI = (int)std::lround(Nd.m_Lab + 1);
+				if(!HintCache.count(LI))
+					HintCache[LI] = MakeHint(LI);
+			}
 		}
+		else
+			HintCache[(int)std::lround(Lab)] = MakeHint((int)std::lround(Lab));
+		const SHint &H0 = HintCache.begin()->second;
+		const bool JumpNear = H0.m_JumpNear, FireNear = H0.m_FireNear;
+		const std::vector<float> &vFA = H0.m_vFA;
+		const size_t NSeenFA = H0.m_NSeenFA;
 		vec2 TP;
 		bool HaveRef = RefPos(Lab, TP);
 
@@ -537,6 +637,44 @@ int main(int argc, const char **argv)
 				const SNode &Nd = L[k];
 				const STasInput &P = Nd.m_In;
 				vC.clear();
+				const SHint &Hn0 = ProjMode ? HintCache.at((int)std::lround(Nd.m_Lab + 1)) : H0;
+				SHint Hn = Hn0;
+				std::vector<STasInput> vShIn; // the shadow's own inputs near here (taken as they are)
+				std::vector<std::pair<CFastG, STasInput>> ShFire; // the shadow's shots, stepped
+				if(!vShP.empty())
+				{
+					int i0 = (int)std::lround(Nd.m_ShI) + 1;
+					for(int di = -2; di <= 2; di++)
+					{
+						int i = i0 + di;
+						if(i < 1 || i >= (int)vShP.size())
+							continue;
+						const STasInput &A = vSh[ShI0 + i], &Ap = vSh[ShI0 + i - 1];
+						float Ang = std::atan2((float)A.m_TY, (float)A.m_TX) * 180.0f / pi;
+						if(A.m_Hook && !Ap.m_Hook)
+							Hn.m_vHA.insert(Hn.m_vHA.begin(), Ang);
+						if(A.m_Jump && !Ap.m_Jump)
+							Hn.m_JumpNear = true;
+						if(A.m_Fire && !Ap.m_Fire)
+						{
+							if(!Hn.m_FireNear)
+							{
+								Hn.m_FireNear = true;
+								Hn.m_vFA.clear();
+								Hn.m_NSeenFA = 0;
+								for(int r = 0; r < FRing; r++)
+									Hn.m_vFA.push_back(360.0f * r / FRing);
+							}
+							Hn.m_vFA.insert(Hn.m_vFA.begin(), Ang);
+							Hn.m_NSeenFA++;
+						}
+						if(std::abs(di) <= 1)
+							vShIn.push_back(A);
+					}
+				}
+				const bool JumpNear = Hn.m_JumpNear, FireNear = Hn.m_FireNear;
+				const std::vector<float> &vHA = Hn.m_vHA, &vFA = Hn.m_vFA;
+				const size_t NSeenFA = Hn.m_NSeenFA;
 				const int T = Nd.m_G.m_Tick;
 				const bool Pend = Nd.m_PendTau >= 0 && T - Nd.m_PendTau <= 95;
 				const bool CanFire = Nd.m_G.m_ReloadTimer == 0 && FireNear; // a direct shot drops a reserved slot
@@ -577,7 +715,13 @@ int main(int argc, const char **argv)
 					if(G.m_Dead || G.m_Bad)
 						return;
 					float d = 0;
-					if(HaveRef)
+					float CLab = Nd.m_Lab + 1;
+					if(ProjMode)
+					{
+						CLab = RefProjW(G.m_Pos, Nd.m_Lab - 3, Nd.m_Lab + 12, &d);
+						d = std::min(std::max(0.0f, d - Dz), Cap);
+					}
+					else if(HaveRef)
 					{
 						// distance to the reference within +-Warp labels of its clock (charged per label), dead zone Dz
 						d = 1e9f;
@@ -591,7 +735,41 @@ int main(int argc, const char **argv)
 					}
 					float Cost = Nd.m_Cost + d * d / 100.0f;
 					float Rank = Cost - (PendTau >= 0 ? PendB : 0) - (G.m_ReloadTimer == 0 && PendTau < 0 ? FreeB : 0);
+					if(ProjMode)
+						Rank += LagW * (Rt + 1 + Off - CLab) * 100.0f; // signed: ahead of the reference is good
+					if(SW > 0 && ProjMode)
+					{
+						// speed along the reference route, horizontal part as actually moved (velocity ramp on |v|)
+						vec2 V = G.m_Core.m_Vel;
+						float Lv = length(V) * 50;
+						float Ramp = Lv < 550 ? 1.0f : 1.0f / std::pow(1.4f, (Lv - 550) / 2000.0f);
+						vec2 A0, A1;
+						if(RefPos(CLab - 2, A0) && RefPos(CLab + 2, A1) && distance(A0, A1) > 1)
+						{
+							vec2 Dir = normalize(A1 - A0);
+							Rank -= SW * dot(vec2(V.x * Ramp, V.y), Dir) * LagW * 100.0f;
+						}
+					}
+					if(EW > 0)
+					{
+						// energy credit (ticks per unit of v^2 - y, as x_ds' egain), in the same units as the lag term
+						vec2 V = G.m_Core.m_Vel;
+						Rank -= EW * (dot(V, V) - G.m_Pos.y) * LagW * 100.0f;
+					}
+					if(Jitter > 0)
+					{
+						// deterministic tie-breaking noise (seeded): different runs keep different equal-rank states
+						uint64_t h = (uint64_t)Seed * 0x9E3779B97F4A7C15ull ^ (uint64_t)(int64_t)std::lround(G.m_Pos.x * 4) * 0xC2B2AE3D27D4EB4Full ^
+							     (uint64_t)(int64_t)std::lround(G.m_Pos.y * 4) * 0x165667B19E3779F9ull ^ (uint64_t)(int64_t)std::lround(G.m_Core.m_Vel.x * 64) * 0x27D4EB2F165667C5ull ^
+							     (uint64_t)(int64_t)std::lround(G.m_Core.m_Vel.y * 64);
+						h ^= h >> 31;
+						h *= 0xBF58476D1CE4E5B9ull;
+						h ^= h >> 29;
+						Rank += Jitter * (float)(h & 0xffff) / 65535.0f;
+					}
 					SNode C{G, In, k, Cost, Rank};
+					C.m_Lab = CLab;
+					C.m_ShI = vShP.empty() ? 0 : ShProj(G.m_Pos, Nd.m_ShI);
 					C.m_PendTau = PendTau;
 					C.m_PendPos = PendPos;
 					C.m_PatchTau = PatchTau;
@@ -600,12 +778,34 @@ int main(int argc, const char **argv)
 					R.push_back(std::move(C));
 				};
 				const int KeepTau = Pend ? Nd.m_PendTau : -1;
+				for(const STasInput &A : vShIn)
+				{
+					// the shadow input as it is (its exact aim and shot); a shot only with the reload free, and it
+					// drops a reserved slot (no second shot inside one reload)
+					STasInput In = A;
+					In.m_Weapon = -1;
+					if(In.m_Jump && P.m_Jump)
+						In.m_Jump = 0;
+					if(In.m_Fire)
+					{
+						if(Nd.m_G.m_ReloadTimer == 0 && !P.m_Fire)
+						{
+							CFastG G = Nd.m_G;
+							G.Step(In);
+							ShFire.push_back({G, In});
+						}
+						In.m_Fire = 0;
+					}
+					vC.push_back(In);
+				}
 				for(const STasInput &In : vC)
 				{
 					CFastG G = Nd.m_G;
 					G.Step(In);
 					Emit(G, In, KeepTau, Nd.m_PendPos, -1, 0, 0);
 				}
+				for(auto &[G, In] : ShFire)
+					Emit(G, In, -1, vec2(0, 0), -1, 0, 0);
 				if(CanFire)
 				{
 					// reserve the slot
@@ -722,7 +922,7 @@ int main(int argc, const char **argv)
 		for(auto &P : vPart)
 			for(auto &Nd : P)
 				vAll.push_back(std::move(Nd));
-		if(LagW > 0)
+		if(LagW > 0 && !ProjMode)
 			for(SNode &Nd : vAll)
 				Nd.m_Rank += LagW * (Lab - RefProj(Nd.m_G.m_Pos, Lab)) * 100.0f; // signed: ahead of the reference is good
 		// finish?
@@ -746,12 +946,92 @@ int main(int argc, const char **argv)
 					break;
 				}
 		}
+		// survival: the best-ranked SurvM*Beam candidates must survive SurvH ticks under at least one simple policy
+		// (hold or release the hook, any dir; a new hook in one of 8 directions; a jump; a point-blank shot in one of
+		// 16 directions). Candidates beyond that are not checked (a policy this simple misses clever escapes).
+		std::vector<uint8_t> vDoomed(vAll.size(), 0);
+		if(SurvH > 0)
+		{
+			const size_t M = std::min(vAll.size(), (size_t)SurvM * Beam);
+			std::atomic<size_t> NextS(0);
+			auto Surv = [&]() {
+				while(true)
+				{
+					size_t q = NextS++;
+					if(q >= M)
+						break;
+					const SNode &Nd = vAll[q];
+					bool Ok = false;
+					for(int Pol = 0; Pol < 31 && !Ok; Pol++)
+					{
+						CFastG G = Nd.m_G;
+						STasInput In = Nd.m_In;
+						In.m_Jump = 0;
+						In.m_Fire = 0;
+						STasInput First = In;
+						if(Pol < 6)
+						{
+							In.m_Dir = Pol % 3 - 1;
+							if(Pol >= 3)
+								In.m_Hook = 0;
+							First = In;
+						}
+						else if(Pol < 14)
+						{
+							In.m_Dir = 0;
+							In.m_Hook = 0;
+							First = In;
+						}
+						else if(Pol == 14)
+						{
+							if(Nd.m_In.m_Jump)
+								continue;
+							First.m_Jump = 1;
+							In.m_Dir = 0;
+						}
+						else
+						{
+							if(G.m_ReloadTimer != 0 || Nd.m_In.m_Fire)
+								continue;
+							First.m_Fire = 1;
+							AimTo(22.5f * (Pol - 15), First);
+						}
+						bool Dead = false;
+						for(int h = 0; h < SurvH; h++)
+						{
+							if(Pol >= 6 && Pol < 14 && h == 1)
+							{
+								In.m_Hook = 1;
+								AimTo(45.0f * (Pol - 6), In);
+							}
+							G.Step(h == 0 ? First : In);
+							if(G.m_FinishTick >= 0)
+								break;
+							if(G.m_Dead)
+							{
+								Dead = true;
+								break;
+							}
+						}
+						Ok = !Dead;
+					}
+					vDoomed[q] = !Ok;
+				}
+			};
+			std::vector<std::thread> vT;
+			for(int Th = 0; Th < NumThreads; Th++)
+				vT.emplace_back(Surv);
+			for(auto &Th : vT)
+				Th.join();
+		}
 		std::vector<SNode> vU;
 		std::unordered_map<uint64_t, int> Seen;
 		std::unordered_map<uint64_t, int> CellCnt;
 		std::vector<size_t> vOver;
 		for(SNode &Nd : vAll)
 		{
+			if(vDoomed[&Nd - vAll.data()])
+				continue;
 			const CFastG &G = Nd.m_G;
 			auto Q = [](float v, float q) { return (uint64_t)(int64_t)std::lround(v / q) & 0xffff; };
 			uint64_t K = Q(G.m_Pos.x, Qp) | Q(G.m_Pos.y, Qp) << 16 | Q(G.m_Core.m_Vel.x, Qv) << 32 | Q(G.m_Core.m_Vel.y, Qv) << 48;
@@ -796,8 +1076,8 @@ int main(int argc, const char **argv)
 		if((Rt + 1) % Every == 0)
 		{
 			const SNode &B = vU[0];
-			std::printf("rt %d label %.1f: beam %zu/%zu cost %.0f pos %.0f %.0f ref %.0f %.0f d %.0f |v| %.1f proj %.1f\n", Rt + 1, Lab, vU.size(), vAll.size(), B.m_Cost,
-				B.m_G.m_Pos.x, B.m_G.m_Pos.y, TP.x, TP.y, distance(B.m_G.m_Pos, TP), length(B.m_G.m_Core.m_Vel), RefProj(B.m_G.m_Pos, Lab));
+			std::printf("rt %d label %.1f: beam %zu/%zu cost %.0f pos %.0f %.0f ref %.0f %.0f d %.0f |v| %.1f proj %.1f lag %.1f\n", Rt + 1, Lab, vU.size(), vAll.size(), B.m_Cost,
+				B.m_G.m_Pos.x, B.m_G.m_Pos.y, TP.x, TP.y, distance(B.m_G.m_Pos, TP), length(B.m_G.m_Core.m_Vel), B.m_Lab, Lab - B.m_Lab);
 			std::fflush(stdout);
 		}
 		vL.push_back(std::move(vU));
