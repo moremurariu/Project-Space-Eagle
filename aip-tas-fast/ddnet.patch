@@ -219,10 +219,10 @@ index 18019f5..49e23bd 100644
  
 diff --git a/src/tas/ddsearch.cpp b/src/tas/ddsearch.cpp
 new file mode 100644
-index 0000000..ded848c
+index 0000000..543c883
 --- /dev/null
 +++ b/src/tas/ddsearch.cpp
-@@ -0,0 +1,1049 @@
+@@ -0,0 +1,1055 @@
 +// ddsearch: beam search to the grenade pickup on the exact fast stepper (CFast).
 +//
 +//   ddsearch MAP best=FILE cut=RT [key=value ...]
@@ -1107,49 +1107,55 @@ index 0000000..ded848c
 +				vKeep[It->second] = i;
 +		}
 +		size_t Cells = vKeep.size();
++		// re-simulate candidates in score order and check survival, in chunks, until the beam is full
 +		int Pool = std::min((int)vKeep.size(), gs_Survive > 0 ? 2 * gs_Beam : gs_Beam);
 +		std::partial_sort(vKeep.begin(), vKeep.begin() + Pool, vKeep.end(), [&](int a, int b) { return vAll[a].m_Score < vAll[b].m_Score; });
-+		// re-simulate the best candidates and check survival
 +		std::vector<SState> vNew(Pool);
 +		std::vector<SNode> Layer(Pool);
-+		std::vector<uint8_t> vAlive(Pool, 1);
-+		std::atomic<int> Next2(0);
-+		auto Worker2 = [&](int) {
-+			for(;;)
-+			{
-+				int k = Next2.fetch_add(1);
-+				if(k >= Pool)
-+					break;
-+				const SCand &Cd = vAll[vKeep[k]];
-+				const SState &P = vBeam[Cd.m_Parent];
-+				SState &N2 = vNew[k];
-+				N2.m_F = P.m_F;
-+				N2.m_F.Step(Cd.m_In);
-+				N2.m_RefIdx = Cd.m_RefIdx;
-+				N2.m_LastHook = Cd.m_In.m_Hook;
-+				N2.m_LastJump = Cd.m_In.m_Jump;
-+				N2.m_Score = Cd.m_Score;
-+				N2.m_Node = k;
-+				Layer[k].m_Parent = P.m_Node;
-+				Layer[k].m_In = Cd.m_In;
-+				vAlive[k] = Survives(N2, gs_Survive);
-+			}
-+		};
-+		vTh.clear();
-+		for(int t = 0; t < gs_Threads; t++)
-+			vTh.emplace_back(Worker2, t);
-+		for(auto &T : vTh)
-+			T.join();
-+		// keep the best gs_Beam survivors (doomed ones only if nothing else is left)
++		std::vector<uint8_t> vAlive(Pool, 0);
 +		std::vector<SState> vSel;
 +		std::vector<SNode> LayerSel;
-+		for(int k = 0; k < Pool && (int)vSel.size() < gs_Beam; k++)
-+			if(vAlive[k])
-+			{
-+				vNew[k].m_Node = (int)vSel.size();
-+				LayerSel.push_back(Layer[k]);
-+				vSel.push_back(vNew[k]);
-+			}
++		int Done = 0;
++		while(Done < Pool && (int)vSel.size() < gs_Beam)
++		{
++			int Need = gs_Beam - (int)vSel.size();
++			int ChunkEnd = std::min(Pool, Done + Need + Need / 8 + 64);
++			std::atomic<int> Next2(Done);
++			auto Worker2 = [&](int) {
++				for(;;)
++				{
++					int k = Next2.fetch_add(1);
++					if(k >= ChunkEnd)
++						break;
++					const SCand &Cd = vAll[vKeep[k]];
++					const SState &P = vBeam[Cd.m_Parent];
++					SState &N2 = vNew[k];
++					N2.m_F = P.m_F;
++					N2.m_F.Step(Cd.m_In);
++					N2.m_RefIdx = Cd.m_RefIdx;
++					N2.m_LastHook = Cd.m_In.m_Hook;
++					N2.m_LastJump = Cd.m_In.m_Jump;
++					N2.m_Score = Cd.m_Score;
++					N2.m_Node = k;
++					Layer[k].m_Parent = P.m_Node;
++					Layer[k].m_In = Cd.m_In;
++					vAlive[k] = Survives(N2, gs_Survive);
++				}
++			};
++			vTh.clear();
++			for(int t = 0; t < gs_Threads; t++)
++				vTh.emplace_back(Worker2, t);
++			for(auto &T : vTh)
++				T.join();
++			for(int k = Done; k < ChunkEnd && (int)vSel.size() < gs_Beam; k++)
++				if(vAlive[k])
++				{
++					vNew[k].m_Node = (int)vSel.size();
++					LayerSel.push_back(Layer[k]);
++					vSel.push_back(vNew[k]);
++				}
++			Done = ChunkEnd;
++		}
 +		// incumbent: the reference run's own continuation always stays in the beam
 +		IncBeamIdx = -1;
 +		if(Step < (int)vIncF.size() && !vIncF[Step].m_Got)

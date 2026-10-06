@@ -5,13 +5,13 @@ Map: KoG AiP-Gores, sha256 `353b27cf72168cd0bb917c56eb46a83ef8d4266f310ec79b68db
 `aip-tas-fast/kog.map`).
 
 ## Result (metric: race tick of the grenade pickup)
-- **967** (`runs/kog_pregren_967.txt`), previous best 978 → **−11 ticks** (968: `kog_pregren_968.txt`).
+- **966** (`runs/kog_pregren_966.txt`), previous best 978 → **−12 ticks** (also 967, 968).
   Checked on DDNet's prediction code (`replay`) and on the real server code (`testrunner` `TasServer.Run`): start tick 68,
-  pickup at input 1035 = race tick 967, no freeze, no double start up to the pickup.
-- Like all runs from this search (977 … 967), the tee arrives at ~37 px/tick diving down-right with both jumps spent and
+  pickup at input 1034 = race tick 966, no freeze, no double start up to the pickup.
+- Like all runs from this search (977 … 966), the tee arrives at ~37 px/tick diving down-right with both jumps spent and
   freezes on the pocket floor right after the pickup. This is accepted for this metric (a separate step turns such
   arrivals into viable ones for a few ticks). `viacheck` measures the exit: from the 978 run the climb point
-  (5254, 2176) is reached at race tick 1011; from the 977 … 967 runs it is not reachable.
+  (5254, 2176) is reached at race tick 1011; from the 977 … 966 runs it is not reachable.
 - Format: one line per tick from spawn, `dir jump hook fire target_x target_y weapon`; the race starts at input 68.
 
 ## How (ideas taken from ddnet_physics / frametee)
@@ -53,3 +53,5 @@ Drivers (run from a folder next to `ddnet/` and `kog.map`): `tools/splice.py BES
   (low line, touching the bare block at x 6688-6784 to refill jumps before the right U-turn) and keeps ~7.5 through the
   turn (tighter over the pillar top: lower, hooking down earlier). Following his line we reach +3 at race tick 265 and
   +2 at the turn exit (race tick 403 vs 405), but no fresh search carries that through corridor 2 as well as 967's.
+- **966**: `tools/glns.py` (guided LNS: incumbent-kept searches from random cuts, the time model following another run's
+  track aligned at the cut) on 967, guided by older runs that were faster in the left-U-turn exit / corridor 3.
