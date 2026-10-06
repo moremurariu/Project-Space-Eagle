@@ -750,3 +750,8 @@ Teero played the **KoG** version of AiP-Gores (user, from Teero). Our runs so fa
 - auto-accepted lnsr1/best_2650.txt: **2650 (53.00 s)**, server-identical (start tick 68 finish tick 2718 -> 2650 ticks = 53.00 s; no freeze, no double start) -> kog_full_best.txt.
 - **2639 (52.78 s), uploaded by the user** (kog_full_2639.txt): server-identical (start 68, finish 2707, no freeze, no double start); same inputs as our 2650 up to race tick 1088, different post-grenade after. Now kog_full_best.txt and the LNS incumbent (runs/lnsr1/best.txt).
 - **2630 (52.60 s), uploaded by the user** (kog_full_2630.txt): server-identical (start 68, finish 2698, no freeze, no double start); = 2639 up to race tick 1801. Now kog_full_best.txt and the LNS incumbent. Also uploaded: kog_pregren_963 (other agent's pre-grenade, pickup at race tick 963) to merge with it.
+- Merge 963 + 2630: the 963 pre-grenade is +5 ticks ahead of 2630's (968-based) pre-grenade over rt 820-945 at the
+  same positions (<= ~20 px), then dives at ~37 px/t and freezes 2 ticks after its end (no grenade kick can save it).
+  Direct splices "963 up to rt c + 2630 from c+5" (c = 700..945) all freeze (checked with fgcheck). Sub-agent
+  (merge963/) re-fits the transition aiming at an exact state match with 2630 (DDNet quantizes the core state), so
+  2630's inputs can be appended unchanged (target ~2625).
