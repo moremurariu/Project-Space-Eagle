@@ -749,3 +749,4 @@ Teero played the **KoG** version of AiP-Gores (user, from Teero). Our runs so fa
 - LNS lnsr1: 2653 -> **2652 (53.04 s)** at cut 2088 (retro=3 loadres=0.2 quota=30, beam 15000), auto-accepted.
 - auto-accepted lnsr1/best_2650.txt: **2650 (53.00 s)**, server-identical (start tick 68 finish tick 2718 -> 2650 ticks = 53.00 s; no freeze, no double start) -> kog_full_best.txt.
 - **2639 (52.78 s), uploaded by the user** (kog_full_2639.txt): server-identical (start 68, finish 2707, no freeze, no double start); same inputs as our 2650 up to race tick 1088, different post-grenade after. Now kog_full_best.txt and the LNS incumbent (runs/lnsr1/best.txt).
+- **2630 (52.60 s), uploaded by the user** (kog_full_2630.txt): server-identical (start 68, finish 2698, no freeze, no double start); = 2639 up to race tick 1801. Now kog_full_best.txt and the LNS incumbent. Also uploaded: kog_pregren_963 (other agent's pre-grenade, pickup at race tick 963) to merge with it.
