@@ -724,3 +724,6 @@ Teero played the **KoG** version of AiP-Gores (user, from Teero). Our runs so fa
 - **Prediction vs server bug found by nadelab:** a grenade hitting a tile on its last lifetime tick explodes twice in
   the client prediction world (CTasGame, CFastG) but once on the server. CFastG fixed (lifetime branch now `else if`;
   backup fastg.cpp.bak_dblexpl); CTasGame still has it. Accepted runs were all server-checked, so they are unaffected.
+- Prediction world fixed too (game/client/prediction/entities/projectile.cpp: return after a destroying hit, like the
+  server; backup .bak_dblexpl): nadelab demo now 2165 px on CTasGame (was 3185; server 2166 from the standing y),
+  best_height 2413 unchanged, kog_full_best still replays to 2663. Patch included in changes.patch.

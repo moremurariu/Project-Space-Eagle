@@ -408,6 +408,21 @@
  	CCollision();
  	~CCollision();
  
+--- a/ddnet/src/game/client/prediction/entities/projectile.cpp
++++ b/ddnet/src/game/client/prediction/entities/projectile.cpp
+@@ -141,10 +141,12 @@
+ 			if(GameWorld()->m_WorldConfig.m_IsDDRace && GameWorld()->m_WorldConfig.m_PredictDDRace)
+ 				GameWorld()->CreatePredictedDamageIndEvent(CurPos, -std::atan2(m_Direction.x, m_Direction.y), 10, m_StartTick);
+ 			m_MarkedForDestroy = true;
++			return; // like the server: no lifetime explosion on top of a hit in the last lifetime tick
+ 		}
+ 		else if(!m_Freeze)
+ 		{
+ 			m_MarkedForDestroy = true;
++			return;
+ 		}
+ 	}
+ 	if(m_LifeSpan == -1)
 --- a/ddnet/src/tas/sim.h
 +++ b/ddnet/src/tas/sim.h
 @@ -93,6 +93,12 @@
@@ -523,7 +538,7 @@
  }
 --- a/tas-work/NOTES.md
 +++ b/tas-work/NOTES.md
-@@ -84,3 +84,643 @@
+@@ -84,3 +84,646 @@
  - Corridor 1 from a Teero-like crossing (900,465,25,-13 spent): 294-296 (Teero 298). Our pre-start crossing gives ~306.
  - TileExists lookup cache in CCollision (opt-in flag, TAS only): step 1.54 -> 1.20 us, identical replays.
  - chain.py: segment chain over distance gates with several configs (gains ~1-2 ticks/gate; slow).
@@ -1167,3 +1182,6 @@
 +- **Prediction vs server bug found by nadelab:** a grenade hitting a tile on its last lifetime tick explodes twice in
 +  the client prediction world (CTasGame, CFastG) but once on the server. CFastG fixed (lifetime branch now `else if`;
 +  backup fastg.cpp.bak_dblexpl); CTasGame still has it. Accepted runs were all server-checked, so they are unaffected.
++- Prediction world fixed too (game/client/prediction/entities/projectile.cpp: return after a destroying hit, like the
++  server; backup .bak_dblexpl): nadelab demo now 2165 px on CTasGame (was 3185; server 2166 from the standing y),
++  best_height 2413 unchanged, kog_full_best still replays to 2663. Patch included in changes.patch.
