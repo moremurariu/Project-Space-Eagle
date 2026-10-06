@@ -712,3 +712,6 @@ Teero played the **KoG** version of AiP-Gores (user, from Teero). Our runs so fa
   k1999 2059 [2076], k2074 2143 [2154], k2149 2227 [2233], k2224 2306 [2318], k2299 2390 [2402], k2374 2468 [2482],
   k2449 2551 [2566], k2524 2644 [2648], finish 2664 [2677]. Retro variants won 12 of 19 windows (often by 5-15 over
   free). Not yet below the LNS-polished 2663; re-running the last two windows with 10 variants (runs/rc/r1b).
+- r1b (last two windows of r1 re-run with 10 variants: free x3, retro=1 x3, retro=3+loadres+quota x3, retro=3+quota):
+  k2524 still 2644 (2644-2662); finish **2663 (53.26 s), server-identical -> kog_full_r1b_2663.txt** = ties the best
+  (the LNS-polished g2 run) without any LNS. Wait loops of the form `until ! pgrep -f X` match their own command line.
