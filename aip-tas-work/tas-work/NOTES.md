@@ -1153,3 +1153,6 @@ dir, jump, cursor aim, shots with aim, certainties; best effort, not exact) and 
   (1404 1429 1454 1479 1504 1532 1559 1584 1610 1636); 2605 leaves 31-41 tick gaps (1422 -> 1453, 1533 -> 1570 (the
   shaft lob), 1650 -> 1691). Teero gets ~1 extra kick per 300 ticks. The planner's +4 line in 1270-1445 had moved
   to a 25-tick rhythm (1341 1366 1395 1424 1450), which is what makes 2605's later pre-fires impossible on it.
+- xsweep on 2603 (dschain variants with seeds 21-24): U-turn 1 (1095-1270) +1.0 from rt 1230 -> graft D=1 from cut
+  1255: **2602 (52.04 s)**, server-checked (TasReplay finish tick 2670; TasServer). U-turn 1 has given a tick on
+  every re-plan so far (2606 -> 2605, 2604 -> 2603, 2603 -> 2602).

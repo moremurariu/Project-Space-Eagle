@@ -10,11 +10,11 @@ Make a tool-assisted run of the KoG version of **AiP-Gores** that beats Teero's 
 - Don't start from Teero's inputs; generate the run. His video, track and catalog may be used as references.
 
 ## Status (Oct 7)
-- **Best full run: 2603 race ticks (52.06 s)**, `tas-work/kog_full_best.txt` (= `kog_full_2603.txt`), server-checked
-  (TasReplay: start tick 68, finish tick 2671, no freeze; TasServer: no death, no freeze, no double start). Grenade
-  pickup at race tick 966. Three 1-tick gains on 2606 from the section planner (`tas-work/plan/xplan.py`, overlapping
+- **Best full run: 2602 race ticks (52.04 s)**, `tas-work/kog_full_best.txt` (= `kog_full_2602.txt`), server-checked
+  (TasReplay: start tick 68, finish tick 2670, no freeze; TasServer: no death, no freeze, no double start). Grenade
+  pickup at race tick 966. Four 1-tick gains on 2606 from the section planner (`tas-work/plan/xplan.py`, overlapping
   stages) + `x_graft D=1`, automated by `tas-work/plan/xsweep.py`: right U-turn 1 (2605), the final maze (2604),
-  U-turn 1 again (2603). See NOTES "Section planner v2".
+  U-turn 1 again (2603, 2602). See NOTES "Section planner v2".
 - 2606 (52.12 s): first full run with **Teero's shaft double kick** (see "The shaft double kick" below).
 - 2607 (52.14 s): faraday's 962 pre-grenade dive grafted onto the 2613 run -> 2608 (below), then 20 minutes of
   `x_ds` incumbent LNS -> 2607.
