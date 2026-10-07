@@ -8,5 +8,6 @@ tas-work/runs/ds/
 tas-work/runs/dsc/
 tas-work/runs/tig/
 tas-work/runs/*.out
+tas-work/runs/dsloop_*.log
 tas-work/teero/
 tas-work/teero_track.txt
