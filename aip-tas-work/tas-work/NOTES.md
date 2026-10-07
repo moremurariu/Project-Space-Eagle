@@ -1144,3 +1144,12 @@ dir, jump, cursor aim, shots with aim, certainties; best effort, not exact) and 
   then 92 px (2605's wall kick). Its own pre-fire (1424 -> 1440) costs the lead: +0.9 at rt 1480. Same pattern as the
   left U-turn lead: the planner gains ticks by spending a grenade at another time, and the incumbent's next technique
   (a pre-fire, the shaft lob) then needs a slot the new line does not have.
+- xsweep on 2605 (dschain variants, K 6, look 35; sections 2000-2175, 2175-2350, 2350-2525, 1270-1445, 975-1150,
+  2430-2570, 1095-1270; ~9 min per section on 4 cores): 2000-2525 reproduce the run (0 ahead); 975-1150 is 8.7 behind
+  at rt 1185 (a free plan from the pickup falls into the apex failure again); 2430-2570 +1.46 at rt 2600 -> graft D=1
+  from cut 2555: **2604**; 1095-1270 on 2604 +1.0..1.6 from rt 1215 -> graft D=1 from cut 1255: **2603 (52.06 s)**,
+  server-checked (TasReplay finish tick 2671, no freeze; TasServer no death / freeze / double start).
+- Shot schedules (Teero's video extraction vs 2605, rt 1300-1700): Teero fires at every reload, 25-28 ticks apart
+  (1404 1429 1454 1479 1504 1532 1559 1584 1610 1636); 2605 leaves 31-41 tick gaps (1422 -> 1453, 1533 -> 1570 (the
+  shaft lob), 1650 -> 1691). Teero gets ~1 extra kick per 300 ticks. The planner's +4 line in 1270-1445 had moved
+  to a 25-tick rhythm (1341 1366 1395 1424 1450), which is what makes 2605's later pre-fires impossible on it.
