@@ -1181,3 +1181,19 @@ dir, jump, cursor aim, shots with aim, certainties; best effort, not exact) and 
 - xsweep rounds on 2602 (dschain_variants_b, rounds 3): U-turn 1 round 0 / 1 +0.46 / +0.49 (no graft), final maze
   round 0 +0.36; final maze round 1 (seeds +100): +2.0 at rt 2565 on 2602's line -> x_graft D=2 from cut 2555:
   **2600 (52.00 s)**, server-checked (TasReplay finish tick 2668; TasServer).
+
+## Braking cost and far low-loss hooks in x_ds (brakew=, rotfar=)
+- Our worst stretch (2602 rt 1458-1477, left U-turn exit): two held hooks (anchors (223, 2670), (798, 2944)) turn
+  2-4 deg/tick but cost 0.3-0.76 px/t each tick, |v| 37.5 -> 24.9 for ~50 deg: the anchor drifts behind the tee and
+  the pull turns into braking. A pull just past perpendicular turns as fast at ~0 loss (above 15 px/t a pull only
+  applies if |v| does not grow); RotAims only aims such pulses at anchors 47-122 px away (same-tick grabs).
+- New in x_ds: rotfar=1 adds, per side, the aim whose pull at the grab (anchor up to 362 px, flight 80 px/t, idle
+  prediction of the tee) turns most without raising |v|, plus the farthest anchor turning >= 80% of that (slower
+  drift). brakew=W adds W ticks per px/t of the lineage's speed lost to the hook pull and to the direction key (vs
+  pressing along vx) to the ranking (not to the reported gate time).
+- Test on 2600 (x_ds windows, incforce=0, beam 3000, dschain variants v0 / v1, gate = 2600's progress):
+  1440 -> 1510 (2600: 1510): base 1508.77 / 1507.05; brakew 0.3 1507.65 / 1507.10; brakew 1 1507.94 / 1508.98;
+  rotfar 1507.39 / 1506.38; rotfar + brakew 0.3 1507.42 / 1506.16. 2275 -> 2345 (freeze-lined): v0 dies in all
+  configs (also from cuts 2260 / 2266 / 2290), v1 2345.03-2345.27 in all configs. -> rotfar ~ -1 tick on the turn
+  exit, a light braking cost helps a little, a heavy one hurts. dschain_variants_rf.txt = variants_b + rotfar=1
+  brakew=0.3.

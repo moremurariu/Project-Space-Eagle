@@ -15,6 +15,11 @@
 //   inc: the incumbent run (inputs from spawn); cut: race tick to start searching from (its prefix is kept)
 //   gate=finish | gate=G (geodesic px to the finish; the window ends there)  out=FILE
 //   beam=3000 threads=4 maxf=95 retro=3 hookangles=32 fireangles=64 lam=0,0.004,0.01,0.02 incforce=1
+//   brakew=W: a lineage's speed lost to the hook pull and to the direction key (vs pressing along vx) costs W ticks
+//     per px/t on top of the energy credit (above 15 px/t a hook pull only applies if |v| does not grow, so a high-speed
+//     hook only turns or brakes; NOTES "Why Teero is faster": we lose speed ~50% faster than he does between kicks)
+//   rotfar=1: low-loss turning hooks at anchors up to the hook length (flight time included): per side the aim whose
+//     pull at the grab is the strongest turn that does not raise |v|, and the farthest anchor turning >= 80% of that
 #define private public
 #define protected public
 #include <game/client/prediction/entities/character.h>
@@ -87,6 +92,8 @@ struct SPar
 	int m_HookAngles = 32, m_FireAngles = 64, m_FireKeep = 6;
 	std::vector<float> m_vLam = {0.0f, 0.004f, 0.01f, 0.02f};
 	float m_OptW = 0; // energy credit per free shot slot in the lineage's last maxf ticks
+	float m_BrakeW = 0; // ticks per px/t of speed lost to hook pull / direction braking (lineage total)
+	int m_RotFar = 0; // far low-loss turning hook aims
 	int m_IncForce = 1;
 	int m_GateWait = 3;
 	float m_CellPos = 4, m_CellVel = 0.5f;
@@ -349,6 +356,7 @@ struct SState
 	float m_KInc = 0; // progress on the incumbent's path (shadow index)
 	float m_TCost = 0; // time-indexed tracking cost (ttrack)
 	float m_Lag = 0, m_E = 0;
+	float m_Brake = 0; // speed lost to hook pull / direction braking along the lineage (px/t)
 };
 
 struct SRetroShot
@@ -397,6 +405,7 @@ struct SCand
 	int m_G0Rt = 0; // race tick after the step
 	float m_KInc = 0;
 	float m_TCost = 0;
+	float m_Brake = 0;
 	uint64_t m_Key;
 	int64_t m_Cell;
 	int64_t m_QCell;
@@ -711,6 +720,139 @@ static void RotAims(const CFastG &G, int Dir, int Jump, std::vector<std::pair<in
 				vOut.push_back(A);
 		}
 	}
+}
+
+// far low-loss turning hooks: the hook flies 80 px/t from 42 px out, so an anchor r px away grabs in tick
+// ceil((r - 42) / 80) and pulls from where the tee is then (an idle prediction of the next ticks). At the grab the pull
+// should turn v as much as possible without raising |v| (it would not apply), as RotAims does for the same-tick grabs;
+// a far anchor also drifts slower, so the farthest anchor turning >= 80% of the best is added too.
+static void FarRays(const CFastG &G, std::vector<float> &vR)
+{
+	static const int N = 720;
+	vR.assign(N, 0.0f);
+	const SMapInfo &M = CTasGame::Map();
+	const vec2 P = G.m_Pos;
+	if(!CTasGame::Collision()->FastAnySolid(P.x - 380, P.y - 380, P.x + 380, P.y + 380))
+		return;
+	for(int i = 0; i < N; i++)
+	{
+		const float Ang = 2 * pi * i / N;
+		const vec2 D(std::cos(Ang), std::sin(Ang));
+		for(float r = 42.0f; r <= 362.0f; r += 3.0f)
+		{
+			vec2 Q = P + D * r;
+			int T = M.Tile((int)std::floor(Q.x / 32), (int)std::floor(Q.y / 32));
+			if(T == TILE_SOLID)
+			{
+				vR[i] = r;
+				break;
+			}
+			if(T == TILE_NOHOOK)
+				break;
+		}
+	}
+}
+static void RotFarAims(const CFastG &G, int Dir, const std::vector<float> &vR, std::vector<std::pair<int16_t, int16_t>> &vOut)
+{
+	if(length(G.m_Core.m_Vel) < 15.0f)
+		return;
+	const int N = (int)vR.size();
+	// idle prediction: position / velocity at the start of ticks 1..4 (no hook, the same direction key)
+	vec2 aP[5], aV[5];
+	{
+		CFastG F = G;
+		STasInput In{};
+		In.m_Dir = Dir;
+		In.m_TX = 1000;
+		In.m_Weapon = -1;
+		aP[0] = F.m_Pos;
+		aV[0] = F.m_Core.m_Vel;
+		for(int k = 1; k < 5; k++)
+		{
+			F.Step(In);
+			aP[k] = F.m_Pos;
+			aV[k] = F.m_Core.m_Vel;
+		}
+	}
+	for(int Side = -1; Side <= 1; Side += 2)
+	{
+		float Best = 0.0f, BestR = 0;
+		int BestI = -1;
+		std::vector<std::pair<float, int>> vOk; // (rotation, index)
+		for(int i = 0; i < N; i++)
+		{
+			const float R = vR[i];
+			if(R <= 122.0f) // same-tick grabs are RotAims'
+				continue;
+			const int k = std::min(4, (int)std::ceil((R - 42.0f) / 80.0f));
+			const float Ang = 2 * pi * i / N;
+			const vec2 A = G.m_Pos + vec2(std::cos(Ang), std::sin(Ang)) * R; // anchor (fired from the current position)
+			const vec2 P = aP[k - 1];
+			if(distance(P, A) > 380.0f || distance(P, A) < 46.0f)
+				continue;
+			vec2 V = aV[k - 1];
+			V.y += 0.5f;
+			const float L0 = length(V);
+			if(L0 < 15.0f)
+				continue;
+			const vec2 Nv = V + HookPull(A - P, Dir);
+			const float Ln = length(Nv);
+			if(!(Ln < L0 - 0.004f))
+				continue;
+			const float Rot = Side * (V.x * Nv.y - V.y * Nv.x) / (L0 * Ln);
+			if(Rot <= 0)
+				continue;
+			vOk.push_back({Rot, i});
+			if(Rot > Best)
+			{
+				Best = Rot;
+				BestI = i;
+				BestR = R;
+			}
+		}
+		if(BestI < 0)
+			continue;
+		int FarI = -1;
+		float FarR = BestR;
+		for(auto [Rot, i] : vOk)
+			if(Rot >= 0.8f * Best && vR[i] > FarR + 32.0f)
+			{
+				FarR = vR[i];
+				FarI = i;
+			}
+		for(int i : {BestI, FarI})
+		{
+			if(i < 0)
+				continue;
+			const float Ang = 2 * pi * i / N;
+			std::pair<int16_t, int16_t> Aim{(int16_t)std::lround(std::cos(Ang) * 10000), (int16_t)std::lround(std::sin(Ang) * 10000)};
+			if(std::find(vOut.begin(), vOut.end(), Aim) == vOut.end())
+				vOut.push_back(Aim);
+		}
+	}
+}
+
+// speed lost in the step G -> (input In) to the direction key (vs pressing along vx) and to the hook pull (measured
+// before the move; collisions, explosions and gravity are not counted)
+static float BrakeLoss(const CFastG &G, const STasInput &In, const CFastG &After)
+{
+	const vec2 Va = PreHookVel(G, In.m_Dir, In.m_Jump);
+	float Loss = 0;
+	const float Vx = G.m_Core.m_Vel.x;
+	if(std::fabs(Vx) > 0.5f)
+	{
+		const int Along = Vx > 0 ? 1 : -1;
+		if(In.m_Dir != Along)
+			Loss += std::max(0.0f, length(PreHookVel(G, Along, In.m_Jump)) - length(Va));
+	}
+	if(In.m_Hook && After.m_Core.m_HookState == HOOK_GRABBED && distance(After.m_Core.m_HookPos, G.m_Pos) > 46.0f)
+	{
+		const vec2 Nv = Va + HookPull(After.m_Core.m_HookPos - G.m_Pos, In.m_Dir);
+		const float L0 = length(Va), Ln = length(Nv);
+		if(Ln < 15.0f || Ln < L0)
+			Loss += std::max(0.0f, L0 - Ln);
+	}
+	return Loss;
 }
 
 // ------------------------------------------------------------------------------------------------ survival
@@ -1028,6 +1170,7 @@ static void Score(const CFastG &G, SCand &C, const SState &Par)
 	C.m_E = Energy(G);
 	C.m_Opt = 0;
 	C.m_TCost = Par.m_TCost;
+	C.m_Lag += gs_P.m_BrakeW * C.m_Brake;
 	if(gs_P.m_TTrack > 0)
 	{
 		// time-indexed: distance to the reference's position at the same (offset) race tick
@@ -1279,6 +1422,8 @@ int main(int argc, const char **argv)
 		else if(K == "fireangles") gs_P.m_FireAngles = std::stoi(V);
 		else if(K == "firekeep") gs_P.m_FireKeep = std::stoi(V);
 		else if(K == "optw") gs_P.m_OptW = std::stof(V);
+		else if(K == "brakew") gs_P.m_BrakeW = std::stof(V);
+		else if(K == "rotfar") gs_P.m_RotFar = std::stoi(V);
 		else if(K == "incforce") gs_P.m_IncForce = std::stoi(V);
 		else if(K == "gatewait") gs_P.m_GateWait = std::stoi(V);
 		else if(K == "cellpos") gs_P.m_CellPos = std::stof(V);
@@ -1639,6 +1784,7 @@ int main(int argc, const char **argv)
 						C.m_aR[C.m_NR++] = *pR1;
 					if(pR2)
 						C.m_aR[C.m_NR++] = *pR2;
+					C.m_Brake = S.m_Brake + (gs_P.m_BrakeW > 0 ? BrakeLoss(G, In, Tmp.m_G) : 0.0f);
 					Score(Tmp.m_G, C, S);
 					if(gs_P.m_KCred > 0 && Tmp.m_G.m_ReloadTimer <= gs_P.m_KReady)
 						C.m_Opt += gs_P.m_KCred * KickCredit(Tmp.m_G);
@@ -1718,6 +1864,9 @@ int main(int argc, const char **argv)
 				Base.m_Weapon = 3;
 				if(!Hooking)
 					HookAims(G, vHook);
+				std::vector<float> vFarR;
+				if(gs_P.m_RotFar && !Hooking && length(G.m_Core.m_Vel) >= 15.0f)
+					FarRays(G, vFarR);
 				for(int Dir = -1; Dir <= 1; Dir++)
 				{
 					if(!gs_P.m_DirAll && Dir == 0)
@@ -1745,10 +1894,13 @@ int main(int argc, const char **argv)
 								H.m_TY = TY;
 								Emit(H, nullptr, nullptr, false, false);
 							}
-							if(gs_P.m_Rot)
+							if(gs_P.m_Rot || !vFarR.empty())
 							{
 								vRot.clear();
-								RotAims(G, Dir, Jump, vRot);
+								if(gs_P.m_Rot)
+									RotAims(G, Dir, Jump, vRot);
+								if(!vFarR.empty())
+									RotFarAims(G, Dir, vFarR, vRot);
 								for(auto [TX, TY] : vRot)
 								{
 									STasInput H = In;
@@ -2002,7 +2154,7 @@ int main(int argc, const char **argv)
 							E = c.m_E;
 						}
 					}
-					c.m_Lag = Lag;
+					c.m_Lag = Lag + gs_P.m_BrakeW * c.m_Brake;
 					c.m_E = E;
 				}
 			};
@@ -2124,6 +2276,7 @@ int main(int argc, const char **argv)
 					S.m_G0 = c.m_G;
 					S.m_KInc = c.m_KInc;
 					S.m_TCost = c.m_TCost;
+					S.m_Brake = c.m_Brake;
 					S.m_Lag = c.m_Lag;
 					S.m_E = c.m_E;
 					Nd.m_In = c.m_In;
