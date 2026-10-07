@@ -7,7 +7,10 @@ Make a tool-assisted run of the KoG version of **AiP-Gores** that beats Teero's 
   states; CTasGame marks them (`m_StartTick = -2`).
 - The run must work on a real server. The simulators are DDNet's own prediction code (plus exact fast paths); every
   result is checked on real server code with `TasReplay` (`tas-work/srvfin.sh FILE`).
-- Don't start from Teero's inputs; generate the run. His video, track and catalog may be used as references.
+- Any means are allowed, Teero's own inputs included (user, Oct 7: the goal is the fastest run without a double
+  start, by any means). An earlier README said not to start from his inputs; that was an agent's misreading. We have
+  no exact inputs of his: `tas-work/teero/` holds what was extracted from his video
+  (https://www.youtube.com/watch?v=eHJJNU-hQoU): direction keys, jump, aim, fire per 60-fps frame, no hook.
 
 ## Status (Oct 7)
 - **Best full run: 2599 race ticks (51.98 s)**, `tas-work/kog_full_best.txt` (= `kog_full_2599.txt`), server-checked
