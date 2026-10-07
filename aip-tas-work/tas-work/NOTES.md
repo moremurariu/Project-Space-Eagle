@@ -1104,3 +1104,43 @@ dir, jump, cursor aim, shots with aim, certainties; best effort, not exact) and 
 - Result: staging + a Pareto front fixes the apex collapse (with tracking variants) but not precision maneuvers
   (catch-up pre-fire on a block), so the planned lines end behind the polished incumbent. A technique still needs a
   complete line that is then polished (the double kick: dk2 + 50 LNS jobs). xplan.py is kept as an experimental tool.
+
+## Section planner v2 (Oct 7): overlapping stages -> 2605
+- The "precision maneuver" of v1 was not missing from the search: x_ds's retro shots are the block-targeted shot
+  generator (each step: solid points within 100 px of the tee on 32 rays x every free fire tick in the last maxf ticks,
+  exact aim and flight check). From 2606's own apex state (prefix to rt 1164, gate rt 1235, 4 dschain variants) x_ds
+  finds the incumbent's corridor-block shot itself (explodes at (7679, 2112), |f| 12, cos 0.90; 1235.0-1236.7).
+- v1 lost 17 of its 21 ticks at its own stage boundary: windows ending at the rt-1200 gate spent the grenade just
+  before it (kicks at 1197-1199) and arrived low, so the line ran into the block 10 ticks later. One 70-tick window
+  from the same stage-1 state to rt 1235: 1237.6-1241.3 (staged: 1256). The other ~3.7: v1's "1.3 ahead" apex state
+  was slower (|v| 34.6 vs 39.3 after the apex kick).
+- Fix (xplan.py look=35, now the default): each stage's windows run 35 incumbent ticks past the stage's gate and are
+  ranked there; only their part up to the gate is kept (x_ds commitk=). U-turn 1 (2606, cut 1095 -> 1270, K 6, dschain
+  variants, ~7 min on 4 cores): stage arrivals 1162.8 @1165, 1198.9 @1200, 1232.9 @1235, 1268.6 @1270, best 1268.46.
+  lead.py: +0.3..0.9 to the apex, +1.0..1.5 from rt 1185 on, on 2606's own line (within 4 px from rt 1205) at the
+  same speed - 2606's line ~1.5 ticks earlier.
+- x_graft D=1 (beam 20000) from cut 1250 puts 2606's remaining inputs on it: **2605 (52.10 s)**, server-checked
+  (TasReplay finish tick 2673, no freeze; TasServer no death / freeze / double start). Cut 1262: no graft (best
+  distance 0.67). kog_full_2605.txt = kog_full_best.txt.
+- xsweep.py (new): xplan over a list of sections + x_graft of the best arrivals back onto the run (cuts where the
+  planned line is on the run's line, D from the measured lead) + server check, carrying gains into later sections.
+- Left U-turn (2605, cut 1420 -> 1595, xsweep): the planned line is on 2605's line (within 4 px) and ahead from rt
+  1495: +3.1 at 1510, +3.2 at 1525, +2.9 at 1540, +4.4 at 1555, +4.3 at 1570. It then skips the shaft lob: a kick
+  off the shaft wall at 1569 (|v| 40) reaches 2605's rt-1595 progress at 1580.9 (the gate reading "14 ahead"), but
+  moving sideways; planned upward from there (cut 1595 -> 1735) it is 10 behind at 1665 and 1700. x_graft of the
+  U-turn part onto 2605 (cuts 1558 / 1568, D 3 / 4): no graft (no wall / floor / clamp contact to collapse the states
+  before the lob). Planning the shaft from the lead state (start = the line at rt 1550, gates 1590 / 1625): the lead
+  holds at +4.3..4.6 to rt 1570, then no lineage finds the lob + double kick (shaft climb at |v| 14-24 vs 43); level at
+  1625, -2 at 1660. x_ds windows from rt 1558 with nokick=1559,1586/1588 (grenade kept for a stack), retro 4,
+  retro2 2: 1647.5-1652.9 at the rt-1640 gate (2605: 1640). Naive splices (the line to rt c + 2605 shifted by 4 / 5)
+  die in the shaft. Open: a ~4-tick left U-turn lead that needs the double kick rebuilt 4 ticks earlier.
+- Sections where the planner reproduces the incumbent (lead 0.0 at every 15-tick checkpoint): 2000-2175. 1825-2000:
+  equal to rt 1975, +1.5 at 1990 only in the last stage, which had no look-ahead then (fixed: the last stage now also
+  looks 35 past END); no graft.
+- 1270-1445 (2605): the planned line fires 1341 / 1366 / 1395 (point-blank) / 1424 / 1450 vs 2605's 1342 / 1367 /
+  1394 (pre-fire, explodes 1399) / 1422 (27-tick pre-fire onto the left U-turn wall, explodes 1449) / 1453. At rt 1435
+  it is in 2605's rt-1439 state (1 px, 0.15 px/t, same reload): +4.0. No graft: with D 4, 2605's 1422 pre-fire would
+  have to be fired at 1418, but the planned line's grenade (1395) reloads at 1420; x_graft holds 5-7 px to rt 1439,
+  then 92 px (2605's wall kick). Its own pre-fire (1424 -> 1440) costs the lead: +0.9 at rt 1480. Same pattern as the
+  left U-turn lead: the planner gains ticks by spending a grenade at another time, and the incumbent's next technique
+  (a pre-fire, the shaft lob) then needs a slot the new line does not have.
