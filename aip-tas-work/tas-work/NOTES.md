@@ -1276,3 +1276,31 @@ dir, jump, cursor aim, shots with aim, certainties; best effort, not exact) and 
   from cut 2188: **2591 (51.82 s)**, server-checked (TasReplay finish tick 2659; TasServer).
 - ... same pass, 2350-2525 -> **2590 (51.80 s)**, server-checked (TasReplay finish tick 2658; TasServer).
 - autosweep pass 1 (dschain_variants_rf_hr: + Teero hook prior hrefw 0.5) on 2590: 1700-1875 +1.0 -> x_graft D=1 from cut 1905: **2589 (51.78 s)**, server-checked (TasReplay finish tick 2657; TasServer).
+
+## Where Teero gains on 2589, turn by turn (Oct 7, night)
+- The post-pickup map is one winding corridor (solid walls lined with freeze, no tele/speedup tiles): no route
+  choice, and our line is his within 0-16 px everywhere. The 64-tick deficit (lag -17.6 at rt 982 -> +46.8 at 2572,
+  in his labels) is speed only: U-turn 1 and its exit 1142-1262 +11, left U-turn 1472-1572 +10, shaft top + channel
+  1592-1802 +13, then 4-7 per stretch. He leaves the turns faster and keeps it on the straights.
+- Pickup double kick: his displacement over 1005-1046 is 26.8 px/t vs our 26.0 (vx ~31.5-32 vs 30.23, 0.9 ticks by
+  1046). His shots (CSV) are ~1.5 ticks earlier than ours for the lob and ~1 for the point-blank, i.e. the same
+  pattern. A lob fired at 979 lands on the block in the step to 1006, the same step as a point-blank fired at 1005,
+  but x_dbl (xt 5900, zone at the block) gets only vx 30.44: the approach has to be a tick slower. Lobs fired at 978
+  or earlier cannot reach the block top (max lob height 357 px). Not reproduced.
+- U-turn 1 (his labels L = our rt + ~17): he holds one hook from L1144 to L1166 on the dividing wall's tip
+  (anchors detected on its right face x ~9311). Between L1156 and L1166 his |v| grows 18 -> 25 while the velocity
+  turns ~90 deg, which a hook alone cannot do (above 15 px/t it only turns or brakes), so he kicks in the turn as
+  well: his CSV shots at L1140 (aim 20 deg, a lob from our ~1123 toward the outer wall) and L1166.7 (our ~1150), then
+  he leaves at vx ~-37 (displacement 30-31) while we fly at -25..-28 until our 1169 kick. We kick weakly at 1113
+  (|f| 7, braked away in the turn), at the apex 1145 (cos 0.24) and at 1169.
+- New tool x_pend (src/tas/x_pend.cpp): brute force of one held hook through a turn (press tick, aim 0.5-1 deg,
+  dir +1/0 then -1 from a switch tick, release tick; optional anchor box), end states scored by projection onto the
+  incumbent (lead + spw x speed difference), best ones written as prefixes. 0.6-3.6M steps in ~1 s. U-turn 1: best
+  swings -0.1 (anchor on the wall top 400 px back, |v| 23 vs 28) and -2..-4 (anchor at the tip) at rt 1150-1156;
+  x_ds from them reaches the incumbent's rt-1200 progress at 1223+ (the swing states drop onto the floor slowly).
+  We arrive at 52 px/t; a hook (3 px/t^2) cannot hold a tight swing at that speed.
+- x_ds windows from cut 1100 with nokick=1105,1128 (no 1113 kick): 1230.9-1231.6 at the rt-1230 gate (incumbent
+  1230, same windows with the kick 1230.2-1230.5); the search still kicks at the apex (1146). Apex lobs (x_lob on
+  that line): fired 1129-1131 they land on the outer wall at 1145 with |f| 12 but cos ~0 (pure redirect); x_ds from
+  them 1229.74 (+0.26, lower energy) to 1233. Lobs fired 1120-1125 land at 1145-1149 ~100 px from the tee.
+- Teero tracker (x_tig, vw=1.5) from 2589 at rt 1612 / 1640, 2 seeds each: best +0.9 at 1752, others -2..-5.
