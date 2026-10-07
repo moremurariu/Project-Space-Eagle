@@ -25,6 +25,7 @@ secs = [tuple(map(int, a.split(':'))) for a in sys.argv[3:] if ':' in a and '=' 
 kw = dict(a.split('=', 1) for a in sys.argv[3:] if '=' in a)
 CORES = int(kw.get('cores', 4))
 ROUNDS = int(kw.get('rounds', 1))
+LOOK = int(kw.get('look', 35))
 OFF = float(kw.get('off', 6))
 plan_kw = [f'{k}={v}' for k, v in kw.items() if k in ('K', 'look', 'stage', 'beam')]
 plan_kw.append('variants=' + os.path.abspath(kw.get('variants', os.path.join(HERE, 'dschain_variants.txt'))))
@@ -110,8 +111,12 @@ for i, (rnd, (cut, end)) in enumerate((r, s) for r in range(ROUNDS) for s in sec
     B = traj(run, cut)
     jobs = []
     for ai, (t, e, f, _) in enumerate(ahead[:3]):
-        L = leads(traj(f, cut), B, cut, end)
-        ok = [c for c in sorted(L, reverse=True) if c <= end - 5 and L[c][1] < OFF and L[c][0] >= 1.0]
+        # the window's whole line (its look-ahead past END too: the ranked gain is often there), not only the kept part
+        if f.endswith('.c') and os.path.exists(f[:-2]):
+            f = f[:-2]
+        endl = end + LOOK if f.endswith('.txt') and not f.endswith('.c') else end
+        L = leads(traj(f, cut), B, cut, endl)
+        ok = [c for c in sorted(L, reverse=True) if c <= endl - 5 and L[c][1] < OFF and L[c][0] >= 1.0]
         cuts = []
         for c in ok:
             if all(abs(c - c2) >= 10 for c2 in cuts):
@@ -119,7 +124,7 @@ for i, (rnd, (cut, end)) in enumerate((r, s) for r in range(ROUNDS) for s in sec
             if len(cuts) == 2:
                 break
         log(f'  arrival {ai} ({t:.2f}): lead ' + ' '.join(f'{c}:{L[c][0]:+.1f}/{L[c][1]:.0f}px' for c in sorted(L)
-                                                     if (c - cut) % 15 == 0) + f' | graft cuts {cuts}')
+                                                     if (c - cut) % 15 == 0 or c == max(L)) + f' | graft cuts {cuts}')
         for gc in cuts:
             for D in sorted({int(L[gc][0]), int(L[gc][0]) - 1} - {0}, reverse=True):
                 jobs.append((f, gc, D, os.path.join(sd, f'g_a{ai}_c{gc}_D{D}.txt')))
