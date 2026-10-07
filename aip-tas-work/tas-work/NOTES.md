@@ -882,3 +882,6 @@ Teero played the **KoG** version of AiP-Gores (user, from Teero). Our runs so fa
   frozen ticks 0, double start False, died False): 2622 (other agent) with a new ending from a finish search on its
   rt-2500 cut (segx survx=300 jitter=1 seed=406, inc=2622) -> kog_full_2621.txt = kog_full_best.txt.
 - lateloop l1: **2620 (52.40 s), server-checked** (start 68, no freeze, no double start): cut 2530 of the previous best, segx [survx=300] seed 565 -> kog_full_2620.txt = kog_full_best.txt.
+- lateloop.py (late-cut finish searches on the best run, auto server-check): 2622 -> 2621 -> **2620** (both from survx
+  seeds at cuts 2500 / 2530). Then 3 more rounds x 8 cuts (2580..2365) x 7 survx-heavy variants: no further gain.
+  The ending is saturated for this search; current best kog_full_2620.txt = kog_full_best.txt (52.40 s).
