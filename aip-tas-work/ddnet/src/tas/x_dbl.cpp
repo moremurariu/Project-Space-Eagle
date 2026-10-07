@@ -6,6 +6,8 @@
 // usage: x_dbl <map> <prefix> key=val...
 //   beam=4000 qp=2 qv=0.5 hookang=24 yt=3000 out=PATH n=8 (writes PATH_1.txt..PATH_n.txt) threads=4 rot=0
 //   kick=T (explosion step override: the step to server tick T; default the lob's) nojump=0
+//   xt=X: value a post-kick state by the ticks a free flight (holding right, horizontal speed ramp) needs to reach x = X
+//   instead of the rise to yt (a double kick along a corridor)
 #define private public
 #define protected public
 #include <game/client/prediction/entities/character.h>
@@ -64,6 +66,12 @@ static void WriteInputs(const char *pPath, const std::vector<STasInput> &v)
 }
 
 static float gs_Yt = 3000;
+static float gs_Xt = -1; // > 0: horizontal objective (reach x >= gs_Xt)
+static float Ramp(float V)
+{
+	float w = V * 50;
+	return w < 550 ? 1.0f : std::pow(1.4f, -(w - 550) / 2000);
+}
 static float gs_Zone[4] = {-1e9f, 1e9f, -1e9f, 1e9f}; // pre-kick position box for the fast (heuristic) value
 static vec2 gs_ZoneC(0, 0);
 static int gs_NumThreads = 4;
@@ -72,6 +80,19 @@ static int gs_NumThreads = 4;
 // remaining height is charged at 1 px/tick
 static float RiseValue(vec2 P, vec2 V)
 {
+	if(gs_Xt > 0)
+	{
+		float x = P.x, vx = V.x, vy = V.y;
+		for(int t = 1; t <= 60; t++)
+		{
+			vy += 0.5f;
+			float nx = x + vx * Ramp(std::sqrt(vx * vx + vy * vy));
+			if(nx >= gs_Xt)
+				return t - 1 + (gs_Xt - x) / std::max(nx - x, 1e-3f);
+			x = nx;
+		}
+		return 60 + (gs_Xt - x);
+	}
 	float y = P.y, vy = V.y;
 	for(int t = 1; t <= 60; t++)
 	{
@@ -136,10 +157,23 @@ static SKick KickEval(const CFastG &G, const STasInput &Prev, int NumAims, bool 
 				CFastG F = T;
 				STasInput Idle = In;
 				Idle.m_Fire = 0;
-				Idle.m_Dir = 0;
+				Idle.m_Dir = gs_Xt > 0 ? 1 : 0;
 				Val = 1e9f;
 				float y = F.m_Pos.y;
-				for(int t = 1; t <= 60; t++)
+				float x = F.m_Pos.x;
+				for(int t = 1; t <= 60 && gs_Xt > 0; t++)
+				{
+					F.Step(Idle);
+					if(F.m_Dead)
+						break;
+					if(F.m_Pos.x >= gs_Xt)
+					{
+						Val = t - 1 + (gs_Xt - x) / std::max(F.m_Pos.x - x, 1e-3f);
+						break;
+					}
+					x = F.m_Pos.x;
+				}
+				for(int t = 1; t <= 60 && gs_Xt <= 0; t++)
 				{
 					F.Step(Idle);
 					if(F.m_Dead)
@@ -199,6 +233,7 @@ int main(int argc, const char **argv)
 	const float Qp = std::stof(Get("qp", "2")), Qv = std::stof(Get("qv", "0.5"));
 	const int HookAng = std::stoi(Get("hookang", "24"));
 	gs_Yt = std::stof(Get("yt", "3000"));
+	gs_Xt = std::stof(Get("xt", "-1"));
 	if(Kv.count("zone"))
 	{
 		std::sscanf(Kv["zone"].c_str(), "%f,%f,%f,%f", &gs_Zone[0], &gs_Zone[1], &gs_Zone[2], &gs_Zone[3]);

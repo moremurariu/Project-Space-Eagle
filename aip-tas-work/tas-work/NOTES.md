@@ -1235,3 +1235,18 @@ dir, jump, cursor aim, shots with aim, certainties; best effort, not exact) and 
   from the video does not make his run reproducible (+-1-3 ticks, anchors +-10 px).
 - CSV vs track: CSV jump rising edges match the track's velocity jumps within 0.3 ticks (23 jumps), so the CSV and
   the track share a clock; the video renders the tee 2.6 ticks later (the hook timeline uses the track's clock).
+
+## Right after the pickup (Oct 7): 2598
+- 2599 vs Teero at the same places (analysis/speedgap.py, 3-tick steps): equal ~14 px/t to rt 1002; after our pickup
+  double kick (lob fired 980 -> 1005 |f| 11.6 cos 0.57, point-blank fired 1005 -> 1006 |f| 9.0 at 70 px) he is
+  +0.7..+1.3 px/t faster, +1.9..2.3 before our 1031 kick, +0.3..1.2 to 1059, +3.4..3.7 at 1065-1074 (after our weak
+  1058 kick, |f| 9 cos 0.71); lag 1002 -17.8 -> 1100 -13.2. Our hooks here are 1-tick taps, his 12-13-tick holds.
+- xsweep from cut 966 (the pickup): stage 0 (-> 1001, ranked at 1036) 1040.1-1041.3 vs 1036: the plans kick at once
+  (fire 979 -> 980, +9 at rt 998) and never rebuild the lob + point-blank double kick (|v| ~21 instead of 31 after
+  1008). Kept the double kick: cut 1007.
+- x_dbl xt=X (new: horizontal objective, ticks of free flight holding right with the speed ramp to reach x = X)
+  on 2599's lob (fired 980, explodes (5247, 1946) at 1005), zone at the wall, xt 5900: a same-step double kick gives
+  vx 30.56 at 1005 vs 2599's 30.23 at 1006: ~0.3 tick; 2599's double kick is near this lob's best.
+- xsweep 1007:1095 on 2599 (dschain_variants_rf: tracking + rotfar + brakew 0.3): +0.3 at 1037, +0.8 at 1082,
+  +1.0..1.9 at 1112-1129 -> x_graft D=1 from cut 1109: **2598 (51.96 s)**, server-checked (TasReplay finish tick
+  2666; TasServer). eaudit 1007-1109: expl +1139 vs +1005, hook -303 vs -350, |v| 44.1 vs 42.3 at 1109.
