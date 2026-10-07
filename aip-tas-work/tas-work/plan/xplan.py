@@ -59,9 +59,10 @@ def log(m):
     LOG.flush()
 
 
-def window(prefix, gate, out, extra):
-    """x_ds window from prefix; ranked at gate+LOOK, the kept prefix is the line up to gate (out.c)"""
-    far = min(gate + LOOK, FIN - 5) if LOOK > 0 else gate  # the last stage looks past END too
+def window(prefix, gate, out, extra, look=None):
+    """x_ds window from prefix; ranked at gate+look, the kept prefix is the line up to gate (out.c)"""
+    look = LOOK if look is None else look
+    far = min(gate + look, FIN - 5) if look > 0 else gate  # the last stage looks past END too
     args = [XDS, MAP, f'inc={inc}', f'prefix={os.path.abspath(prefix)}', f'gate=rt{far}', 'incforce=0', 'threads=1',
             'verbose=0', f'beam={BEAM}', f'out={os.path.abspath(out)}'] + extra.split()
     if far > gate:
@@ -108,6 +109,10 @@ for si, g in enumerate(gates):
     t0 = time.time()
     with ThreadPoolExecutor(CORES) as ex:
         res = list(ex.map(lambda j: window(*j), jobs))
+    if not any(res) and LOOK > 0:  # nothing survives the look-ahead (a hard stretch past the gate): rank at the gate
+        log(f'stage {si} (gate rt{g}): no arrival with look {LOOK}, retrying without')
+        with ThreadPoolExecutor(CORES) as ex:
+            res = list(ex.map(lambda j: window(*j, look=0), jobs))
     arr, seen = [], set()
     for r in res:  # variants from one prefix often commit the same line
         if r and (h := hash(open(r[3]).read())) not in seen:
