@@ -890,3 +890,4 @@ Teero played the **KoG** version of AiP-Gores (user, from Teero). Our runs so fa
   second half of the run is saturated for this search.
 - Large-beam finish searches on 2620 (cuts 2600..2540; beam 20000 survx / beam 40000 / beam 20000 retro=3 loadres):
   all 2620 (beam 40000 from 2555/2540: > 60 s). The ending is optimal for seg's action set.
+- lateloop m1: **2613 (52.26 s), server-checked** (start 68, no freeze, no double start): cut 2470 of the previous best, segx [survx=300] seed 1334 -> kog_full_2613.txt = kog_full_best.txt.
