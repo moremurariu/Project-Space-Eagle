@@ -885,3 +885,6 @@ Teero played the **KoG** version of AiP-Gores (user, from Teero). Our runs so fa
 - lateloop.py (late-cut finish searches on the best run, auto server-check): 2622 -> 2621 -> **2620** (both from survx
   seeds at cuts 2500 / 2530). Then 3 more rounds x 8 cuts (2580..2365) x 7 survx-heavy variants: no further gain.
   The ending is saturated for this search; current best kog_full_2620.txt = kog_full_best.txt (52.40 s).
+- lateloop l4 (earlier cuts 2330..2150, beam 3500 so each search fits in 60 s; 7 variants): no gain on 2620. From
+  cut 2180 and earlier some variants exceed 60 s. Finish searches from any cut 2150-2580 now reproduce 2620: the
+  second half of the run is saturated for this search.
