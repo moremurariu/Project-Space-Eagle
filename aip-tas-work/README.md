@@ -10,11 +10,11 @@ Make a tool-assisted run of the KoG version of **AiP-Gores** that beats Teero's 
 - Don't start from Teero's inputs; generate the run. His video, track and catalog may be used as references.
 
 ## Status (Oct 7)
-- **Best full run: 2607 race ticks (52.14 s)**, `tas-work/kog_full_best.txt` (= `kog_full_2607.txt`), server-checked
-  (TasReplay, TasServer and the per-tick trace: start tick 68, finish tick 2675, no freeze, no double start, never
-  died). Grenade pickup at race tick 966. New in this merge: faraday's 962 pre-grenade dive grafted onto the 2613 run
-  -> 2608 (below), then 20 minutes of `x_ds` incumbent LNS on it (4 workers) -> 2607 (one gain, cut rt 1182; the
-  run differs from 2608 only from rt 2432 on).
+- **Best full run: 2606 race ticks (52.12 s)**, `tas-work/kog_full_best.txt` (= `kog_full_2606.txt`), server-checked
+  (TasReplay and TasServer: start tick 68, finish tick 2674, no freeze, no double start). Grenade pickup at race
+  tick 966. First full run with **Teero's shaft double kick** (see "The shaft double kick" below).
+- 2607 (52.14 s): faraday's 962 pre-grenade dive grafted onto the 2613 run -> 2608 (below), then 20 minutes of
+  `x_ds` incumbent LNS -> 2607.
 - Previous best: 2613 (52.26 s, cray), pickup at 971.
 - **Best pre-grenade run: pickup at race tick 962** (a dive, searched for the earliest pickup only),
   `pre_grenade_kog/kog_pregren_best.txt`, server-checked.
@@ -39,6 +39,19 @@ x_graft AiP-Gores.map prefix=../pre_grenade_kog/kog_pregren_962.txt cut=930 run=
 ```
 A 6-tick graft is out of reach: the 962 line is ~5.7, not 6, ticks ahead, and in the air the tee can lose speed but
 not gain it.
+
+### The shaft double kick (2607 -> 2606)
+Teero fires a lob ~25 ticks before reaching the single 2x2 block at the bottom of the shaft (tile 102,104) and a
+point-blank down at the block, so both grenades explode under him in consecutive steps (vy ~ -45). davinci's `dk2` line
+had this (lob at 1576, double kick at 1601-1602 on its clock) and climbs the shaft like Teero (block -> top: Teero 29
+ticks, dk2 30, our previous runs 37), +12.4 ticks ahead at the top, but lost all of it by rt ~1960. Because the
+post-grenade part of 2607 is the 2614 run's shifted 5 ticks earlier (the 962 graft), dk2's inputs splice onto 2607 with
+a 5-tick offset (`tas-work/runs/shaft/sdk3_doublekick_2607.txt`: 2607 up to rt 1568, dk2 after, 2607's ending; ties
+2607). `x_ds` incumbent LNS restricted to cuts 1590-1950 (where the double kick still matters) then found 2606 from cut
+1777. Where the lead goes (eaudit): after a Teero-like top turn the line's descent kick at (4189, 2716) is badly
+aligned (cos 0.53 with the motion) and the hook brakes -352 over rt 1640-1689 (2607: -109, with a cos 0.83 kick lower
+down), so it reaches the channel at |v| 30 instead of 33 and runs the channel ~3 px/t slower. That is where the
+remaining ~10 ticks are.
 
 ## Where the pieces came from
 This folder merges four branches (all on top of the same DDNet commit; nothing else in this repository is involved):

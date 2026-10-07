@@ -1021,3 +1021,27 @@ dir, jump, cursor aim, shots with aim, certainties; best effort, not exact) and 
 - x_graft sorts with a total order now (distance, parent, hash, input), so a run is reproducible; the README command
   regenerates kog_full_2608.txt exactly.
 - Pitfall again: `pkill -f PATTERN` / `pgrep -f PATTERN` match the calling shell's own command line.
+
+## Techniques session (Oct 7): Teero's shaft double kick in a full run -> 2606
+- Lag of 2607 vs Teero (teero_track.txt, lag = rt - label) by section: pickup -> 1150 +4, right U-turn 1 (1150-1275)
+  +13, 1275-1450 +3, left U-turn (1450-1575) +8, shaft + top turn (1575-1675) +18, channel (1675-1825) 0,
+  1825-2050 +10, 2050-2450 +17, final maze (2450-finish) +15.
+- Shot spots: from the channel on (rt 1702, 1744, 1769) ours equal Teero's #25-27 (Teero-tracked). In the shaft
+  Teero lobs from (2707, 3181) and double-kicks at the block; we kicked once. davinci's dk2 uses exactly his spots
+  (lob, block, top (3596, 2439), descent (4189, 2716), channel (5298, 3225)).
+- Splice: 2607's post-grenade = 2614's shifted -5 (the 962 graft), so dk2 (= 2614 up to rt 1573) splices onto 2607 at
+  a 5-tick offset: sdk2 finishes 2609 (dk2 2614 - 5), sdk3 = sdk2 + 2607's ending from rt 2400 ties 2607 (they are
+  state-identical from rt ~1955 on).
+- Lead of the double-kick line over 2607 (lead.py-style projection): +12.4 at rt 1635, +11 to 1665, +8.4 at 1695,
+  +6 at 1725, +4.3 at 1755, +2.6 at 1795, +0.6 at 1835, 0 at 1975. Block -> top: Teero 29 ticks, line 30, 2607 37.
+- eaudit rt 1640-1689: line expl +270 (one kick, cos 0.53), hook -352, |v| 37.1 at 1689; 2607 expl +629 (kick cos 0.83
+  at 1674), hook -109, |v| 47.1. Channel spot (~5300, 3220): line |v| 30, 2607 33-34, Teero ~31-33 (track).
+- Grafting the line back onto 2607 does not work: x_graft (no shots) best distance 68-175 from cuts 1615-1635, D 6-10;
+  segf rjrun (shots, retro) stuck at ~33 from cuts 1600/1610, D 4-8. The states are too different (no wall /
+  floor contact or clamp collapses them; the channel-end U-turn is hook-turned, vx passes 0 smoothly).
+- x_ds incumbent LNS (bench/lnsbench.py xds-dav, cuts 1590-1950, 4 workers, 20 min) on sdk3: 49 jobs tie, one gain:
+  **2606 (52.12 s)**, cut 1777 (beam 1000, kickmin 11, retro 4, sinkh 40, shadow 2), differs from sdk3 from rt 1798.
+  Server-checked (TasReplay + TasServer). kog_full_best.txt.
+- Energy audit of 2607 (rt 966-2607): explosions +18,851, hook -9,729, dir -9,280, collisions -1,315. The big braking
+  sections are turns we reach too fast: 1416-1465 (left U-turn) -2,790, 1766-1815 -1,759, 2416-2465 -1,696,
+  1966-2015 -1,691, 2266-2315 -1,462, 1216-1265 -1,239, 1116-1165 -1,196.
