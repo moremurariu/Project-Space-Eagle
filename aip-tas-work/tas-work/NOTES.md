@@ -888,3 +888,5 @@ Teero played the **KoG** version of AiP-Gores (user, from Teero). Our runs so fa
 - lateloop l4 (earlier cuts 2330..2150, beam 3500 so each search fits in 60 s; 7 variants): no gain on 2620. From
   cut 2180 and earlier some variants exceed 60 s. Finish searches from any cut 2150-2580 now reproduce 2620: the
   second half of the run is saturated for this search.
+- Large-beam finish searches on 2620 (cuts 2600..2540; beam 20000 survx / beam 40000 / beam 20000 retro=3 loadres):
+  all 2620 (beam 40000 from 2555/2540: > 60 s). The ending is optimal for seg's action set.

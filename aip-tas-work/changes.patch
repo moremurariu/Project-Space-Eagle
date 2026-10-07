@@ -668,7 +668,7 @@
  }
 --- a/tas-work/NOTES.md
 +++ b/tas-work/NOTES.md
-@@ -84,3 +84,807 @@
+@@ -84,3 +84,809 @@
  - Corridor 1 from a Teero-like crossing (900,465,25,-13 spent): 294-296 (Teero 298). Our pre-start crossing gives ~306.
  - TileExists lookup cache in CCollision (opt-in flag, TAS only): step 1.54 -> 1.20 us, identical replays.
  - chain.py: segment chain over distance gates with several configs (gains ~1-2 ticks/gate; slow).
@@ -1476,3 +1476,5 @@
 +- lateloop l4 (earlier cuts 2330..2150, beam 3500 so each search fits in 60 s; 7 variants): no gain on 2620. From
 +  cut 2180 and earlier some variants exceed 60 s. Finish searches from any cut 2150-2580 now reproduce 2620: the
 +  second half of the run is saturated for this search.
++- Large-beam finish searches on 2620 (cuts 2600..2540; beam 20000 survx / beam 40000 / beam 20000 retro=3 loadres):
++  all 2620 (beam 40000 from 2555/2540: > 60 s). The ending is optimal for seg's action set.
