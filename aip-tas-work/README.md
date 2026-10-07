@@ -21,7 +21,7 @@ Make a tool-assisted run of the KoG version of **AiP-Gores** that beats Teero's 
 - Previous best: 2613 (52.26 s, cray), pickup at 971.
 - **Best pre-grenade run: pickup at race tick 962** (a dive, searched for the earliest pickup only),
   `pre_grenade_kog/kog_pregren_best.txt`, server-checked.
-- Teero: pickup ~980, finish 2536. We are 71 ticks behind overall: ~16 ahead at the pickup, ~87 behind after it.
+- Teero: pickup ~980, finish 2536. We are 66 ticks behind overall: ~16 ahead at the pickup, ~82 behind after it.
 
 ### The 962 graft (2613 -> 2608)
 The 962 dive follows the same line as the 968 dive the 2613 run was built on, ~5.6-5.9 ticks earlier (measured along
@@ -80,6 +80,7 @@ cleanly. `kog_full_best.txt` is now the 2608 run. History: each branch's own log
 | carrying a new lead through a polished run | `x_tig` tracker + forced-lineage `dschain` (`tigloop.py`, needs `teero_track.txt`) | how 2639 -> 2614 was found (NOTES "Tracker loop results") |
 | last ticks of a run | late-cut `segf` finish searches with `survx=300 jitter=1 seed=N` (`inc=`) | 2614 -> 2613 (NOTES, cray section) |
 | merging a faster prefix | `x_graft` (new), or `segf rjrun=` for exact merges | 962 + 2613 -> 2608 (above); `rjrun` did not find it |
+| re-planning a section of a polished run | `tas-work/plan/xsweep.py` (section planner `xplan.py` with overlapping stages + `x_graft D=1` + server check) | 2606 -> 2602 in four 1-tick steps where incumbent LNS was saturated (NOTES "Section planner v2") |
 | single windows / experiments | merged `segf` (or `seg`); `x_win`, `x_dbl`, `x_lob`, `rdv`, `lobscan` for grenade setups | S1: `segf` 62 s vs 67-88 s for the CTasGame `seg` builds (BENCHMARKS 2) |
 | checking | `simbench ... fuzz`, `fastcheck`, `fgcheck`, `tas-work/srvfin.sh`, `srvcheck.sh` | |
 
@@ -108,13 +109,18 @@ bash setup.sh          # from aip-tas-work/; details in HOW_TO_USE.md
 - `BENCHMARKS.md`: simulator and search benchmarks across the branches.
 
 ## Next steps
-- **What limits further gains (measured, see NOTES "Techniques session"):** Teero's remaining techniques (U-turn 1 far-wall
-  pre-fire + apex double, a better descent after the shaft double kick, the left U-turn) change the line and the shot
-  schedule together. Free searches started far before a gate are 15-40 ticks weaker than the polished runs, and
-  searches that keep the incumbent fall back onto it, so neither can judge or build such a change. The double kick
-  worked only because a complete line with it already existed (dk2), which incumbent LNS then polished. The next tool
-  to build is a section planner that constructs the line and the shot schedule together (seeded from Teero's shot
-  spots, which our runs already hit from the channel on), producing complete candidate lines for LNS.
+- **Section planner (NOTES "Section planner v2"):** `xsweep.py` re-plans sections of the best run with overlapping
+  stages and grafts lines that are the run's own line ~1-1.5 ticks earlier back onto it (D=1). It gained 4 ticks
+  (U-turn 1 three times, the final maze once); sections 2000-2525 reproduce the run. Re-run it with new seeds
+  (`rounds=`) after every gain.
+- **Bigger leads that do not graft:** the planner finds +4.4 in the left U-turn and +4.0 in 1270-1445, both on the run's
+  own line, but each spends a grenade at another time, and the run's next technique (the 27-tick pre-fire onto the
+  left U-turn wall; the shaft lob + double kick) then has no reload slot. Turning them into finishes needs the next
+  technique rebuilt in the new shot rhythm (Teero fires at every reload, 25-28 ticks apart; we leave 31-41-tick gaps).
+  No search found the shaft double kick 4 ticks earlier yet.
+- (before the planner) Teero's remaining techniques (U-turn 1 far-wall pre-fire + apex double, a better descent after
+  the shaft double kick, the left U-turn) change the line and the shot schedule together; free searches far before a
+  gate are 15-40 ticks weaker than the polished runs, and incumbent-kept searches fall back onto the incumbent.
 - Plain incumbent LNS is saturated on the current runs (2606: 90 x_ds jobs without gain; 962: 47 ddsearch jobs).
 - Where the remaining ~70 ticks are (lag vs Teero): shaft + top turn ~6 left after the double kick, right U-turn 1
   ~13, left U-turn ~8, 2050-2450 ~17 (spread), final maze ~9-10 (plus a ~5-tick artifact of his track's end).

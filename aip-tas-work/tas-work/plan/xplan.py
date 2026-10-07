@@ -8,7 +8,7 @@ state to the incumbent's progress at the next waypoint, and the K arrivals that 
 energy) go on to the next stage.
 
 usage: xplan.py INC CUT END DIR [stage=35] [look=35] [K=6] [cores=4] [beam=3000] [variants=default|FILE] [start=FILE]
-       [stagevar=S:extra,S:extra] (extra x_ds keys for stage S only, e.g. a nokick window)
+       [stagevar=S:extra,S:extra] (extra x_ds keys for stage S only, e.g. a nokick window) [seedadd=N]
 look: overlap. Each stage's windows run `look` incumbent ticks past the stage's gate and are ranked there; only their
 part up to the gate (x_ds commitk=) is kept. Without it (look=0) a window spends its grenade just before the gate and
 arrives where the next obstacle cannot be passed (U-turn 1: -21 at the corridor block; with look=35 see NOTES).
@@ -39,6 +39,9 @@ VARIANTS = [
 ]
 if kw.get('variants', 'default') != 'default':
     VARIANTS = [l.strip() for l in open(kw['variants']) if l.strip() and not l.startswith('#')]
+SEEDADD = int(kw.get('seedadd', 0))  # new random seeds for a repeated plan
+if SEEDADD:
+    VARIANTS = [re.sub(r'seed=(\d+)', lambda m: f'seed={int(m.group(1)) + SEEDADD}', v) for v in VARIANTS]
 STAGEVAR = {}
 for sv in filter(None, kw.get('stagevar', '').split(',')):
     s, extra = sv.split(':', 1)
