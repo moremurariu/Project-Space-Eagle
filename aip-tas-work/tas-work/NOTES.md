@@ -1275,3 +1275,4 @@ dir, jump, cursor aim, shots with aim, certainties; best effort, not exact) and 
   no arrival: xplan now retries such a stage without look-ahead), 2000-2175 +0.8 at 2120, +1.0 at 2195 -> x_graft D=1
   from cut 2188: **2591 (51.82 s)**, server-checked (TasReplay finish tick 2659; TasServer).
 - ... same pass, 2350-2525 -> **2590 (51.80 s)**, server-checked (TasReplay finish tick 2658; TasServer).
+- autosweep pass 1 (dschain_variants_rf_hr: + Teero hook prior hrefw 0.5) on 2590: 1700-1875 +1.0 -> x_graft D=1 from cut 1905: **2589 (51.78 s)**, server-checked (TasReplay finish tick 2657; TasServer).
