@@ -1274,3 +1274,4 @@ dir, jump, cursor aim, shots with aim, certainties; best effort, not exact) and 
   1007-1270 +0.7..1.1 (no graft), 1420-1560 0/12 grafts (the shaft), 1590-1875 0 ahead, 1825-2000 failed (stage 2 had
   no arrival: xplan now retries such a stage without look-ahead), 2000-2175 +0.8 at 2120, +1.0 at 2195 -> x_graft D=1
   from cut 2188: **2591 (51.82 s)**, server-checked (TasReplay finish tick 2659; TasServer).
+- ... same pass, 2350-2525 -> **2590 (51.80 s)**, server-checked (TasReplay finish tick 2658; TasServer).
