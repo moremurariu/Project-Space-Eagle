@@ -1270,3 +1270,7 @@ dir, jump, cursor aim, shots with aim, certainties; best effort, not exact) and 
   jump 1575). With nofire=1533,1556 (dschain_variants_rf_nf.txt): +1.6 at 1556-1572, and every plan fires short
   shots (~1560 -> 1562-1567, ~1588 -> 1589-1592) instead of the lob + point-blank stack: -5 at 1596, -17 at 1620.
   The shaft double kick is the wall for any faster left U-turn; x_ds does not rebuild it from a different state.
+- autosweep.py (endless xsweep passes; variant sets rf / rf_hr / rf2 with new seeds) on 2592, pass 0 (rf): sections
+  1007-1270 +0.7..1.1 (no graft), 1420-1560 0/12 grafts (the shaft), 1590-1875 0 ahead, 1825-2000 failed (stage 2 had
+  no arrival: xplan now retries such a stage without look-ahead), 2000-2175 +0.8 at 2120, +1.0 at 2195 -> x_graft D=1
+  from cut 2188: **2591 (51.82 s)**, server-checked (TasReplay finish tick 2659; TasServer).
