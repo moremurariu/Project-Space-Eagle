@@ -30,8 +30,8 @@ One line per tick from spawn: `dir jump hook fire target_x target_y weapon`. The
 tick = input index - 68. Check any file on the real server code: `tas-work/srvfin.sh FILE`.
 
 ## Data that is not in git
-`tas-work/teero_track.txt` (Teero's position per race tick, "k x y", k = -70..2539) and the rest of `tas-work/teero/`
-are local only (`.gitignore`). The Teero-guided tools (`x_tig`, `tigloop.py`, `seg ghost=3 sinks=...`, `mapk.py`) need
+`tas-work/teero_track.txt` (Teero's position per race tick, "k x y", k = -70..2539) is local only (`.gitignore`); so
+is anything new in `tas-work/teero/` (the input extractions already there, e.g. `teero_inputs_0-3131.csv`, are tracked). The Teero-guided tools (`x_tig`, `tigloop.py`, `seg ghost=3 sinks=...`, `mapk.py`) need
 the track; everything else runs on references built from our own runs (`SEG_TRACK=FILE segf ... prefix=RUN`).
 
 ## Pitfalls (from the notes)
