@@ -10,13 +10,15 @@ Make a tool-assisted run of the KoG version of **AiP-Gores** that beats Teero's 
 - Don't start from Teero's inputs; generate the run. His video, track and catalog may be used as references.
 
 ## Status (Oct 7)
-- **Best full run: 2608 race ticks (52.16 s)**, `tas-work/kog_full_best.txt` (= `kog_full_2608.txt`), server-checked
-  (TasReplay and TasServer: start tick 68, finish tick 2676, no freeze, no double start). Grenade pickup at race
-  tick 966. New in this merge: faraday's 962 pre-grenade dive grafted onto the 2613 run (below).
+- **Best full run: 2607 race ticks (52.14 s)**, `tas-work/kog_full_best.txt` (= `kog_full_2607.txt`), server-checked
+  (TasReplay, TasServer and the per-tick trace: start tick 68, finish tick 2675, no freeze, no double start, never
+  died). Grenade pickup at race tick 966. New in this merge: faraday's 962 pre-grenade dive grafted onto the 2613 run
+  -> 2608 (below), then 20 minutes of `x_ds` incumbent LNS on it (4 workers) -> 2607 (one gain, cut rt 1182; the
+  run differs from 2608 only from rt 2432 on).
 - Previous best: 2613 (52.26 s, cray), pickup at 971.
 - **Best pre-grenade run: pickup at race tick 962** (a dive, searched for the earliest pickup only),
   `pre_grenade_kog/kog_pregren_best.txt`, server-checked.
-- Teero: pickup ~980, finish 2536. We are 72 ticks behind overall: ~16 ahead at the pickup, ~88 behind after it.
+- Teero: pickup ~980, finish 2536. We are 71 ticks behind overall: ~16 ahead at the pickup, ~87 behind after it.
 
 ### The 962 graft (2613 -> 2608)
 The 962 dive follows the same line as the 968 dive the 2613 run was built on, ~5.6-5.9 ticks earlier (measured along
@@ -29,13 +31,14 @@ that finishes counts. From cut rt 930 the graft grazes the corner at rt 956 (jum
 the block face (959-965) and spends the double jump at the pickup (rt 966). Its velocity is still ~0.1 px/t off the
 2613 run's until rt 969, where the air-control clamp sets vx to -5.00 in both; from there the state (position,
 velocity, hook, jumps) is identical to the 2613 run's 5 ticks later, all the way to the finish: 2608
-(beam 20000, 4 threads, 23 s).
+(beam 20000, 4 threads, 23 s; deterministic: this command regenerates `tas-work/kog_full_2608.txt` byte for byte.
+`kog_full_2608_b.txt` is the first graft found, before the tie-break fix, and the start of the 2607 polish).
 ```
 x_graft AiP-Gores.map prefix=../pre_grenade_kog/kog_pregren_962.txt cut=930 run=kog_full_2613.txt D=5 \
         horizon=45 beam=20000 threads=4 test=300 out=graft.txt
 ```
-D=6 (2607) is out of reach: the 962 line is ~5.7, not 6, ticks ahead, and in the air the tee can lose speed but not
-gain it.
+A 6-tick graft is out of reach: the 962 line is ~5.7, not 6, ticks ahead, and in the air the tee can lose speed but
+not gain it.
 
 ## Where the pieces came from
 This folder merges four branches (all on top of the same DDNet commit; nothing else in this repository is involved):
@@ -60,7 +63,7 @@ cleanly. `kog_full_best.txt` is now the 2608 run. History: each branch's own log
 | post-grenade improvement | `x_ds` incumbent LNS / chains (`tas-work/dschain.py`, `dsloop.py`, or `tas-work/bench/lnsbench.py xds-dav`) | 2677 -> 2667 in 10 min where `segf` LNS found nothing (BENCHMARKS 3) |
 | carrying a new lead through a polished run | `x_tig` tracker + forced-lineage `dschain` (`tigloop.py`, needs `teero_track.txt`) | how 2639 -> 2614 was found (NOTES "Tracker loop results") |
 | last ticks of a run | late-cut `segf` finish searches with `survx=300 jitter=1 seed=N` (`inc=`) | 2614 -> 2613 (NOTES, cray section) |
-| merging a faster prefix | `x_graft` (new), or `segf rjrun=` for exact merges | 962 + 2613 -> 2608 (above) |
+| merging a faster prefix | `x_graft` (new), or `segf rjrun=` for exact merges | 962 + 2613 -> 2608 (above); `rjrun` did not find it |
 | single windows / experiments | merged `segf` (or `seg`); `x_win`, `x_dbl`, `x_lob`, `rdv`, `lobscan` for grenade setups | S1: `segf` 62 s vs 67-88 s for the CTasGame `seg` builds (BENCHMARKS 2) |
 | checking | `simbench ... fuzz`, `fastcheck`, `fgcheck`, `tas-work/srvfin.sh`, `srvcheck.sh` | |
 
@@ -89,7 +92,7 @@ bash setup.sh          # from aip-tas-work/; details in HOW_TO_USE.md
 - `BENCHMARKS.md`: simulator and search benchmarks across the branches.
 
 ## Next steps
-- Polish the 2608 run with `x_ds` LNS (a 20-minute run is in `NOTES.md`) and the late-cut `survx` finish searches.
+- Keep polishing the best run with `x_ds` LNS (20 minutes gave 2608 -> 2607) and the late-cut `survx` finish searches.
 - Pre-grenade: carry on with `ddsearch` from 962, then graft the new prefix the same way (`x_graft`, D = its lead over
   the full run's line minus the fraction; check the lead with the method in NOTES first).
 - Post-grenade (where the 88 ticks to Teero are): `x_ds` LNS from early cuts and `tigloop.py` (Teero tracking) are the

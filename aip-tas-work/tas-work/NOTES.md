@@ -1014,4 +1014,10 @@ dir, jump, cursor aim, shots with aim, certainties; best effort, not exact) and 
   with the hook on the block face and the double jump at the pickup, and becomes identical to 2613 (+5) at rt 969 when
   the air-control clamp sets vx to -5.00. `segf rjrun=` (exact rejoin) did not find it: its distance ranking never got
   below ~28 (D 2-6, cuts 930-950).
+- **2607 (52.14 s), server-checked** (TasReplay + TasServer + trace: start 68, finish 2675, pickup 966, no freeze, no
+  double start): 20 min of x_ds incumbent LNS (bench/lnsbench.py xds-dav, 4 workers, dschain variants, cuts >= 1000)
+  on the first 2608 graft (kog_full_2608_b.txt): one gain at cut 1182, beam 1000 retro=3 shadow=2; differs from
+  2608 from rt 2432 on. kog_full_best.txt.
+- x_graft sorts with a total order now (distance, parent, hash, input), so a run is reproducible; the README command
+  regenerates kog_full_2608.txt exactly.
 - Pitfall again: `pkill -f PATTERN` / `pgrep -f PATTERN` match the calling shell's own command line.

@@ -15,8 +15,9 @@ All of them replay identically on the real server code (`tas-work/srvfin.sh FILE
 (`tas-work/kog_full_2613.txt`) picks up at race tick 971: it is the 968 dive re-fitted into a braked, viable pickup
 (`tas-work/physlab5/FINDINGS.txt`, section 4).
 
-**The 962 dive is now part of the best full run**: `tas-work/kog_full_2608.txt` is 962 up to race tick 930, a corner
-graze + braked pickup at 966 found by `x_graft`, then the 2613 run's inputs (see ../README.md, "The 962 graft").
+**The 962 dive is now part of the best full runs**: `tas-work/kog_full_2608.txt` is 962 up to race tick 930, a corner
+graze + braked pickup at 966 found by `x_graft`, then the 2613 run's inputs (see ../README.md, "The 962 graft");
+`kog_full_2607.txt` (the current best) is that graft polished with `x_ds`.
 
 The faraday runs were searched for the earliest pickup only (no viability constraint), which keeps the search simple;
 turning such a dive into a viable pickup costs a few ticks (968 -> 971). The 962 dive is the 968 dive's line, ahead by

@@ -298,7 +298,16 @@ int main(int argc, const char **argv)
 		std::vector<SCand> vAll;
 		for(auto &V : vOut)
 			vAll.insert(vAll.end(), V.begin(), V.end());
-		std::sort(vAll.begin(), vAll.end(), [](const SCand &a, const SCand &b) { return a.m_D < b.m_D; });
+		// total order (distance, parent, state hash, input): independent of thread scheduling, so runs are reproducible
+		std::sort(vAll.begin(), vAll.end(), [](const SCand &a, const SCand &b) {
+			if(a.m_D != b.m_D)
+				return a.m_D < b.m_D;
+			if(a.m_Parent != b.m_Parent)
+				return a.m_Parent < b.m_Parent;
+			if(a.m_Hash != b.m_Hash)
+				return a.m_Hash < b.m_Hash;
+			return std::memcmp(&a.m_In, &b.m_In, sizeof(STasInput)) < 0;
+		});
 		std::unordered_set<uint64_t> Seen;
 		std::vector<SState> vNext;
 		std::vector<SNode> vNodes;
