@@ -1,0 +1,8 @@
+05:21:18 bg1 GATE rt 1290 Ee -1439 (290s) tp=7512,2087,-57,0 tpk=1220 tpreload=21 beam=10000 survevery=2 survive=30 ghost=1 hnow=600 ghoste=0.02 rothook=1 quant=1
+05:21:18 b0 GATE rt 1290 Ee -1297 (291s) tp=7512,2087,-57,0 tpk=1220 tpreload=21 beam=10000 survevery=2 survive=30 ghost=3 hnow=1000 ghoste=0.02 sinks=1156,1285,1443,1793,2143,2465 ghostsink=1500 prefire=1 padaims=48 padtop=300 padrange=30 latpen=0.02 latdz=48 rothook=1 quant=1
+05:21:21 b7 GATE rt 1286 Ee -1436 (294s) tp=7512,2087,-57,0 tpk=1220 tpreload=21 beam=10000 survevery=2 survive=30 ghost=3 hnow=600 ghoste=0.0 sinks=1156,1285,1443,1793,2143,2465 brake=2 kcredit=2 kready=10 rothook=1 quant=1
+05:21:47 bs0 NOGATE (26s) tp=7512,2087,-57,0 tpk=1220 tpreload=21 beam=10000 survevery=0 ghost=3 hnow=1000 ghoste=0.01 sinks=1156,1285,1443,1793,2143,2465 ghostsink=1500 rothook=1 quant=1
+05:24:40 bs15 GATE rt 1288 Ee -1145 (201s) tp=7512,2087,-57,0 tpk=1220 tpreload=21 beam=10000 survevery=2 survive=15 ghost=3 hnow=1000 ghoste=0.01 sinks=1156,1285,1443,1793,2143,2465 ghostsink=1500 rothook=1 quant=1
+05:26:14 bvc2 GATE rt 1291 Ee -1455 (297s) tp=7512,2087,-57,0 tpk=1220 tpreload=21 beam=10000 survevery=2 survive=30 ghost=3 vcap=2 hnow=1000 ghoste=0.01 sinks=1156,1285,1443,1793,2143,2465 ghostsink=1500 rothook=1 quant=1
+05:28:16 b3 GATE rt 1291 Ee -1381 (709s) tp=7512,2087,-57,0 tpk=1220 tpreload=21 beam=10000 survevery=2 survive=30 ghost=3 hnow=1000 ghoste=0.01 sinks=1156,1285,1443,1793,2143,2465 ghostsink=1500 angles=128 hookdedup=0 rothook=1 quant=1
+05:36:53 bb40 GATE rt 1287 Ee -1069 (905s) tp=7512,2087,-57,0 tpk=1220 tpreload=21 beam=40000 survevery=2 survive=30 ghost=3 hnow=1000 ghoste=0.01 sinks=1156,1285,1443,1793,2143,2465 ghostsink=1500 rothook=1 quant=1

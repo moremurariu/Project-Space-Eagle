@@ -1,0 +1,172 @@
+AiP-Gores (KoG) grenade transition on the NEW prefix - physlab5 (Oct 5)
+=========================================================================================================
+Prefixes: runs/kog_pregren_975_fast.txt (E lines, sections 0-3) and runs/kog_pregren_968_invalid.txt (F lines, section 4).
+E lines: both result files keep the first 1023 input lines unchanged (cut at rt 955)
+and replace everything after. rt = race tick (state after N input lines = rt N-68). All numbers were measured with
+xlab. Both result files were replayed on the real server code (srvtrace.sh) and compared line by line with the sim
+(cmpsrv.py). All 1108 lines match: same integer position, velocity within 0.01, no freeze, start tick 68, no
+double start. The only weapon fired is the grenade (2 shots after the pickup).
+
+=========================================================================================================
+0. BOTTOM LINE  (same metric for every line: xlab replay of the full file)
+=========================================================================================================
+                          pickup  y<=2290   pre-fire   point-blank  exit kick(s): rt +dv -> v after          x>=5671
+                                  climbing  (step rt)  (step rt)                                            rt (fractional)
+  exit_T1021_to1036 (old)  981     995       995        1021         1021 +11.9, 1022 +9.6 -> (29.31,-10.24)  1036 (1035.32)
+  exit_T1023_to1037 (old)  981     995       994        1022         1023 +23.9 -> (31.73,-13.15)             1037 (1036.44)
+  exit_T1025_to1038 (old)  982     996       995        1024         1025 +22.6 -> (32.80,-10.14)             1038 (1037.74)
+  results/exit_E1017_to1031.txt  978  991   992        1017         1017 +12.0, 1018 +9.4 -> (30.02,-10.05)  1031 (1030.85)
+  results/exit_E1018B_to1032.txt 978  991   992        1017         1018 +23.0 -> (31.45,-11.32)             1032 (1031.04)
+  (x>=5900 with a plain dir-1 tail: rt 1040 for both, flying ~80 px above the block (184,60); no freeze.)
+  "Pickup" is the first tick with the grenade. "y<=2290 climbing" means vy<0 with the grenade. The old lines are on
+  kog_pregren_978.
+
+  BEST: results/exit_E1017_to1031.txt. x>=5671 at rt 1031: 7 ticks before T1025 (1038) and 5 before T1021 (1036).
+        The exit vx is 30.0 (T1025 had 32.8). The pre-fire explodes at 1017 and the point-blank at 1018.
+  ALTERNATIVE: exit_E1018B_to1032.txt has both kicks in the same step (rt 1018), giving vx 31.45.
+        x>=5671 at 1032, only 0.04 tick short of 1031.
+  The two files share inputs up to rt 991. They differ only in the pre-fire aim (n=26 / n=27) and the climb after it.
+  Reusable prefixes (they end right after the pre-fire step, rt 992; feed them to xrv or to your own climb):
+    results/prefix_prefire992_exp1017.txt: grenade explodes at rt 1017 at (5247.3, 1950.0)
+    results/prefix_prefire992_exp1018.txt: grenade explodes at rt 1018 at (5247.3, 1944.2)
+
+  Where the 7 ticks come from:
+    - Earlier block landing: 2 ticks (rt 968 instead of 970, see section 1).
+    - Better turnaround search: 2-3 ticks. The y=2290 gate is crossed at fractional rt 990.8. The old lines
+      crossed it at rt 995-996.
+    - Exit tick at its lower bound: e = pre-fire step + 25 (section 2).
+    - Tail hook boost (section 3): +0.3 tick.
+  Teero (true ticks): pickup ~980, y<=2300 at ~992.3, exit ~1018.6, x>=5671 at ~1033.
+  This line is ahead of Teero at every gate.
+
+=========================================================================================================
+1. THE NEW PREFIX HAS NO AIR JUMP. RE-LANDING ON THE BLOCK
+=========================================================================================================
+- kog_pregren_975_fast never touches ground after rt 839, so its air jump is spent (jumped=2) at the pickup.
+  The braked pickup needs that jump: it sets vy from +23 to -12 instantly at the pickup disc. A hook alone takes
+  ~14 ticks to do the same. The old 978 run refilled the jump by touching the block top at rt 970: row 72,
+  x 5184-5279, top y=2304.
+- Grounding while keeping the downward speed works like this. At the start of a tick, the tee must be at
+  x<=5293 and y in [2285,2290). Then the move must slide past the block corner. With v ~(22,23), that works
+  for x ~5290-5293. If x is too far left, the tee lands and vy is set to 0. That costs about 15 ticks and runs
+  into the freeze at (5376-5407, 2304-2335).
+- s1_land.py (random mutation from cuts at rt 935/945/955): the earliest grounding with vy kept is rt 968, at
+  (5293,2289) with v (22.4,23.4). The old run grounded at 970. Rt 967 was never found: the prefix passes
+  (5289,2283) at 967, 2 px too high. Turning vx into vy with down-hooks costs too much x.
+  Other contacts found (the pillar top at x~5030, rt 958; the upper block row 71, rt 966-967) are much slower.
+- Transplanting the old T1025 inputs at the aligned tick does not work directly: it either lands with vy=0 or
+  misses the ground.
+
+=========================================================================================================
+2. TURNAROUND AND EXIT
+=========================================================================================================
+- b5_turn.py hill-climbs rt 956-1000 from the rt-955 cut. The gate is y<=2290, x<=5376, grenade active,
+  reload 0, vy<=-12, and alive for 6 more ticks. The gate time is scored fractionally (env YFRAC=1): the time
+  at which y crosses 2290.
+  The integer gate time with a y tie-break got stuck at 992. The fractional score reaches 990.79, with y 2287 at
+  rt 991 (runs/b5_955_2290_7_v3f7.json). Cuts at 940 and 945 give the same 990.8, so it looks converged.
+  The line (E1017):
+    - 967-969: right hook (999,45) and land on the block at 968.
+    - 972-977: up-left hook (-821,-571) on the block face, dir -1 from 975. vx goes 22 -> 3 and vy 25 -> 15.
+    - 978: air jump plus pickup, at (5409,2466).
+    - 981-989: hook climb past the overhang corner.
+- Pre-fire timing rule (gmodel M6, confirmed). Only face hits with n >= 26 are usable, because the point-blank
+  needs the reload back (pre-fire step + 25). So the exit tick e >= m + 25, where m is the pre-fire step, and
+  n = 26 needs a fire height of y <= ~2290 at S[m-1].
+  With y 2287 at rt 991, the pre-fire goes on step 992: aim (-220,-976), 257.3 deg, n=26. The explosion is at
+  rt 1017, which is the earliest exit possible for this turnaround. One more tick would need y<=2290 at rt 990
+  (now 2302).
+- The climb to the face (xrv beam, then p7.py polish) runs at 13-14 px/t. Right-wall hook pre-acceleration
+  over 1013-1016 takes vx from -2.8 to 8.65 at x 5295. The tee center can't go left of x~5280 (freeze
+  column 164), and it must be within ~48 px of the explosion, which caps vx before the kick at ~9-10.
+- Exit patterns. "Same step" here means both grenades explode in the same simulation step.
+    A. Fire the point-blank on the explosion step e from x<=~5289 (within ~41 px along the aim). It explodes in
+       its first segment.
+    B. Fire the point-blank on step e-1 from 42-61 px. It explodes in its 2nd segment at step e, together with
+       the pre-fire. T1025 and E1018B do this: +23.0. Pattern B needs n >= 27, because of the reload.
+    Hybrid (E1017): fire on step e from x 5295. The pre-fire kicks at e (+12.0) and the point-blank at e+1
+       (+9.4, since the tee has already moved 19 px away).
+  Hybrid at e=1017 and pattern B at e=1018 end up 0.2 tick apart at x=5671. Pattern A gives the same position
+  at e+1 as the hybrid.
+
+=========================================================================================================
+3. SMALL THINGS LEARNED
+=========================================================================================================
+- Velocity ramp: at |v| ~31, x moves ~0.83-0.85*vx per tick. Lowering |v| raises the x displacement for the
+  same vx.
+  After the exit |v| > 15, so a hook only acts when it reduces |v|. A short down-right hook that eats some of
+  the upward vy (E1017, rt 1018-1021, grabs at 1020: vy -9.05 -> -7.65, vx 30.02 -> 30.25) shrinks |v| and the
+  ramp penalty. Result: x 5675 instead of 5667 at rt 1031.
+  The clean dir-1 tail reaches x>=5671 at 1031.15, i.e. 1032. The result files keep the optimized tail up to
+  x>=5671, then dir 1 only.
+- xlab's Step command sends weapon -1 until the grenade is held. The files send weapon 3 on every new line.
+  Both behave the same, because nothing fires at pickup+1. ev.py, metrics.py, table.py and cmpsrv.py replay
+  the exact file lines.
+- Downstream coupling: in both files the point-blank fires at rt 1017, so the reload is back at step 1042.
+  With vx 30-31.5 the block (x 5888) is reached at ~1039, ~3 ticks before the reload. Teero has 0 ticks
+  of slack, and the old lines had 4-6.
+  A block kick at ~1042 compares with rt 1050 in the old T1025/c3s3 line. The downstream search should cut at
+  the exit (rt 1017/1018) and plan the block landing (jump refill) and the kick at the reload.
+
+=========================================================================================================
+4. SECOND PREFIX: runs/kog_pregren_968_invalid.txt  (F lines; cut at rt 948, first 1016 input lines unchanged)
+=========================================================================================================
+                          pickup  y<=2290   pre-fire   point-blank  exit kick(s): rt +dv -> v after          x>=5671
+                                  climbing  (step rt)  (step rt)                                            rt (fractional)
+  exit_E1017_to1031 (975 pfx) 978  991      992        1017         1017 +12.0, 1018 +9.4 -> (30.02,-10.05)  1031 (1030.85)
+  results/exit_F1010_to1024.txt  971  984   985        1010         1010 +11.5, 1011 +9.0 -> (30.23,-9.15)   1024 (1023.73)
+  results/exit_F1011B_to1025.txt 971  984   985        1010         1011 +21.9 -> (30.73,-10.86)             1025 (1024.15)
+  (x>=5900 with a plain dir-1 tail: rt 1033 for both, no freeze.)
+  Server check: both files replayed with srvtrace.sh and compared line by line with cmpsrv.py (1101 lines).
+  All lines match exactly, no freeze, start tick 68, two grenade shots only.
+  Reusable prefixes (they end right after the pre-fire step, rt 985):
+    results/prefix_F_prefire985_exp1010.txt: explodes at rt 1010 at (5247.3, 1946.1)
+    results/prefix_F_prefire985_exp1011.txt: explodes at rt 1011 at (5247.3, 1942.1)
+
+  BEST: exit_F1010_to1024.txt. x>=5671 at rt 1024, exit vx 30.2. That is 7 ticks before E1017 and 14 before T1025.
+  Everything is E1017 shifted by exactly 7 ticks:
+    - lands on the block top at rt 961 (E1017: 968), at (5293,2285) with v (23.7,24.6);
+    - brake hook (-860,-510) on the block face over 962-970, with dir -1 from 968;
+    - air jump plus pickup at 971;
+    - y=2290 crossed at fractional rt 983.8, with y 2287 at rt 984;
+    - pre-fire on step 985, n=26, explodes at 1010;
+    - right-wall hook pre-acceleration, then the point-blank on step 1010.
+  Downstream: the point-blank fires at rt 1010, so the reload is back at step 1035. The block (x 5888) is
+  reached at ~1032, again ~3 ticks before the reload.
+
+  Notes on this prefix:
+  - It also has no air jump left (jumped=2 from rt 839). Other ground contacts it allows, found by s1_land.py:
+      * the pillar top at x~5030, rt 949: costs only ~5 px/t of vx, because the prefix passes 2 px from that corner;
+      * the upper block (row 71) at rt 960, with vx ~3-12.
+    The hill climb found no valid turnaround from either of them in the time I gave it (the transplanted
+    continuations miss the pickup). They are untested alternatives, not ruled out.
+  - Transplanting E1017's inputs after the landing needed matching the landing state first (s2_match.py): hill-climb
+    the landing inputs so the state at rt 962 matches E1017's state at 969, with E1017's later inputs appended.
+    The first transplant missed the pickup disc by 5 px.
+    Then b5_turn.py with SHAPE=1 (a fallback score for runs without a valid gate: estimated time from the best alive
+    state, which counts only states at least 6 ticks before any freeze) reached 984.1, and YFRAC refinement 983.8.
+  - Exit polishing was less forgiving here. xrv plus a short p7 gave 1024.1. A p7 run from right after the pre-fire
+    (cut rt 986, 700 iterations, VW 0.02) on four xrv outputs found 1023.73 on one of them.
+    fin.py (an exhaustive final-approach search) and tailscan.py (single tail hooks) found nothing better.
+
+=========================================================================================================
+5. TOOLS (physlab5 only, all single-threaded)
+=========================================================================================================
+  hc5.py        hc.py mutation with exact (tx,ty) aims kept from input files (cleared when an aim is mutated).
+  s1_land.py    landing search: grounded with vy kept, jump refilled.
+  b5_turn.py    turnaround hill climb (env YFRAC=1: fractional gate).
+  c6_climb.py   c3_climb for the new prefix, scored by the fractional rt at x>=XG; archive per exit tick.
+  pf6.py        writes pre-fire variant prefixes (gmodel aims for each n), checks the explosion tick with xlab.
+  sweep_rv.sh   xrv (copied from physlab2) over pre-fire prefixes with several dx/vxw settings, then ev.py.
+  p7.py         local hill climb of a full file from a cut rt, shots included. Score: fractional rt at x=XG
+                minus VW*vx.
+  clean.py      keep lines up to an rt, then append a dir-1 tail.
+  s2_match.py   landing-state matching for transplanting a known continuation (section 5).
+  fin.py        exhaustive final approach (last 3-4 ticks) plus point-blank aim grid.
+  tailscan.py   single post-exit hook scan.
+  seedscan.py   evaluates s1 landing variants with a transplanted continuation.
+  ev.py / metrics.py / table.py   metrics.
+  cmpsrv.py     server trace vs sim, every line.
+  srvtrace.sh, killpy.sh, xlab, xrv, xbeam   copied from physlab2.
+  Pipeline used (E lines; for F also s2_match + SHAPE, see section 4): s1_land -> b5_turn (seed: landing + the old T1025 inputs shifted by -2) -> b5 YFRAC ->
+    pf6 (pre-fire step 992) -> sweep_rv -> p7 (VW 0.03, then 0) -> clean.py -> srvtrace.sh + cmpsrv.py.

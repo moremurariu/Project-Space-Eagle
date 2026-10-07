@@ -1,0 +1,976 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index 10942e071..0a47d1d79 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -3486,6 +3486,8 @@ if((GTEST_FOUND OR DOWNLOAD_GTEST) AND SERVER)
+     snapshot_test.cpp
+     str_test.cpp
+     swap_endian_test.cpp
++    tas_server_test.cpp
++    tas_replay_test.cpp
+     teehistorian_test.cpp
+     test.cpp
+     test.h
+@@ -3533,6 +3535,101 @@ if((GTEST_FOUND OR DOWNLOAD_GTEST) AND SERVER)
+   list(APPEND TARGETS_OWN ${TARGET_TESTRUNNER})
+   list(APPEND TARGETS_LINK ${TARGET_TESTRUNNER})
+ 
++  # TAS tools (src/tas): the client prediction world as a fast simulator
++  file(GLOB TAS_EXTRA_SRC src/game/client/prediction/*.cpp src/game/client/prediction/entities/*.cpp
++    src/game/client/laser_data.cpp src/game/client/pickup_data.cpp src/game/client/projectile_data.cpp
++    src/tas/sim.cpp)
++  # generated files cannot be globbed (they don't exist yet on a fresh configure); listing them as
++  # sources also makes ninja generate them before compiling the prediction code that includes the header
++  list(APPEND TAS_EXTRA_SRC ${PROJECT_BINARY_DIR}/src/generated/server_data.cpp ${PROJECT_BINARY_DIR}/src/generated/server_data.h
++    ${PROJECT_BINARY_DIR}/src/generated/client_data.h)
++  foreach(TAS_TOOL mapdump tas lab tas2 polish nest pre seg pf match bench polish2)
++    if(EXISTS ${PROJECT_SOURCE_DIR}/src/tas/${TAS_TOOL}.cpp)
++      add_executable(${TAS_TOOL} EXCLUDE_FROM_ALL
++        src/tas/${TAS_TOOL}.cpp
++        ${TAS_EXTRA_SRC}
++        $<TARGET_OBJECTS:engine-gfx>
++        $<TARGET_OBJECTS:engine-shared>
++        $<TARGET_OBJECTS:game-shared>
++        $<TARGET_OBJECTS:rust-bridge-shared>
++        ${DEPS}
++      )
++      target_link_libraries(${TAS_TOOL} ${PNG_LIBRARIES} ${LIBS_SERVER})
++      list(APPEND TARGETS_OWN ${TAS_TOOL})
++      list(APPEND TARGETS_LINK ${TAS_TOOL})
++    endif()
++  endforeach()
++  foreach(FG_TOOL segf rdv fgcheck eaudit lobscan rejoin perturb)
++    if(FG_TOOL STREQUAL "segf")
++      set(FG_MAIN src/tas/seg.cpp)
++    else()
++      set(FG_MAIN src/tas/${FG_TOOL}.cpp)
++    endif()
++    add_executable(${FG_TOOL} EXCLUDE_FROM_ALL
++      ${FG_MAIN}
++      src/tas/fastg.cpp
++      ${TAS_EXTRA_SRC}
++      $<TARGET_OBJECTS:engine-gfx>
++      $<TARGET_OBJECTS:engine-shared>
++      $<TARGET_OBJECTS:game-shared>
++      $<TARGET_OBJECTS:rust-bridge-shared>
++      ${DEPS}
++    )
++    target_link_libraries(${FG_TOOL} ${PNG_LIBRARIES} ${LIBS_SERVER})
++    list(APPEND TARGETS_OWN ${FG_TOOL})
++    list(APPEND TARGETS_LINK ${FG_TOOL})
++  endforeach()
++  target_compile_definitions(segf PRIVATE SEG_FAST)
++  # CFast tools (pre-grenade single-tee stepper, from the aip-tas-fast branch)
++  foreach(F_TOOL ddsearch fastcheck replay viacheck brute eacct)
++    add_executable(${F_TOOL} EXCLUDE_FROM_ALL
++      src/tas/${F_TOOL}.cpp
++      src/tas/fast.cpp
++      ${TAS_EXTRA_SRC}
++      $<TARGET_OBJECTS:engine-gfx>
++      $<TARGET_OBJECTS:engine-shared>
++      $<TARGET_OBJECTS:game-shared>
++      $<TARGET_OBJECTS:rust-bridge-shared>
++      ${DEPS}
++    )
++    target_link_libraries(${F_TOOL} ${PNG_LIBRARIES} ${LIBS_SERVER})
++    list(APPEND TARGETS_OWN ${F_TOOL})
++    list(APPEND TARGETS_LINK ${F_TOOL})
++  endforeach()
++  # simbench: speed + exactness of every stepper (CTasGame, CFast, CFastG) on one run
++  add_executable(simbench EXCLUDE_FROM_ALL
++    src/tas/simbench.cpp
++    src/tas/fast.cpp
++    src/tas/fastg.cpp
++    ${TAS_EXTRA_SRC}
++    $<TARGET_OBJECTS:engine-gfx>
++    $<TARGET_OBJECTS:engine-shared>
++    $<TARGET_OBJECTS:game-shared>
++    $<TARGET_OBJECTS:rust-bridge-shared>
++    ${DEPS}
++  )
++  target_link_libraries(simbench ${PNG_LIBRARIES} ${LIBS_SERVER})
++  target_compile_definitions(simbench PRIVATE SB_TASSOLO SB_TECACHE SB_CFAST SB_CFASTG)
++  list(APPEND TARGETS_OWN simbench)
++  list(APPEND TARGETS_LINK simbench)
++  file(GLOB TAS_USER_TOOLS ${PROJECT_SOURCE_DIR}/src/tas/x_*.cpp)
++  foreach(UT_SRC ${TAS_USER_TOOLS})
++    get_filename_component(UT ${UT_SRC} NAME_WE)
++    add_executable(${UT} EXCLUDE_FROM_ALL
++      ${UT_SRC}
++      src/tas/fastg.cpp
++      ${TAS_EXTRA_SRC}
++      $<TARGET_OBJECTS:engine-gfx>
++      $<TARGET_OBJECTS:engine-shared>
++      $<TARGET_OBJECTS:game-shared>
++      $<TARGET_OBJECTS:rust-bridge-shared>
++      ${DEPS}
++    )
++    target_link_libraries(${UT} ${PNG_LIBRARIES} ${LIBS_SERVER})
++    list(APPEND TARGETS_OWN ${UT})
++    list(APPEND TARGETS_LINK ${UT})
++  endforeach()
++
+   add_custom_target(run_cxx_tests
+     COMMAND $<TARGET_FILE:${TARGET_TESTRUNNER}> --gtest_brief=1 ${TESTRUNNER_ARGS}
+     COMMENT Running unit tests
+diff --git a/src/game/client/prediction/entities/projectile.cpp b/src/game/client/prediction/entities/projectile.cpp
+index f79f9f059..ad4032c4f 100644
+--- a/src/game/client/prediction/entities/projectile.cpp
++++ b/src/game/client/prediction/entities/projectile.cpp
+@@ -141,10 +141,12 @@ void CProjectile::Tick()
+ 			if(GameWorld()->m_WorldConfig.m_IsDDRace && GameWorld()->m_WorldConfig.m_PredictDDRace)
+ 				GameWorld()->CreatePredictedDamageIndEvent(CurPos, -std::atan2(m_Direction.x, m_Direction.y), 10, m_StartTick);
+ 			m_MarkedForDestroy = true;
++			return; // like the server: no lifetime explosion on top of a hit in the last lifetime tick
+ 		}
+ 		else if(!m_Freeze)
+ 		{
+ 			m_MarkedForDestroy = true;
++			return;
+ 		}
+ 	}
+ 	if(m_LifeSpan == -1)
+diff --git a/src/game/collision.cpp b/src/game/collision.cpp
+index bf3563963..e1c708a47 100644
+--- a/src/game/collision.cpp
++++ b/src/game/collision.cpp
+@@ -143,10 +143,102 @@ void CCollision::Init(class CLayers *pLayers)
+ 			}
+ 		}
+ 	}
++
++	m_vBlockSum.assign((size_t)(m_Width + 1) * (m_Height + 1), 0);
++	for(int y = 0; y < m_Height; y++)
++		for(int x = 0; x < m_Width; x++)
++		{
++			const int T = m_pTiles[y * m_Width + x].m_Index;
++			const bool Block = !(T == TILE_AIR || T == TILE_FREEZE || T == TILE_START || T == TILE_FINISH || T >= ENTITY_OFFSET);
++			m_vBlockSum[(size_t)(y + 1) * (m_Width + 1) + (x + 1)] = (Block ? 1 : 0) + m_vBlockSum[(size_t)y * (m_Width + 1) + (x + 1)] +
++										 m_vBlockSum[(size_t)(y + 1) * (m_Width + 1) + x] - m_vBlockSum[(size_t)y * (m_Width + 1) + x];
++		}
++	m_FastOk = !m_pTele && !m_pFront && !m_pDoor && !m_pSwitch && !m_pSpeedup && !m_pTune;
++	m_HasStoppers = false;
++	for(int i = 0; i < m_Width * m_Height; i++)
++	{
++		const int T = m_pTiles[i].m_Index;
++		if(T == TILE_STOP || T == TILE_STOPS || T == TILE_STOPA)
++			m_HasStoppers = true;
++	}
++
++	m_vTileExistsCache.clear();
++	if(!m_pDoor)
++	{
++		m_vTileExistsCache.resize((size_t)m_Width * m_Height);
++		for(int i = 0; i < m_Width * m_Height; i++)
++			m_vTileExistsCache[i] = TileExistsUncached(i);
++	}
++	m_vExistSum.assign((size_t)(m_Width + 1) * (m_Height + 1), 0);
++	for(int y = 0; y < m_Height; y++)
++		for(int x = 0; x < m_Width; x++)
++			m_vExistSum[(size_t)(y + 1) * (m_Width + 1) + (x + 1)] = (TileExistsUncached(y * m_Width + x) ? 1 : 0) + m_vExistSum[(size_t)y * (m_Width + 1) + (x + 1)] +
++										 m_vExistSum[(size_t)(y + 1) * (m_Width + 1) + x] - m_vExistSum[(size_t)y * (m_Width + 1) + x];
++	InitFast();
++}
++
++void CCollision::InitFast()
++{
++	m_FastSolidOk = false;
++	if(!m_pTiles || m_pFront || m_pTele || m_pSpeedup || m_pSwitch || m_pTune || m_pDoor)
++		return;
++	const int N = m_Width * m_Height;
++	m_vFastSolid.assign(N, 0);
++	for(int i = 0; i < N; i++)
++	{
++		int T = m_pTiles[i].m_Index;
++		// tiles that would make MoveRestrictions, hook rays or IsThrough behave differently
++		if(T == TILE_STOP || T == TILE_STOPS || T == TILE_STOPA || T == TILE_THROUGH_ALL || T == TILE_THROUGH_DIR || T == TILE_THROUGH || T == TILE_THROUGH_CUT)
++			return;
++		m_vFastSolid[i] = (T == TILE_SOLID || T == TILE_NOHOOK) ? 1 : 0;
++	}
++	m_vFastSum.assign((m_Width + 1) * (m_Height + 1), 0);
++	for(int y = 0; y < m_Height; y++)
++		for(int x = 0; x < m_Width; x++)
++			m_vFastSum[(y + 1) * (m_Width + 1) + x + 1] = m_vFastSolid[y * m_Width + x] + m_vFastSum[y * (m_Width + 1) + x + 1] +
++								     m_vFastSum[(y + 1) * (m_Width + 1) + x] - m_vFastSum[y * (m_Width + 1) + x];
++	m_FastSolidOk = true;
++}
++
++bool CCollision::FastAnySolid(float x0, float y0, float x1, float y1) const
++{
++	// conservative: pixel coordinates are widened by 2 before taking tiles, the same clamp as GetTile
++	int tx0 = std::clamp((int)std::floor((x0 - 2.0f) / 32.0f), 0, m_Width - 1);
++	int ty0 = std::clamp((int)std::floor((y0 - 2.0f) / 32.0f), 0, m_Height - 1);
++	int tx1 = std::clamp((int)std::floor((x1 + 2.0f) / 32.0f), 0, m_Width - 1);
++	int ty1 = std::clamp((int)std::floor((y1 + 2.0f) / 32.0f), 0, m_Height - 1);
++	const int W = m_Width + 1;
++	int Sum = m_vFastSum[(ty1 + 1) * W + tx1 + 1] - m_vFastSum[ty0 * W + tx1 + 1] - m_vFastSum[(ty1 + 1) * W + tx0] + m_vFastSum[ty0 * W + tx0];
++	return Sum > 0;
++}
++
++bool CCollision::ms_TileExistsCache = false;
++bool CCollision::ms_FastPaths = false;
++
++// tile rectangle (inclusive, already clamped): true if TileExists holds for any tile in it
++bool CCollision::AnyExistingTile(int Tx0, int Ty0, int Tx1, int Ty1) const
++{
++	const size_t W = m_Width + 1;
++	const int Sum = m_vExistSum[(size_t)(Ty1 + 1) * W + (Tx1 + 1)] - m_vExistSum[(size_t)Ty0 * W + (Tx1 + 1)] -
++			m_vExistSum[(size_t)(Ty1 + 1) * W + Tx0] + m_vExistSum[(size_t)Ty0 * W + Tx0];
++	return Sum != 0;
++}
++
++// pixel rectangle (inclusive) -> tiles with GetTile's clamping; true if any tile in it can collide
++bool CCollision::AnyBlockingTile(int x0, int y0, int x1, int y1) const
++{
++	const int Tx0 = std::clamp(x0 / 32, 0, m_Width - 1), Tx1 = std::clamp(x1 / 32, 0, m_Width - 1);
++	const int Ty0 = std::clamp(y0 / 32, 0, m_Height - 1), Ty1 = std::clamp(y1 / 32, 0, m_Height - 1);
++	const size_t W = m_Width + 1;
++	const int Sum = m_vBlockSum[(size_t)(Ty1 + 1) * W + (Tx1 + 1)] - m_vBlockSum[(size_t)Ty0 * W + (Tx1 + 1)] -
++			m_vBlockSum[(size_t)(Ty1 + 1) * W + Tx0] + m_vBlockSum[(size_t)Ty0 * W + Tx0];
++	return Sum != 0;
+ }
+ 
+ void CCollision::Unload()
+ {
++	m_FastSolidOk = false;
++	m_vTileExistsCache.clear();
+ 	m_pTiles = nullptr;
+ 	m_Width = 0;
+ 	m_Height = 0;
+@@ -269,6 +361,8 @@ int CCollision::GetMoveRestrictions(CALLBACK_SWITCHACTIVE pfnSwitchActive, void
+ 			vec2(-1, 0),
+ 			vec2(0, -1)};
+ 	dbg_assert(0.0f <= Distance && Distance <= 32.0f, "Invalid Distance: %f", Distance);
++	if(ms_FastPaths && m_FastOk && !m_HasStoppers)
++		return 0; // only game-layer stoppers could restrict movement here
+ 	int Restrictions = 0;
+ 	for(int d = 0; d < NUM_MR_DIRS; d++)
+ 	{
+@@ -356,6 +450,52 @@ int CCollision::IntersectLine(vec2 Pos0, vec2 Pos1, vec2 *pOutCollision, vec2 *p
+ 
+ int CCollision::IntersectLineTeleHook(vec2 Pos0, vec2 Pos1, vec2 *pOutCollision, vec2 *pOutBeforeCollision, int *pTeleNr) const
+ {
++	if(ms_FastPaths && m_FastOk && !m_vBlockSum.empty())
++	{
++		// broad phase (see MoveBox): no blocking tile around the segment -> no hit
++		const int X0 = (int)std::floor(std::min(Pos0.x, Pos1.x)) - 2, X1 = (int)std::ceil(std::max(Pos0.x, Pos1.x)) + 2;
++		const int Y0 = (int)std::floor(std::min(Pos0.y, Pos1.y)) - 2, Y1 = (int)std::ceil(std::max(Pos0.y, Pos1.y)) + 2;
++		if(X0 >= 0 && Y0 >= 0 && !AnyBlockingTile(X0, Y0, X1, Y1))
++		{
++			if(pTeleNr)
++				*pTeleNr = 0;
++			if(pOutCollision)
++				*pOutCollision = Pos1;
++			if(pOutBeforeCollision)
++				*pOutBeforeCollision = Pos1;
++			return 0;
++		}
++	}
++	if(ms_FastPaths && m_FastSolidOk)
++	{
++		// same sampling as below; without tele / front layers and through tiles only solid tiles can stop the hook
++		float Distance = distance(Pos0, Pos1);
++		int End(Distance + 1);
++		vec2 Last = Pos0;
++		if(pTeleNr)
++			*pTeleNr = 0;
++		for(int i = 0; i <= End; i++)
++		{
++			float a = i / (float)End;
++			vec2 Pos = mix(Pos0, Pos1, a);
++			int ix = round_to_int(Pos.x);
++			int iy = round_to_int(Pos.y);
++			if(FastSolidAt(ix, iy))
++			{
++				if(pOutCollision)
++					*pOutCollision = Pos;
++				if(pOutBeforeCollision)
++					*pOutBeforeCollision = Last;
++				return GetTile(ix, iy);
++			}
++			Last = Pos;
++		}
++		if(pOutCollision)
++			*pOutCollision = Pos1;
++		if(pOutBeforeCollision)
++			*pOutBeforeCollision = Pos1;
++		return 0;
++	}
+ 	float Distance = distance(Pos0, Pos1);
+ 	int End(Distance + 1);
+ 	vec2 Last = Pos0;
+@@ -504,6 +644,9 @@ void CCollision::MovePoint(vec2 *pInoutPos, vec2 *pInoutVel, float Elasticity, i
+ bool CCollision::TestBox(vec2 Pos, vec2 Size) const
+ {
+ 	Size *= 0.5f;
++	if(ms_FastPaths && m_FastSolidOk)
++		return FastCheckPoint(Pos.x - Size.x, Pos.y - Size.y) || FastCheckPoint(Pos.x + Size.x, Pos.y - Size.y) ||
++		       FastCheckPoint(Pos.x - Size.x, Pos.y + Size.y) || FastCheckPoint(Pos.x + Size.x, Pos.y + Size.y);
+ 	if(CheckPoint(Pos.x - Size.x, Pos.y - Size.y))
+ 		return true;
+ 	if(CheckPoint(Pos.x + Size.x, Pos.y - Size.y))
+@@ -517,6 +660,8 @@ bool CCollision::TestBox(vec2 Pos, vec2 Size) const
+ 
+ bool CCollision::IsOnGround(vec2 Pos, float Size) const
+ {
++	if(ms_FastPaths && m_FastSolidOk)
++		return FastCheckPoint(Pos.x + Size / 2, Pos.y + Size / 2 + 5) || FastCheckPoint(Pos.x - Size / 2, Pos.y + Size / 2 + 5);
+ 	if(CheckPoint(Pos.x + Size / 2, Pos.y + Size / 2 + 5))
+ 		return true;
+ 	if(CheckPoint(Pos.x - Size / 2, Pos.y + Size / 2 + 5))
+@@ -534,6 +679,29 @@ void CCollision::MoveBox(vec2 *pInoutPos, vec2 *pInoutVel, vec2 Size, vec2 Elast
+ 	float Distance = length(Vel);
+ 	int Max = (int)Distance;
+ 
++	if(Distance > 0.00001f && ms_FastPaths && m_FastOk && !m_vBlockSum.empty())
++	{
++		// broad phase: every TestBox of the loop below stays inside this rectangle (positions move monotonically
++		// from Pos to Pos + Vel; 2 px margin for rounding); without a blocking tile in it nothing can collide
++		const float Hx = Size.x * 0.5f, Hy = Size.y * 0.5f;
++		const int X0 = (int)std::floor(std::min(Pos.x, Pos.x + Vel.x) - Hx) - 2, X1 = (int)std::ceil(std::max(Pos.x, Pos.x + Vel.x) + Hx) + 2;
++		const int Y0 = (int)std::floor(std::min(Pos.y, Pos.y + Vel.y) - Hy) - 2, Y1 = (int)std::ceil(std::max(Pos.y, Pos.y + Vel.y) + Hy) + 2;
++		if(X0 >= 0 && Y0 >= 0 && !AnyBlockingTile(X0, Y0, X1, Y1))
++		{
++			float Fraction = 1.0f / (float)(Max + 1);
++			for(int i = 0; i <= Max; i++)
++			{
++				vec2 NewPos = Pos + Vel * Fraction;
++				if(NewPos == Pos)
++					break;
++				Pos = NewPos;
++			}
++			*pInoutPos = Pos;
++			*pInoutVel = Vel;
++			return;
++		}
++	}
++
+ 	if(Distance > 0.00001f)
+ 	{
+ 		float Fraction = 1.0f / (float)(Max + 1);
+@@ -843,6 +1011,15 @@ int CCollision::GetPureMapIndex(float x, float y) const
+ }
+ 
+ bool CCollision::TileExists(int Index) const
++{
++	if(Index < 0)
++		return false;
++	if(ms_TileExistsCache && !m_vTileExistsCache.empty())
++		return m_vTileExistsCache[Index];
++	return TileExistsUncached(Index);
++}
++
++bool CCollision::TileExistsUncached(int Index) const
+ {
+ 	if(Index < 0)
+ 		return false;
+@@ -939,6 +1116,14 @@ std::vector<int> CCollision::GetMapIndices(vec2 PrevPos, vec2 Pos, unsigned MaxI
+ 	}
+ 	else
+ 	{
++		if(ms_FastPaths && m_FastOk && !m_vExistSum.empty() && PrevPos.x >= 0 && PrevPos.y >= 0 && Pos.x >= 0 && Pos.y >= 0)
++		{
++			// every sample of the loop below lies in this tile rectangle; nothing exists there -> no indices
++			const int Tx0 = std::clamp((int)std::min(PrevPos.x, Pos.x) / 32 - 1, 0, m_Width - 1), Tx1 = std::clamp((int)std::max(PrevPos.x, Pos.x) / 32 + 1, 0, m_Width - 1);
++			const int Ty0 = std::clamp((int)std::min(PrevPos.y, Pos.y) / 32 - 1, 0, m_Height - 1), Ty1 = std::clamp((int)std::max(PrevPos.y, Pos.y) / 32 + 1, 0, m_Height - 1);
++			if(!AnyExistingTile(Tx0, Ty0, Tx1, Ty1))
++				return vIndices;
++		}
+ 		int LastIndex = 0;
+ 		for(int i = 0; i < End; i++)
+ 		{
+diff --git a/src/game/collision.h b/src/game/collision.h
+index 18019f50b..97243c511 100644
+--- a/src/game/collision.h
++++ b/src/game/collision.h
+@@ -5,8 +5,11 @@
+ 
+ #include <base/vmath.h>
+ 
++#include <base/math.h>
+ #include <engine/shared/protocol.h>
+ 
++#include <algorithm>
++#include <cstdint>
+ #include <map>
+ #include <vector>
+ 
+@@ -80,7 +83,17 @@ public:
+ 	std::vector<int> GetMapIndices(vec2 PrevPos, vec2 Pos, unsigned MaxIndices = 0) const;
+ 	int GetMapIndex(vec2 Pos) const;
+ 	bool TileExists(int Index) const;
++	bool TileExistsUncached(int Index) const;
+ 	bool TileExistsNext(int Index) const;
++	// TAS tools only: answer TileExists from a table built in Init (static maps without doors; identical results)
++	static bool ms_TileExistsCache;
++	// TAS tools only: skip the per-pixel loops of MoveBox / IntersectLineTeleHook when the swept rectangle holds no
++	// blocking tile (same float arithmetic, identical results)
++	static bool ms_FastPaths;
++	bool AnyBlockingTile(int x0, int y0, int x1, int y1) const;
++	bool AnyExistingTile(int Tx0, int Ty0, int Tx1, int Ty1) const;
++	// TAS (a0a0ac2 lineage API): any blocking tile in the float rectangle, widened by 2 px (conservative)
++	bool FastAnySolid(float x0, float y0, float x1, float y1) const { return AnyBlockingTile((int)x0 - 2 < 0 ? 0 : (int)x0 - 2, (int)y0 - 2 < 0 ? 0 : (int)y0 - 2, (int)x1 + 2, (int)y1 + 2); }
+ 	vec2 GetPos(int Index) const;
+ 	int GetTileIndex(int Index) const;
+ 	int GetFrontTileIndex(int Index) const;
+@@ -122,6 +135,26 @@ public:
+ 	const CTuneTile *TuneLayer() const { return m_pTune; }
+ 
+ 	int m_HighestSwitchNumber;
++	std::vector<unsigned char> m_vTileExistsCache;
++	std::vector<int> m_vBlockSum; // 2D prefix sums of tiles that can collide (game layer index != air/freeze/start/finish/entities)
++	std::vector<int> m_vExistSum; // 2D prefix sums of TileExists
++	bool m_HasStoppers = true; // game layer has stopper tiles
++	bool m_FastOk = false; // no tele/front/door/switch layers: the fast paths are exact
++	// TAS (from the aip-tas-fast branch): per-tile solid table (TILE_SOLID / TILE_NOHOOK) for inlined point checks in
++	// TestBox / IsOnGround and the hook ray. Built in Init; only used where it is exact (m_FastSolidOk: no front / tele /
++	// speedup / switch / tune / door layer, no stopper or through tiles) and only while ms_FastPaths is set.
++	bool m_FastSolidOk = false;
++	std::vector<uint8_t> m_vFastSolid;
++	std::vector<int> m_vFastSum; // 2D prefix sums of m_vFastSolid, (W+1) x (H+1)
++	void InitFast();
++	bool FastAnySolid(float x0, float y0, float x1, float y1) const; // any solid tile in the rectangle (conservative)
++	bool FastSolidAt(int x, int y) const
++	{
++		int Nx = std::clamp(x / 32, 0, m_Width - 1);
++		int Ny = std::clamp(y / 32, 0, m_Height - 1);
++		return m_vFastSolid[Ny * m_Width + Nx];
++	}
++	bool FastCheckPoint(float x, float y) const { return FastSolidAt(round_to_int(x), round_to_int(y)); }
+ 
+ 	/**
+ 	 * Index all teleporter types (in, out and checkpoints)
+diff --git a/src/game/gamecore.cpp b/src/game/gamecore.cpp
+index 4f0df9b03..aa71833c8 100644
+--- a/src/game/gamecore.cpp
++++ b/src/game/gamecore.cpp
+@@ -462,9 +462,11 @@ void CCharacterCore::Tick(bool UseInput, bool DoDeferredTick)
+ 		TickDeferred();
+ }
+ 
++bool CCharacterCore::ms_TasSolo = false;
++
+ void CCharacterCore::TickDeferred()
+ {
+-	if(m_pWorld)
++	if(m_pWorld && !ms_TasSolo)
+ 	{
+ 		for(int i = 0; i < MAX_CLIENTS; i++)
+ 		{
+diff --git a/src/game/gamecore.h b/src/game/gamecore.h
+index dd94abcb4..becccb418 100644
+--- a/src/game/gamecore.h
++++ b/src/game/gamecore.h
+@@ -25,6 +25,7 @@ class CTuneParam
+ 	int m_Value;
+ 
+ public:
++
+ 	int Get() const { return m_Value; }
+ 	CTuneParam &operator=(float v)
+ 	{
+@@ -184,6 +185,8 @@ class CCharacterCore
+ 	CCollision *m_pCollision;
+ 
+ public:
++	// TAS tools only: the world holds this single character, skip the loops over the other player slots
++	static bool ms_TasSolo;
+ 	static constexpr float PhysicalSize() { return 28.0f; }
+ 	static constexpr vec2 PhysicalSizeVec2() { return vec2(28.0f, 28.0f); }
+ 	vec2 m_Pos;
+diff --git a/src/test/tas_replay_test.cpp b/src/test/tas_replay_test.cpp
+new file mode 100644
+index 000000000..08071195a
+--- /dev/null
++++ b/src/test/tas_replay_test.cpp
+@@ -0,0 +1,244 @@
++// TAS replay on the real server code (trimmed from the physics-experiments branch's zz_physics_sim_test.cpp).
++// TAS_MAP=<map file> TAS_INPUTS=<inputs file> [TAS_TRACE=1] ./testrunner --gtest_filter=TasReplay.Run
++// inputs: one line per tick "dir jump hook fire tx ty weapon" (fire = held, weapon 0-based or -1)
++#include "test.h"
++
++#include <gtest/gtest.h>
++
++#include <array>
++#include <cstdio>
++#include <cstdlib>
++#include <memory>
++#include <vector>
++
++// access private state of characters
++#define private public
++#define protected public
++#include <base/io.h>
++#include <base/logger.h>
++#include <engine/engine.h>
++#include <engine/http.h>
++#include <engine/kernel.h>
++#include <engine/server/databases/connection_pool.h>
++#include <engine/server/server.h>
++#include <engine/shared/config.h>
++#include <engine/shared/network.h>
++#include <game/collision.h>
++#include <game/mapitems.h>
++#include <game/server/entities/character.h>
++#include <game/server/gamecontext.h>
++#include <game/server/gamecontroller.h>
++#include <game/server/gameworld.h>
++#include <game/server/player.h>
++#include <game/version.h>
++#include <generated/protocol.h>
++#undef private
++#undef protected
++
++class CTasNullLogger : public ILogger
++{
++public:
++	void Log(const CLogMessage *pMessage) override {}
++};
++static CTasNullLogger gTasNullLogger;
++
++static void TasPrepareMap(IStorage *pStorage)
++{
++	const char *pMap = getenv("TAS_MAP");
++	ASSERT_TRUE(pMap);
++	FILE *f = fopen(pMap, "rb");
++	ASSERT_TRUE(f);
++	std::vector<unsigned char> vData;
++	unsigned char aBuf[4096];
++	size_t n;
++	while((n = fread(aBuf, 1, sizeof(aBuf), f)) > 0)
++		vData.insert(vData.end(), aBuf, aBuf + n);
++	fclose(f);
++	pStorage->CreateFolder("maps", IStorage::TYPE_SAVE);
++	IOHANDLE File = pStorage->OpenFile("maps/tasmap.map", IOFLAG_WRITE, IStorage::TYPE_SAVE);
++	ASSERT_TRUE(File);
++	io_write(File, vData.data(), vData.size());
++	io_close(File);
++}
++
++class TasReplay : public ::testing::Test // NOLINT(readability-identifier-naming)
++{
++public:
++	IGameServer *m_pGameServer = nullptr;
++	CServer *m_pServer = nullptr;
++	std::unique_ptr<IKernel> m_pKernel;
++	CTestInfo m_TestInfo;
++	std::unique_ptr<IStorage> m_pStorage;
++	CConfig m_ConfigBackup;
++
++	CGameContext *GameServer() { return (CGameContext *)m_pGameServer; }
++
++	static void SetUpTestSuite() { CNetBase::Init(); }
++
++	TasReplay()
++	{
++		m_ConfigBackup = g_Config;
++		CServer *pServer = CreateServer();
++		m_pServer = pServer;
++		m_pKernel = std::unique_ptr<IKernel>(IKernel::Create());
++		m_pKernel->RegisterInterface(m_pServer);
++		IEngine *pEngine = CreateTestEngine(GAME_NAME);
++		m_pKernel->RegisterInterface(pEngine);
++		m_TestInfo.m_DeleteTestStorageFilesOnSuccess = true;
++		m_pStorage = m_TestInfo.CreateTestStorage();
++		m_pKernel->RegisterInterface(m_pStorage.get(), false);
++		IConsole *pConsole = CreateConsole(CFGFLAG_SERVER | CFGFLAG_ECON).release();
++		m_pKernel->RegisterInterface(pConsole);
++		IConfigManager *pConfigManager = CreateConfigManager();
++		m_pKernel->RegisterInterface(pConfigManager);
++		IEngineHttp *pEngineHttp = CreateEngineHttp();
++		m_pKernel->RegisterInterface(pEngineHttp);
++		m_pKernel->RegisterInterface(static_cast<IHttp *>(pEngineHttp), false);
++		IEngineAntibot *pEngineAntibot = CreateEngineAntibot();
++		m_pKernel->RegisterInterface(pEngineAntibot);
++		m_pKernel->RegisterInterface(static_cast<IAntibot *>(pEngineAntibot), false);
++		m_pGameServer = CreateGameServer();
++		m_pKernel->RegisterInterface(m_pGameServer);
++		pEngine->Init();
++		pConsole->Init();
++		pConfigManager->Init();
++		m_pServer->RegisterCommands();
++		TasPrepareMap(m_pStorage.get());
++		EXPECT_NE(m_pServer->LoadMap("tasmap"), 0);
++		m_pServer->m_RunServer = CServer::RUNNING;
++		m_pServer->m_AuthManager.Init();
++		{
++			int Size = GameServer()->PersistentClientDataSize();
++			for(auto &Client : m_pServer->m_aClients)
++			{
++				Client.m_HasPersistentData = false;
++				Client.m_pPersistentData = malloc(Size);
++			}
++		}
++		m_pServer->m_pPersistentData = malloc(GameServer()->PersistentDataSize());
++		EXPECT_NE(m_pServer->LoadMap("tasmap"), 0);
++		EXPECT_TRUE(pEngineHttp->Init(std::chrono::seconds{2}));
++		pServer->m_NetServer.SetCallbacks(CServer::NewClientCallback, CServer::NewClientNoAuthCallback,
++			CServer::ClientRejoinCallback, CServer::DelClientCallback, pServer);
++		pServer->m_Econ.Init(pServer->Config(), pServer->Console(), &pServer->m_ServerBan);
++		pServer->m_Fifo.Init(pServer->Console(), g_Config.m_SvInputFifo, CFGFLAG_SERVER);
++		m_pServer->Antibot()->Init();
++		GameServer()->OnInit(nullptr);
++		g_Config.m_DbgDummies = 3;
++		m_pServer->UpdateDebugDummies(false);
++	}
++
++	~TasReplay() override
++	{
++		m_pServer->m_Econ.Shutdown();
++		m_pServer->m_Fifo.Shutdown();
++		m_pGameServer->OnShutdown(nullptr);
++		m_pServer->DbPool()->OnShutdown();
++		g_Config = m_ConfigBackup;
++	}
++
++	int CidOf(int t) { return m_pServer->MaxClients() - 1 - t; }
++	CCharacter *Chr(int t) { return GameServer()->m_apPlayers[CidOf(t)]->GetCharacter(); }
++	void RecycleSnapIds() { m_pServer->m_IdPool.TimeoutIds(); }
++};
++
++TEST_F(TasReplay, Run)
++{
++	const char *pInputs = getenv("TAS_INPUTS");
++	ASSERT_TRUE(pInputs);
++	FILE *f = fopen(pInputs, "r");
++	ASSERT_TRUE(f);
++	std::vector<std::array<int, 7>> vIn;
++	std::array<int, 7> a;
++	while(fscanf(f, "%d %d %d %d %d %d %d", &a[0], &a[1], &a[2], &a[3], &a[4], &a[5], &a[6]) == 7)
++		vIn.push_back(a);
++	fclose(f);
++	const bool Trace = getenv("TAS_TRACE") != nullptr;
++
++	// the first spawn point in map order is where a lone player spawns
++	vec2 SpawnPos = GameServer()->m_pController->m_avSpawnPoints[0][0];
++	printf("spawn %.1f %.1f\n", SpawnPos.x, SpawnPos.y);
++	CPlayer *p = GameServer()->m_apPlayers[CidOf(0)];
++	{
++		CLogScope Quiet(&gTasNullLogger);
++		p->KillCharacter(WEAPON_GAME, false);
++		GameServer()->m_World.RemoveEntities();
++		RecycleSnapIds();
++		p->ForceSpawn(SpawnPos);
++	}
++	// keep the other debug dummies out of the way: spectators never respawn
++	for(int t = 1; t < 3; t++)
++	{
++		CLogScope Quiet(&gTasNullLogger);
++		CPlayer *pOther = GameServer()->m_apPlayers[CidOf(t)];
++		pOther->KillCharacter(WEAPON_GAME, false);
++		GameServer()->m_World.RemoveEntities();
++		RecycleSnapIds();
++		pOther->SetTeam(TEAM_SPECTATORS, false);
++	}
++	CNetObj_PlayerInput In = {};
++	int Fire = 0;
++	int StartTick = -1, FinishTick = -1, PickupInput = -1, StartInput = -1;
++	bool DoubleStart = false;
++	int Frozen = 0;
++	int Tick0 = m_pServer->Tick();
++	for(size_t i = 0; i < vIn.size(); i++)
++	{
++		In.m_Direction = vIn[i][0];
++		In.m_Jump = vIn[i][1];
++		In.m_Hook = vIn[i][2];
++		if((Fire & 1) != (vIn[i][3] ? 1 : 0))
++			Fire++;
++		In.m_Fire = Fire;
++		In.m_TargetX = vIn[i][4];
++		In.m_TargetY = vIn[i][5];
++		In.m_WantedWeapon = vIn[i][6] >= 0 ? vIn[i][6] + 1 : 0;
++		In.m_PlayerFlags = PLAYERFLAG_PLAYING;
++		{
++			// one server tick, same order as CServer::Run
++			CLogScope Quiet(&gTasNullLogger);
++			if(Chr(0))
++				GameServer()->OnClientPredictedEarlyInput(CidOf(0), &In);
++			m_pServer->m_CurrentGameTick++;
++			if(Chr(0))
++				GameServer()->OnClientPredictedInput(CidOf(0), &In);
++			GameServer()->OnTick();
++			GameServer()->OnPostGlobalSnap();
++		}
++		CCharacter *c = Chr(0);
++		if(!c)
++		{
++			printf("tee died at tick %d\n", (int)i + 1);
++			break;
++		}
++		if(c->m_DDRaceState == ERaceState::STARTED)
++		{
++			int Now = c->m_StartTime - Tick0;
++			if(StartTick >= 0 && Now != StartTick && Now - StartTick > 1)
++			{
++				printf("DOUBLE START: timer restarted at tick %d (previous start %d)\n", Now, StartTick);
++				DoubleStart = true;
++			}
++			StartTick = Now;
++		}
++		if(FinishTick < 0 && c->m_DDRaceState == ERaceState::FINISHED)
++		{
++			FinishTick = m_pServer->Tick() - Tick0;
++			StartTick = c->m_StartTime - Tick0;
++		}
++		if(PickupInput < 0 && c->m_Core.m_aWeapons[WEAPON_GRENADE].m_Got)
++		{
++			PickupInput = (int)i + 1;
++			StartInput = StartTick;
++		}
++		Frozen += c->m_FreezeTime > 0;
++		if(Trace)
++			printf("%d %.3f %.3f %.3f %.3f frz=%d dir=%d/%d hook=%d hs=%d jumped=%d\n", (int)i + 1, c->m_Core.m_Pos.x, c->m_Core.m_Pos.y, c->m_Core.m_Vel.x, c->m_Core.m_Vel.y, c->m_FreezeTime > 0,
++				c->m_Input.m_Direction, c->m_Core.m_Direction, c->m_Input.m_Hook, c->m_Core.m_HookState, c->m_Core.m_Jumped);
++	}
++	if(PickupInput >= 0)
++		printf("grenade pickup at input %d (start tick %d) -> race tick %d\n", PickupInput, StartInput, PickupInput - StartInput);
++	printf("frozen ticks %d\n", Frozen);
++	printf("start tick %d finish tick %d -> %d ticks = %.2f s%s\n", StartTick, FinishTick, FinishTick - StartTick, (FinishTick - StartTick) / 50.0, DoubleStart ? " (INVALID: double start)" : "");
++	EXPECT_FALSE(DoubleStart);
++}
+diff --git a/src/test/tas_server_test.cpp b/src/test/tas_server_test.cpp
+new file mode 100644
+index 000000000..26466ac43
+--- /dev/null
++++ b/src/test/tas_server_test.cpp
+@@ -0,0 +1,240 @@
++// TAS replay on the real server code (CServer + CGameContext), adapted from the AiP-Gores TAS work (TasReplay).
++//   TAS_MAP=<map file> TAS_INPUTS=<inputs file> [TAS_TRACE=1] testrunner --gtest_filter='TasServer.*'
++// inputs: one line per tick "dir jump hook fire tx ty weapon" (fire = held, weapon 0-based or -1).
++// Prints the start tick, the race tick of the grenade pickup and whether the tee was ever frozen or double started.
++#define private public
++#define protected public
++#include <engine/server/server.h>
++#include <game/server/entities/character.h>
++#include <game/server/gamecontext.h>
++#include <game/server/gamecontroller.h>
++#include <game/server/player.h>
++#undef private
++#undef protected
++
++#include "test.h"
++
++#include <base/logger.h>
++#include <base/io.h>
++#include <engine/engine.h>
++#include <engine/http.h>
++#include <engine/kernel.h>
++#include <engine/server/antibot.h>
++#include <engine/server/databases/connection_pool.h>
++#include <engine/shared/config.h>
++#include <engine/storage.h>
++#include <engine/console.h>
++#include <game/version.h>
++#include <generated/protocol.h>
++
++#include <gtest/gtest.h>
++
++#include <array>
++#include <cstdio>
++#include <cstdlib>
++#include <memory>
++#include <vector>
++
++namespace {
++class CNullLoggerTas : public ILogger
++{
++public:
++	void Log(const CLogMessage *pMessage) override {}
++};
++CNullLoggerTas gs_NullLogger;
++}
++
++class TasServer : public ::testing::Test // NOLINT(readability-identifier-naming)
++{
++public:
++	IGameServer *m_pGameServer = nullptr;
++	CServer *m_pServer = nullptr;
++	std::unique_ptr<IKernel> m_pKernel;
++	CTestInfo m_TestInfo;
++	std::unique_ptr<IStorage> m_pStorage;
++	CConfig m_ConfigBackup;
++	bool m_Ok = false;
++
++	CGameContext *GameServer() { return (CGameContext *)m_pGameServer; }
++
++	static void SetUpTestSuite() { CNetBase::Init(); }
++
++	TasServer()
++	{
++		const char *pMap = getenv("TAS_MAP");
++		if(!pMap)
++			return;
++		m_ConfigBackup = g_Config;
++		CServer *pServer = CreateServer();
++		m_pServer = pServer;
++		m_pKernel = std::unique_ptr<IKernel>(IKernel::Create());
++		m_pKernel->RegisterInterface(m_pServer);
++		IEngine *pEngine = CreateTestEngine(GAME_NAME);
++		m_pKernel->RegisterInterface(pEngine);
++		m_TestInfo.m_DeleteTestStorageFilesOnSuccess = true;
++		m_pStorage = m_TestInfo.CreateTestStorage();
++		m_pKernel->RegisterInterface(m_pStorage.get(), false);
++		IConsole *pConsole = CreateConsole(CFGFLAG_SERVER | CFGFLAG_ECON).release();
++		m_pKernel->RegisterInterface(pConsole);
++		IConfigManager *pConfigManager = CreateConfigManager();
++		m_pKernel->RegisterInterface(pConfigManager);
++		IEngineHttp *pEngineHttp = CreateEngineHttp();
++		m_pKernel->RegisterInterface(pEngineHttp);
++		m_pKernel->RegisterInterface(static_cast<IHttp *>(pEngineHttp), false);
++		IEngineAntibot *pEngineAntibot = CreateEngineAntibot();
++		m_pKernel->RegisterInterface(pEngineAntibot);
++		m_pKernel->RegisterInterface(static_cast<IAntibot *>(pEngineAntibot), false);
++		m_pGameServer = CreateGameServer();
++		m_pKernel->RegisterInterface(m_pGameServer);
++		pEngine->Init();
++		pConsole->Init();
++		pConfigManager->Init();
++		m_pServer->RegisterCommands();
++
++		// copy the map into the test storage
++		FILE *f = fopen(pMap, "rb");
++		if(!f)
++			return;
++		std::vector<unsigned char> vData;
++		unsigned char aBuf[4096];
++		size_t n;
++		while((n = fread(aBuf, 1, sizeof(aBuf), f)) > 0)
++			vData.insert(vData.end(), aBuf, aBuf + n);
++		fclose(f);
++		m_pStorage->CreateFolder("maps", IStorage::TYPE_SAVE);
++		IOHANDLE File = m_pStorage->OpenFile("maps/tasmap.map", IOFLAG_WRITE, IStorage::TYPE_SAVE);
++		if(!File)
++			return;
++		io_write(File, vData.data(), vData.size());
++		io_close(File);
++
++		EXPECT_NE(m_pServer->LoadMap("tasmap"), 0);
++		m_pServer->m_RunServer = CServer::RUNNING;
++		m_pServer->m_AuthManager.Init();
++		{
++			int Size = GameServer()->PersistentClientDataSize();
++			for(auto &Client : m_pServer->m_aClients)
++			{
++				Client.m_HasPersistentData = false;
++				Client.m_pPersistentData = malloc(Size);
++			}
++		}
++		m_pServer->m_pPersistentData = malloc(GameServer()->PersistentDataSize());
++		EXPECT_NE(m_pServer->LoadMap("tasmap"), 0);
++		EXPECT_TRUE(pEngineHttp->Init(std::chrono::seconds{2}));
++		pServer->m_NetServer.SetCallbacks(CServer::NewClientCallback, CServer::NewClientNoAuthCallback,
++			CServer::ClientRejoinCallback, CServer::DelClientCallback, pServer);
++		pServer->m_Econ.Init(pServer->Config(), pServer->Console(), &pServer->m_ServerBan);
++		pServer->m_Fifo.Init(pServer->Console(), g_Config.m_SvInputFifo, CFGFLAG_SERVER);
++		m_pServer->Antibot()->Init();
++		GameServer()->OnInit(nullptr);
++		g_Config.m_DbgDummies = 1;
++		m_pServer->UpdateDebugDummies(false);
++		m_Ok = true;
++	}
++
++	~TasServer() override
++	{
++		if(!m_pServer)
++			return;
++		m_pServer->m_Econ.Shutdown();
++		m_pServer->m_Fifo.Shutdown();
++		if(m_Ok)
++			m_pGameServer->OnShutdown(nullptr);
++		m_pServer->DbPool()->OnShutdown();
++		g_Config = m_ConfigBackup;
++	}
++};
++
++TEST_F(TasServer, Run)
++{
++	const char *pInputs = getenv("TAS_INPUTS");
++	if(!getenv("TAS_MAP") || !pInputs)
++		GTEST_SKIP() << "set TAS_MAP and TAS_INPUTS";
++	ASSERT_TRUE(m_Ok);
++	FILE *f = fopen(pInputs, "r");
++	ASSERT_TRUE(f);
++	std::vector<std::array<int, 7>> vIn;
++	std::array<int, 7> a;
++	while(fscanf(f, "%d %d %d %d %d %d %d", &a[0], &a[1], &a[2], &a[3], &a[4], &a[5], &a[6]) == 7)
++		vIn.push_back(a);
++	fclose(f);
++	const bool Trace = getenv("TAS_TRACE") != nullptr;
++
++	// the debug dummy is the only player; respawn it at the first spawn point in map order
++	const int Cid = m_pServer->MaxClients() - 1;
++	CPlayer *p = GameServer()->m_apPlayers[Cid];
++	ASSERT_TRUE(p);
++	vec2 SpawnPos = GameServer()->m_pController->m_avSpawnPoints[0][0];
++	{
++		CLogScope Quiet(&gs_NullLogger);
++		p->KillCharacter(WEAPON_GAME, false);
++		GameServer()->m_World.RemoveEntities();
++		m_pServer->m_IdPool.TimeoutIds();
++		p->ForceSpawn(SpawnPos);
++	}
++	printf("spawn %.1f %.1f\n", SpawnPos.x, SpawnPos.y);
++	CNetObj_PlayerInput In;
++	mem_zero(&In, sizeof(In));
++	int Fire = 0;
++	int StartTick = -1, PickupRt = -1;
++	bool DoubleStart = false, Frozen = false;
++	int Tick0 = m_pServer->Tick();
++	for(size_t i = 0; i < vIn.size(); i++)
++	{
++		In.m_Direction = vIn[i][0];
++		In.m_Jump = vIn[i][1];
++		In.m_Hook = vIn[i][2];
++		if((Fire & 1) != (vIn[i][3] ? 1 : 0))
++			Fire++;
++		In.m_Fire = Fire;
++		In.m_TargetX = vIn[i][4];
++		In.m_TargetY = vIn[i][5];
++		In.m_WantedWeapon = vIn[i][6] >= 0 ? vIn[i][6] + 1 : 0;
++		In.m_PlayerFlags = PLAYERFLAG_PLAYING;
++		{
++			CLogScope Quiet(&gs_NullLogger);
++			if(p->GetCharacter())
++				GameServer()->OnClientPredictedEarlyInput(Cid, &In);
++			m_pServer->m_CurrentGameTick++;
++			if(p->GetCharacter())
++				GameServer()->OnClientPredictedInput(Cid, &In);
++			GameServer()->OnTick();
++			GameServer()->OnPostGlobalSnap();
++		}
++		CCharacter *c = p->GetCharacter();
++		if(!c)
++		{
++			printf("tee died at input %d\n", (int)i + 1);
++			break;
++		}
++		if(c->m_DDRaceState == ERaceState::STARTED)
++		{
++			int Now = c->m_StartTime - Tick0;
++			if(StartTick >= 0 && Now != StartTick && Now - StartTick > 1)
++			{
++				printf("DOUBLE START at input %d (previous start %d)\n", (int)i + 1, StartTick);
++				DoubleStart = true;
++			}
++			StartTick = Now;
++		}
++		if(c->m_FreezeTime > 0 || c->m_Core.m_DeepFrozen)
++		{
++			if(!Frozen)
++				printf("FROZEN at input %d\n", (int)i + 1);
++			Frozen = true;
++		}
++		if(PickupRt < 0 && c->m_Core.m_aWeapons[WEAPON_GRENADE].m_Got)
++		{
++			PickupRt = (m_pServer->Tick() - Tick0) - StartTick;
++			printf("GRENADE at input %d, race tick %d\n", (int)i + 1, PickupRt);
++		}
++		if(Trace)
++			printf("%d %.3f %.3f %.5f %.5f hs=%d jumped=%d\n", (int)i + 1, c->m_Core.m_Pos.x, c->m_Core.m_Pos.y, c->m_Core.m_Vel.x, c->m_Core.m_Vel.y,
++				c->m_Core.m_HookState, c->m_Core.m_Jumped);
++	}
++	printf("RESULT start tick %d pickup race tick %d frozen %d double start %d\n", StartTick, PickupRt, Frozen, DoubleStart);
++	EXPECT_FALSE(DoubleStart);
++	EXPECT_FALSE(Frozen);
++	EXPECT_GE(PickupRt, 0);
++}

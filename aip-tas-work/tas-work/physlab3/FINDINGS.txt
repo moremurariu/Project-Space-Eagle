@@ -1,0 +1,174 @@
+AiP-Gores (KoG): the first right-end hairpin after the grenade exit (Teero track k ~1125-1215). physlab3 (Oct 5)
+=========================================================================================================
+Everything was measured in simulation. Every file in results/ was also replayed on the real server code
+(srvtrace.sh: start tick 68, no freeze, 1292/1292 ticks identical to the simulator for the best file).
+rt = race tick, and the state after N input lines is rt N-68. "k" = Teero track frame (true tick = k - 3).
+Base = runs/ex/e1025v1_0.txt (the coordinator's newer line). Its first 1178 lines (rt <= 1110) are kept identical
+in every result.
+
+GATE used: the first rt with x <= 7700, vx <= -15 and 2040 <= y <= 2098, so the tee is in corridor B and passes
+over the bare column (x 7648-7680, top y 2112). The line must also survive afterwards (alive.sh: a continuation
+reaches x <= 7300). The plain "x <= 7700" test is not enough (see S1).
+Teero crosses x 9100 / 8700 / 8200 / 7700 at k 1172.7 / 1185.6 / 1200.7 / 1214.8 (y 2169 / 2191 / 2171 / 2097).
+
+=========================================================================================================
+0. BOTTOM LINE
+=========================================================================================================
+* Best line: results/e1025v1_hairpin_rt1223.txt. x <= 7700 at rt 1223 (x 7700.0, y 2099, v (-42.0,-9.0),
+  |v| 43.0). It clears the column on the next tick (7668,2091) and survives (x <= 7300 at rt 1236). On the strict
+  gate (y <= 2098) it is rt 1224 at 1223.00 fractional, |v| 42.9.
+  The base extended by a beam from rt 1195 (results/e1025v1_ext_rt1224.txt) gives rt 1224 (1223.50, |v| 42.4).
+  The old line e1021v1 extended (results/e1021v1_ext_rt1227.txt) gives rt 1227 (1226.97, |v| 40.8).
+  So the gain is 0.5 tick (1 integer tick). It comes from hill-climbing details (the rt 1125 floor-kick aim,
+  hooks, the 1183/1208 kicks), not from a new hairpin structure. The shot schedule stays 1125/1158/1183/1208.
+* No Teero-style double kick beats the base under our reload phase. Every one I built was 0.3 to 7 ticks slower
+  at the gate (table in section 3). The reason is structural (section 2): our rt 1125 floor kick is needed
+  because our approach is short of energy. It ties the reload to 1150/1175. Teero's corner kick happens at
+  ~1169-1171 in our frame, which falls between those two slots.
+* The hairpin itself is not where we lose. The base reaches x <= 9100 at rt 1177.6, lag 5.0, the same lag as at
+  the hairpin entry. It is even 2 ticks early at the corner (rt 1169 against Teero's k1166 + 5). The loss is the
+  exit speed: |v| 28.6 against Teero's ~38.5. That costs 3.4 ticks from x 9100 to x 7700 (45.6 ticks against his
+  42.2).
+* Estimate: with the current shot phase, the best is ~1223 (we are there, within ~0.5 tick on every search).
+  Teero's structure (pre-fire ~1144-1146, then a point-blank corner kick at ~1169-1171) would give about
+  1219-1220. That needs both the reload free at ~1145 and Teero-like approach energy, which needs changes before
+  rt 1110 (section 4).
+
+=========================================================================================================
+1. RESULT FILES (results/, complete inputs from spawn, server-checked *.srv)
+=========================================================================================================
+                                   x<=9100       x<=8700       x<=8200       gate (frac rt / |v|)     shots after 1110
+  e1025v1 base (ends rt 1208)      1177.58/28.6  1191.90/38.7  -             - (end state cannot clear the column)
+  e1025v1_ext_rt1224               1177.58/28.6  1191.90/38.7  1208.50/46.4  1223.50/42.4  rt 1224    1125 1158 1183 1208
+  e1025v1_hairpin_rt1223  (BEST)   1177.62/28.9  1191.87/39.2  1208.24/47.0  1223.00/42.9  rt 1223*   1125 1158 1183 1208
+  e1025v1_prefireK5_rt1224         1177.21/27.9  1192.10/38.9  1208.23/38.8  1223.79/45.4  rt 1224    1125 1150 1187 1216
+  e1021v1_ext_rt1227               1178.96/26.5  1194.24/36.5  1211.48/36.2  1226.97/40.8  rt 1227    1125 1159 1186 1212
+  (*) x = 7700.0 at rt 1223 with y 2099, one px under the strict column test, but the box (x 7686-7714) does
+      not overlap the column, and the next tick is over it.
+  prefireK5: a pre-fire at rt 1150 aimed at the right-wall solid (9472,1868) reproduces the base's rt 1158
+  point-blank kick (rt 1159: v (17.3,13.3) -> (5.1,24.5)). It frees the reload at 1175 instead of 1183. It is
+  the earliest line at x 9100 (1177.21), but corridor B gives no kick surface before ~1181 (see M7), so it ends
+  equal. It is useful as a seg seed when a different corridor-B schedule is wanted.
+
+=========================================================================================================
+2. WHAT LIMITS THE HAIRPIN (verified mechanics)
+=========================================================================================================
+M1. Geometry. The shaft is x 9344-9472 (tee centre), 4 tiles wide, freeze on both sides. The solid faces behind
+    the freeze are at x 9312 (left) and x 9472 (row 58) / 9504 (rows 59-62) / 9536 (rows 63-64). The only bare
+    surfaces are the L-block: top y 2144 for x 9344-9504, left end face x 9344, vertical arm left face x 9472 at
+    y 2080-2144. Corridor B has a freeze floor (face y 2208, solid y 2240, x 8480-9024). Its ceiling is freeze at
+    y 2112 (solid y 2080) for x 7936-8416, and freeze row 64 (y 2048-2080) for x 7616-7968, just above the column.
+    Between x 9056 and 9344 there is a pit under the exit, down to y ~2300.
+M2. Braking. We arrive at 54 px/t (Teero ~50). A hook toward the anchor plus air control gives at most
+    ~4.3-5 px/t^2 (above vx ~30, dir 0 with the hook beats dir -1, because the 5% air friction is larger than
+    1.5). So 11-12 ticks and ~230 px of braking: the base brakes over rt 1143-1157. All incoming kinetic energy is
+    lost (E from +1200 to -1400).
+M3. Turn-radius limit. A hook turns velocity at most at a = 3 px/t^2 (x x0.95/0.75, down x0.3), so
+    R = v^2/3. The shaft plus the exit leave R ~200-250 px, so the swing runs at <= 25-29 px/t. The exit speed
+    after a pure hook swing is sqrt(v_top^2 + dy) with dy ~240 (the base: 24.7 -> 28.0, against a bound of 29.4).
+    A kick that makes the fall faster (down-kick in the shaft) cannot be turned in time.
+M4. Kick efficiency. d(v^2) = 2*12*|v|*cos(theta) + 144. In the shaft the velocity points down, but the walls
+    give horizontal kicks, so cos ~0.1-0.5 and the gain is only +3..6.5 px/t (base K5 at rt 1158: 18.2 -> 24.7,
+    E +279). At the corner, with v ~(-25,12), a point-blank shot on the L-block top just right of its left end
+    kicks (-0.87,-0.5): cos ~0.9, +10 px/t. That is Teero's "K6": energy from the track below, k1164-1168,
+    |v| 28 -> 38 (E -1331 -> -710). Corridor-B floor kicks give at most (-8.5,-8.5): the tee at y >= 2195, aim
+    45 deg down-right.
+M5. The reload clock. In our frame, kick slots are: floor block 1122-1125, shaft-top right wall 1157-1160,
+    L-block corner 1167-1171, corridor-B floor 1181-1205 (x <= 9000 and low), column top ~1220. Our 1100 shot
+    puts the reload at 1125, and the 1125 floor kick then gives >= 1150 and >= 1175. The corner slot falls
+    between them. A point-blank at 1175 is 6 ticks too late: the tee is at x ~9160 with no surface within 100 px.
+    Without the 1158 shot the base tee freezes at rt 1159 (x 9441 in the row 58-59 freeze), so that shot is not
+    "useless". It is K5: +6.5 px/t, and it steers the tee off the right wall.
+M6. Pre-fire timing law. The grenade flies 20 px/t and we approach at 37-54 px/t, so T_E = t_fire + dist/20 with
+    dist shrinking faster than t_fire grows. A later shot explodes earlier. From the corridor (fired 1150-1156),
+    every right-wall or L-block explosion lands at rt 1162-1168. Shots fired <= 1146 from x <= 9060 need 23-28
+    ticks of flight (T_E 1166-1172). The L-block and corner region can be reached from the corridor only through
+    the shaft opening past the solid corner (9312,1888), i.e. from x >= ~9250 (rt >= ~1150). A same-tick double
+    kick at the corner needs >= 25 ticks of flight, which is impossible (max ~20).
+M7. With the pre-fired K5 (prefireK5), the reload is free at 1175, but corridor B offers no leftward kick before
+    ~1181. The tee moves left with the floor below and behind it, and the pit's diagonal edge pushes right.
+    Forced floor kicks at 1180/1182 gave 1226.6-1228.9 (the tee is not low enough yet).
+M8. Energy origin of our deficit, before the cut. At rt 1097 the base is at v (37.9,-22.8) and at rt 1098 it hits
+    the underside of block (235-236,43): vy goes to 0 and E drops from 513 to 14. The rt 1100 point-blank on that
+    block then adds (+3.8,+12.4). Teero kicks off the same block (#4, k1095.8 = our 1100.8) without bumping it, so
+    his approach E is ~800-990 against our ~450 at rt 1100-1116 (|v| 50 against 45). Our 1125 floor kick
+    (E 151 -> 1232) compensates, but it costs the reload phase. Without it (Option Y from rt 1124), E = 125: the tee
+    is ~2 ticks later at x 9000, and the pre-fire from x 8930-9040 explodes at 1166-1172. The tee then has to
+    crawl (vx ~20 at rt 1148) to rendezvous.
+
+=========================================================================================================
+3. WHAT WAS TRIED (gate frac rt; base 1223.50; all with the base's first 1178 lines unless noted)
+=========================================================================================================
+  structure                                              x<=9100/|v|    gate     file (runs/)
+  pre-fire 1150 -> K5 rendezvous at the right wall at 1163-64
+    + point-blank corner/L-block at 1175 (Teero-like, late)  1181.6/32.4    1230.5   rvt_0
+  pre-fire 1150 aim 16 deg (kick at ~1159) + beam            1178.1/28.1    1226.8   rv16_0 (hc 1226.7)
+  pre-fired K5 at 1150 (prefireK5)                       1177.2/27.9    1223.8   pk5_hc
+  more vertical pre-fired K5 (targets 9472,1840-1855)    1177.3/28.5    1223.9   k5v2_0
+  no K5, aligned point-blank K6 at the corner 1170       1179.0/27.6    1229.8   k6_1170_0
+  pre-fire to the L-block left face (T_E 1166)           1182.2/28.7    1232.6   lf_0
+  no floor kick, pre-fire 1142-1146 at the right wall    crawls, no gate         y114x_*
+  (rule-breaking cut at rt 1088) Teero schedule 1148/1173 1179.5/34.2   1226.1   pre1088_0
+  free beams, value modes 1/2/4/5 (ghost, exit energy, tracking)          1229-1235
+  hill climbing on the base (1124 -> gate)                                1223.00 (hcb4 = BEST); hcb1-3
+    scored 1223.1-1223.2 but end doomed under the freeze ceiling (core-only survival check was fooled)
+  seg (beam 5000, same options as runs/ex) from rt 1172 on the base       1224.55  sg_base_0
+  The downstream (corridor B) is fragile: re-searching the same exit with a different beam varies by ~1-8 ticks
+  (rv16 from rt 1178: ~1234 instead of 1226.8). Compare hairpins at x <= 9100 / 8700 first.
+
+=========================================================================================================
+4. WHAT TEERO DOES (track energy, de-ramped, 2-tick centred differences, noisy)
+=========================================================================================================
+  k1099-1129 |v| ~49-51, E ~750-990 (no floor kick) | brakes k1140-1156 to 16.3 at the right wall (9458,1985)
+  k1156-1162 E +340 (gravity ~100 + a weak K5, ~+5 px/t) | k1164-1168 |v| 28 -> 38 (E +620): the aligned corner
+  kick, v (-25,12.5) -> (-37.5,5.3) | k1168-1190 ~39-40 flat | k1192 floor kick at x 8504 (#7) -> 47.
+  The catalog's #5 time (k1158.3) is inconsistent with a pre-fire 25 ticks before #6: the explosion must be
+  >= k1162. Its point is plausibly the right wall at y ~2000, reached through the shaft opening from (9110,1757).
+  His corner kick at k1165 = our ~1170 is the slot our reload phase cannot reach (M5).
+  Possible fix (needs a cut before rt 1110): arrive at block (235-236,43) when the reload is ready, with no
+  bump, and keep E ~900. Then skip the 1125 floor kick, pre-fire at ~1144-1146 (x ~9100), and point-blank the
+  corner at ~1169-1171. Expected ~1219-1220 at the gate (the corner at our ~1170 plus Teero's 48.8 ticks from
+  the corner to the gate).
+
+=========================================================================================================
+5. TOOLS (physlab3, single-threaded; build: ./build.sh NAME)
+=========================================================================================================
+- hp (hp.cpp): beam to a gate (x <= gatex, vx <= -gatevx, gatey0 <= y <= gatey) with value modes:
+  mode=1 (Teero ghost: rt + K_gate - k(s) - tT + H/v_along, chord=1 aims along the chord H px ahead, capk caps
+  the speed before the turn), 2/4 (exit energy), 5 (Teero tracking at lag lagt), 6 (rendezvous for a forced
+  pre-fire). forcetgt=RT:X,Y fires at RT with each node's own aim whose explosion lands nearest to (X,Y)
+  (AimForTarget: +-15 deg by 0.5, then 0.05). Other options: forcefire=RT:DEG, firefrom/fireto/fire2 shot windows,
+  minper/maxkeys (reserved slots per pending-explosion key), survival fallback. ~20-90 s per run at beam 2000.
+- hcx (hcx.cpp): (1+lambda) hill climbing over per-tick genes (dir, jump, hook, fire, aim; seed aims kept
+  exactly, mutated aims written with radius 10000) with the exact fractional gate time and a full-simulation
+  survival check (FullSurvives: dir -1/0 x {no hook, hook 45/90/135/160/180 deg}). ~5000 evals/s.
+- gates.py FILE..: the milestone table above (x <= 9100/8700/8200/7700). alive.sh FILE..: continuation check.
+  ex.py: base plus modifications through xlab. xlab, xl.py, srvtrace.sh, killpy.sh: copies from physlab2.
+
+=========================================================================================================
+6. SUGGESTIONS FOR seg
+=========================================================================================================
+S1. Gates. A corridor-B gate must test y (2040 <= y <= 2098 at x <= 7700). "x <= 7700" alone accepts lines
+    at y ~2197 that hit the column's right face at x 7694 (e1025v1 "reaches" 1224 that way). A hill climber also
+    found x <= 7700 at rt 1209 at y 1666 by turning back in the upper corridor. Check survival with full-sim
+    rollouts: core-only Rollout passed doomed states under the freeze row 64 above the column (all children
+    froze 2 ticks later).
+S2. Pre-fires. (a) Aim to a target point, not at fixed angles. The shot starts from the position before the
+    step, independent of that step's dir/hook, so one aim scan per node is enough. (b) Rank nodes with a pending
+    explosion by a rendezvous value, not by the normal value: the miss of the ballistic prediction at T_E-1 minus
+    the reachable radius 0.5*3.5*Rem^2, plus a velocity term. (c) Give the pending pool its own share of the beam
+    until T_E; otherwise nodes whose shot already exploded crowd them out. With these, hp reproduced the K5 kick
+    from a pre-fire (prefireK5) and the rendezvous at the right wall (rvt) in ~20 s. Plain kick-potential credits
+    (seg pendshare, my kg/kdecay) did not.
+S3. Value kicks by alignment, d(v^2) = 24|v|cos + 144: corner kick ~+10, shaft-top wall kick +3..6.5,
+    corridor-B floor <= 8.5 in x. Credit reload readiness only where an aligned surface lies ahead.
+S4. Plan the shot schedule before the beam. Enumerate the kick slots of M5 under the 25-tick reload and try
+    each schedule as a constraint (forced fire windows). The present search cannot see that the 1125 floor kick
+    forbids the corner slot.
+S5. The real lever is upstream (M8). Run seg from rt ~1080 with a gate after the hairpin (x <= 8700, k1185.6),
+    penalising ceiling and wall speed loss (the rt 1098 bump is -500 E). Seed it with "kick off block
+    (235-236,43) at rt >= 1100 without touching it", then use Teero's schedule: no shot until a pre-fire at
+    ~1144-1146, point-blank on the L-block top just right of x 9344 at ~1169-1171, floor kick at x ~8500
+    (~1196), column top (~1221).
+S6. Don't extend a finished seg line from its last tick: e1025v1 at rt 1208 (y 2112, under the freeze ceiling)
+    can no longer clear the column. Extending from rt 1195 gives 1223.5.

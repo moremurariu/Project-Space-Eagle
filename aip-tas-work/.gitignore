@@ -1,0 +1,24 @@
+# local build / map / scratch outputs (see setup.sh)
+ddnet/build-sim
+ddnet-up/
+tas-work/AiP-Gores.map
+tas-work/map.txt
+tas-work/own_track.txt
+tas-work/runs/ds/
+tas-work/runs/dsc/
+tas-work/runs/tig/
+tas-work/runs/*.out
+tas-work/runs/dsloop_*.log
+tas-work/teero/
+tas-work/teero_track.txt
+tas-work/runs/chaos/
+tas-work/runs/chx/
+tas-work/runs/fin/
+tas-work/runs/hop/
+tas-work/runs/judge/
+tas-work/runs/u1/
+tas-work/runs/judge_*.out
+tas-work/runs/tig_*.out
+tas-work/runs/sb/
+fast/ddnet/
+fast/kog.map

@@ -1,0 +1,11 @@
+Post-entry input files (one line per tick, "dir jump hook fire tx ty weapon"); NOT playable runs - each starts
+from a teleported state after replaying ../runs/ex/e1025.txt (race started, grenade held), hook idle, race
+clock set so that the entry state is Teero-track tick K (finish ticks comparable with Teero's 2539).
+
+entry2390_best.txt  tp=7817,4000,60.7,21.6 tpk=2390 reload=3  air=1  -> finish k2552 (162 ticks; Teero 149)
+entry2380_best.txt  tp=7422,3826,60.5,11.6 tpk=2380 reload=13 air=1  -> finish k2554 (174 ticks; Teero 159)
+
+Replay (from tas-work/physlab4):
+  ./fl ../AiP-Gores.map trace in=results/entry2390_best.txt tp=7817,4000,60.7,21.6 tpk=2390 reload=3 air=1
+  ./fl ../AiP-Gores.map trace in=results/entry2380_best.txt tp=7422,3826,60.5,11.6 tpk=2380 reload=13 air=1
+(air=1: air jump available; reload = grenade reload timer at the entry; *.trace are these replays.)
