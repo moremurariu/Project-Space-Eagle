@@ -1045,3 +1045,27 @@ dir, jump, cursor aim, shots with aim, certainties; best effort, not exact) and 
 - Energy audit of 2607 (rt 966-2607): explosions +18,851, hook -9,729, dir -9,280, collisions -1,315. The big braking
   sections are turns we reach too fast: 1416-1465 (left U-turn) -2,790, 1766-1815 -1,759, 2416-2465 -1,696,
   1966-2015 -1,691, 2266-2315 -1,462, 1216-1265 -1,239, 1116-1165 -1,196.
+- Correction to the lag table: Teero's track end is ~3-4 ticks inconsistent with his official finish (physlab4), so
+  ~5 of the final-maze "15" is an artifact; the real final-maze loss is ~9-10 ticks spread over rt 2450-2600.
+- Descent after the double kick is a local optimum for x_ds: 16 windows from 2606 cut 1627 (shaft top) to 2606's
+  progress at rt 1700 (incforce=1, beam 5000, egain 0.004/0.01/0.02, kickmin 11, 4 seeds) all reach the gate at
+  1699.98-1700.03 with the same energy. x_ds incumbent LNS on 2606 (cuts 1590-2050, 54 jobs, 30 min): no gain.
+  Teero has both the double kick and a fast channel entry (~2607's); the difference is a joint change of the top
+  turn / descent / reload phase that neither local windows nor LNS reach.
+- Free searches from cuts far before a gate are much weaker than the polished runs and cannot judge a structural
+  change: x_ds from 2606 cut 1627 to the channel gate (rt 1800) 1814-1838 with or without nokick=1640,1662; from
+  cut 2400 to the finish 2640/2646 (2606: 2606). Short windows are competitive: cut 2435 -> 2606's progress at rt
+  2497 (the final-maze up-turn): 2498.1-2498.6 free, the same with nokick=2436,2455 / 2436,2462 (dropping the kick
+  before the up-turn changes nothing), 2495.9-2496.1 with incforce=1.
+- x_tig (Teero tracker, tigloop's settings, off -51.5) from 2606 at rt 2380: drops to |v| ~13 within 10 ticks and
+  ends ~100 ticks behind (4 seeds). As davinci noted, the tracker does not help after rt 2200.
+- Pre-grenade, Teero's new run (fast/runs/teero_new_xy_60fps.csv, frame f -> rt = (f - 194.51) * 50/60, px = tile *
+  32): leads 962 by +0.9 at rt 100, +2.6 at 225-250, +4.5 at 325 (right U-turn), +3.8..+5 at 350-450, then 962 is
+  faster (+0.7 at 575, -4.6 at 700). ddsearch ref=teero_new (c1 settings, cut 100 -> dumpat 360): only the lp=0.05
+  latdz=24 variant follows his line (+2.6 at rt 300) and it loses 6-8 in the U-turn (-6 at 360); the others end
+  23-59 behind. x_graft from those dumps onto 2606 (cuts 280-300, D 1-2): closest distance 12, no graft.
+  Collapse points on 962 after rt 280: vx clamped to exactly 5.0 at rt 337 (U-turn), ground jumps at 374, 398, 489
+  (vy set to exactly -13.2).
+- When x_graft works: two lines that are the same line shifted in time, with small state differences that a
+  saturation (air-control clamp |vx| 5, a jump setting vy, a wall or floor) erases. Different lines (double kick vs
+  single kick; Teero's U-turn vs ours) stay 12-175 apart in its distance and never merge.
