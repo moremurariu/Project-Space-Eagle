@@ -18,6 +18,10 @@
 //   brakew=W: a lineage's speed lost to the hook pull and to the direction key (vs pressing along vx) costs W ticks
 //     per px/t on top of the energy credit (above 15 px/t a hook pull only applies if |v| does not grow, so a high-speed
 //     hook only turns or brakes; NOTES "Why Teero is faster": we lose speed ~50% faster than he does between kicks)
+//   hookref=FILE (Teero's hook timeline, teero/hooks/teero_hooks.csv) [htrack=teero_track.txt hrefw=0.5 hrefwin=2
+//     hrefhard=0]: a state is matched to his track by position; hooking where he has no hook within hrefwin of his
+//     ticks, or not hooking where he hooks throughout, costs hrefw ticks per tick (lineage total; hrefhard=1 drops
+//     such children instead); where he hooks, aims at his anchor are added
 //   rotfar=1: low-loss turning hooks at anchors up to the hook length (flight time included): per side the aim whose
 //     pull at the grab is the strongest turn that does not raise |v|, and the farthest anchor turning >= 80% of that
 #define private public
@@ -41,6 +45,7 @@
 #include <queue>
 #include <string>
 #include <thread>
+#include <tuple>
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
@@ -94,6 +99,9 @@ struct SPar
 	float m_OptW = 0; // energy credit per free shot slot in the lineage's last maxf ticks
 	float m_BrakeW = 0; // ticks per px/t of speed lost to hook pull / direction braking (lineage total)
 	int m_RotFar = 0; // far low-loss turning hook aims
+	std::string m_HookRef, m_HTrack = "teero_track.txt";
+	float m_HRefW = 0.5f;
+	int m_HRefWin = 2, m_HRefHard = 0;
 	int m_IncForce = 1;
 	int m_GateWait = 3;
 	float m_CellPos = 4, m_CellVel = 0.5f;
@@ -336,6 +344,11 @@ struct SRefLine
 	}
 };
 static SRefLine gs_Line;
+static SRefLine gs_TL; // Teero's track (hookref)
+static std::vector<char> gs_vHkS; // his hook state per track tick (index k - gs_HkK0): 'G', 'F', '-'
+static std::vector<vec2> gs_vHkA; // anchor of 'G' ticks
+static int gs_HkK0 = 0;
+static char HkAt(int k) { int i = k - gs_HkK0; return i >= 0 && i < (int)gs_vHkS.size() ? gs_vHkS[i] : 0; }
 static SRefLine gs_IncLine; // the incumbent's own path (shadow inputs are indexed on it)
 static bool gs_TRef = false;
 
@@ -357,6 +370,8 @@ struct SState
 	float m_TCost = 0; // time-indexed tracking cost (ttrack)
 	float m_Lag = 0, m_E = 0;
 	float m_Brake = 0; // speed lost to hook pull / direction braking along the lineage (px/t)
+	float m_TK = 0; // Teero's track tick at this position (hookref)
+	float m_HDis = 0; // ticks of hook disagreement with Teero along the lineage
 };
 
 struct SRetroShot
@@ -406,6 +421,7 @@ struct SCand
 	float m_KInc = 0;
 	float m_TCost = 0;
 	float m_Brake = 0;
+	float m_TK = 0, m_HDis = 0;
 	uint64_t m_Key;
 	int64_t m_Cell;
 	int64_t m_QCell;
@@ -1170,7 +1186,7 @@ static void Score(const CFastG &G, SCand &C, const SState &Par)
 	C.m_E = Energy(G);
 	C.m_Opt = 0;
 	C.m_TCost = Par.m_TCost;
-	C.m_Lag += gs_P.m_BrakeW * C.m_Brake;
+	C.m_Lag += gs_P.m_BrakeW * C.m_Brake + gs_P.m_HRefW * C.m_HDis;
 	if(gs_P.m_TTrack > 0)
 	{
 		// time-indexed: distance to the reference's position at the same (offset) race tick
@@ -1424,6 +1440,11 @@ int main(int argc, const char **argv)
 		else if(K == "optw") gs_P.m_OptW = std::stof(V);
 		else if(K == "brakew") gs_P.m_BrakeW = std::stof(V);
 		else if(K == "rotfar") gs_P.m_RotFar = std::stoi(V);
+		else if(K == "hookref") gs_P.m_HookRef = V;
+		else if(K == "htrack") gs_P.m_HTrack = V;
+		else if(K == "hrefw") gs_P.m_HRefW = std::stof(V);
+		else if(K == "hrefwin") gs_P.m_HRefWin = std::stoi(V);
+		else if(K == "hrefhard") gs_P.m_HRefHard = std::stoi(V);
 		else if(K == "incforce") gs_P.m_IncForce = std::stoi(V);
 		else if(K == "gatewait") gs_P.m_GateWait = std::stoi(V);
 		else if(K == "cellpos") gs_P.m_CellPos = std::stof(V);
@@ -1665,6 +1686,45 @@ int main(int argc, const char **argv)
 	if(gs_P.m_TOff < -1e8f)
 		gs_P.m_TOff = std::round(Root.m_G.RaceTick() - Root.m_G0);
 	std::printf("root progress %.1f (incumbent path %.1f), time offset vs reference %.0f\n", Root.m_G0, Root.m_KInc, gs_P.m_TOff);
+	if(!gs_P.m_HookRef.empty())
+	{
+		if(!LoadTrackLine(gs_P.m_HTrack.c_str(), 0, 1, gs_TL))
+		{
+			std::printf("cannot read %s\n", gs_P.m_HTrack.c_str());
+			return 1;
+		}
+		FILE *f = std::fopen(gs_P.m_HookRef.c_str(), "r");
+		if(!f)
+		{
+			std::printf("cannot read %s\n", gs_P.m_HookRef.c_str());
+			return 1;
+		}
+		char aLine[512];
+		std::vector<std::tuple<int, char, vec2>> vR;
+		std::fgets(aLine, sizeof(aLine), f);
+		while(std::fgets(aLine, sizeof(aLine), f))
+		{
+			int k;
+			char St = 0;
+			float ax = 0, ay = 0;
+			if(std::sscanf(aLine, "%d,%c,%f,%f", &k, &St, &ax, &ay) >= 2)
+				vR.emplace_back(k, St, vec2(ax, ay));
+		}
+		std::fclose(f);
+		if(vR.empty())
+			return 1;
+		gs_HkK0 = std::get<0>(vR.front());
+		gs_vHkS.assign(std::get<0>(vR.back()) - gs_HkK0 + 1, 0);
+		gs_vHkA.assign(gs_vHkS.size(), vec2(0, 0));
+		for(auto &[k, St, A] : vR)
+		{
+			gs_vHkS[k - gs_HkK0] = St;
+			gs_vHkA[k - gs_HkK0] = A;
+		}
+		Root.m_TK = gs_TL.Project(Root.m_G.m_Core.m_Pos, (float)Root.m_G.RaceTick(), nullptr, 150, 150);
+		std::printf("hookref: %zu ticks from %s, root at Teero tick %.1f (race tick %d)\n", vR.size(), gs_P.m_HookRef.c_str(), Root.m_TK,
+			Root.m_G.RaceTick());
+	}
 	gs_RootPos = Root.m_G.m_Pos;
 	gs_RootRt = Root.m_G.RaceTick();
 	Root.m_Inc = gs_P.m_Prefix.empty();
@@ -1734,6 +1794,31 @@ int main(int argc, const char **argv)
 				const vec2 RouteDir = gs_Geo.Dir(G.m_Core.m_Pos);
 				const STasInput &Prev = S.m_Prev;
 				const bool Hooking = Prev.m_Hook;
+				// Teero's hooks here (hookref): may hook (he hooks near), should hook (he hooks throughout), his anchor
+				bool HrOn = true, HrOff = true, HrAnc = false;
+				vec2 HrA(0, 0);
+				if(!gs_vHkS.empty())
+				{
+					const int Tk = (int)std::lround(S.m_TK);
+					HrOn = HrOff = false;
+					for(int d = -gs_P.m_HRefWin; d <= gs_P.m_HRefWin; d++)
+					{
+						char c = HkAt(Tk + d);
+						if(c == 'G' || c == 'F')
+							HrOn = true;
+						else if(c == '-')
+							HrOff = true;
+						else
+							HrOn = HrOff = true;
+					}
+					for(int k = Tk - gs_P.m_HRefWin; k <= Tk + 8; k++)
+						if(HkAt(k) == 'G')
+						{
+							HrA = gs_vHkA[k - gs_HkK0];
+							HrAnc = true;
+							break;
+						}
+				}
 				const bool Grounded = CTasGame::Collision()->IsOnGround(G.m_Pos, 28.0f);
 				const bool CanJump = !Prev.m_Jump && (Grounded || !(G.m_Core.m_Jumped & 2));
 				auto Emit = [&](const STasInput &In, const SRetroShot *pR1, const SRetroShot *pR2, bool ImmFire, bool IsInc) {
@@ -1785,6 +1870,19 @@ int main(int argc, const char **argv)
 					if(pR2)
 						C.m_aR[C.m_NR++] = *pR2;
 					C.m_Brake = S.m_Brake + (gs_P.m_BrakeW > 0 ? BrakeLoss(G, In, Tmp.m_G) : 0.0f);
+					C.m_TK = S.m_TK;
+					C.m_HDis = S.m_HDis;
+					if(!gs_vHkS.empty())
+					{
+						C.m_TK = gs_TL.Project(Tmp.m_G.m_Core.m_Pos, S.m_TK);
+						const bool Dis = In.m_Hook ? !HrOn : !HrOff;
+						if(Dis && !IsInc)
+						{
+							if(gs_P.m_HRefHard)
+								return;
+							C.m_HDis += 1;
+						}
+					}
 					Score(Tmp.m_G, C, S);
 					if(gs_P.m_KCred > 0 && Tmp.m_G.m_ReloadTimer <= gs_P.m_KReady)
 						C.m_Opt += gs_P.m_KCred * KickCredit(Tmp.m_G);
@@ -1863,7 +1961,15 @@ int main(int argc, const char **argv)
 				Base.m_Fire = 0;
 				Base.m_Weapon = 3;
 				if(!Hooking)
+				{
 					HookAims(G, vHook);
+					if(HrOn && HrAnc)
+					{
+						const float B = std::atan2(HrA.y - G.m_Pos.y, HrA.x - G.m_Pos.x);
+						for(float o : {0.0f, 0.0175f, -0.0175f, 0.035f, -0.035f})
+							vHook.insert(vHook.begin(), {(int16_t)std::lround(std::cos(B + o) * 10000), (int16_t)std::lround(std::sin(B + o) * 10000)});
+					}
+				}
 				std::vector<float> vFarR;
 				if(gs_P.m_RotFar && !Hooking && length(G.m_Core.m_Vel) >= 15.0f)
 					FarRays(G, vFarR);
@@ -2154,7 +2260,7 @@ int main(int argc, const char **argv)
 							E = c.m_E;
 						}
 					}
-					c.m_Lag = Lag + gs_P.m_BrakeW * c.m_Brake;
+					c.m_Lag = Lag + gs_P.m_BrakeW * c.m_Brake + gs_P.m_HRefW * c.m_HDis;
 					c.m_E = E;
 				}
 			};
@@ -2277,6 +2383,8 @@ int main(int argc, const char **argv)
 					S.m_KInc = c.m_KInc;
 					S.m_TCost = c.m_TCost;
 					S.m_Brake = c.m_Brake;
+					S.m_TK = c.m_TK;
+					S.m_HDis = c.m_HDis;
 					S.m_Lag = c.m_Lag;
 					S.m_E = c.m_E;
 					Nd.m_In = c.m_In;
