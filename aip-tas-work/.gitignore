@@ -11,3 +11,11 @@ tas-work/runs/*.out
 tas-work/runs/dsloop_*.log
 tas-work/teero/
 tas-work/teero_track.txt
+tas-work/runs/chaos/
+tas-work/runs/chx/
+tas-work/runs/fin/
+tas-work/runs/hop/
+tas-work/runs/judge/
+tas-work/runs/u1/
+tas-work/runs/judge_*.out
+tas-work/runs/tig_*.out
