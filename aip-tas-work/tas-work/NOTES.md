@@ -1252,3 +1252,6 @@ dir, jump, cursor aim, shots with aim, certainties; best effort, not exact) and 
   2666; TasServer). eaudit 1007-1109: expl +1139 vs +1005, hook -303 vs -350, |v| 44.1 vs 42.3 at 1109.
 - Round 1 (seeds +100) of the same sweep on 2598: +0.7 at 1097, +1.3 at 1112, +2.2 at 1127 -> x_graft D=1 from cut
   1111: **2597 (51.94 s)**, server-checked (TasReplay finish tick 2665; TasServer).
+- xsweep on 2597 (dschain_variants_rf2: seeds 31-34 + rotfar + brakew): post-pickup again +2.0 at 1127 but off 2597's
+  line (26-32 px), no graft; U-turn 1 (1095-1270) +0.8 at 1125, +1.0 1155-1245, +1.6 at 1275 -> x_graft D=1 from cut
+  1282: **2596 (51.92 s)**, server-checked (TasReplay finish tick 2664; TasServer).
