@@ -821,3 +821,9 @@ dir, jump, cursor aim, shots with aim, certainties; best effort, not exact) and 
 - Lag of 2614 vs Teero by section: 971-1150 +3.5, U-turn 1 (1150-1250) +11.8, 1250-1500 +4.3, 1500-1600 +7.9,
   shaft 1600-1650 +16.4, channel 1650-1825 +2.6, 1825-2000 +3.4, S-bend 2000-2050 +5.9, 2050-2300 +9.5,
   2300-2450 +7.6, final 2450-2614 +11.4 (83 in total; we start 12.3 ahead).
+- Wide-beam polish chain W10a (dschain from 1825, beam 10000, 4 variants): +0.11 at 2135, +1.67 at 2202, 0.00 at 2320,
+  +1.18 at 2505, +0.45 at 2574, finish 2614 (tie) - the same profile as the beam-1000 chains P1/P2: leads gained before
+  the hop (2202) and before the final maze (2505) vanish in the next window.
+- dk2's double kick vs an ideal one: explosions at 1601 (lob, |f| 12, cos 0.59 with the motion, pushes up-left) and
+  1602 (point-blank, |f| 11.85, cos 0.91): vy -21 -> -43. Both kicks straight up would give about -44.5, so the launch
+  itself is only ~1.5 px/t short of the best possible here; Teero's -47 is within his track's noise.
