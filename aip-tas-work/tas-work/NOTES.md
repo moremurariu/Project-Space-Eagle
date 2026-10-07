@@ -1156,3 +1156,25 @@ dir, jump, cursor aim, shots with aim, certainties; best effort, not exact) and 
 - xsweep on 2603 (dschain variants with seeds 21-24): U-turn 1 (1095-1270) +1.0 from rt 1230 -> graft D=1 from cut
   1255: **2602 (52.04 s)**, server-checked (TasReplay finish tick 2670; TasServer). U-turn 1 has given a tick on
   every re-plan so far (2606 -> 2605, 2604 -> 2603, 2603 -> 2602).
+
+## Why Teero is faster after the pickup (2602 vs teero_track.txt, analysis/*.py)
+- analysis/vsteero.py (per section): we fire as many shots as he does in every section (5/5, 6/5, 6/6, 5/5, 4/4,
+  3/3, 6/6, 6/6, 5/5, 4/3, 5/5). Direction key against vx (|vx| > 5): similar tick counts (ours 0-36 per section, his
+  1-25; he holds a direction in 98% of the video frames). His path speed is 1.1-2.3 px/t higher in every section
+  but 2175-2350 (31.8 vs 31.9). Our horizontal ramp factor (x moves vx * 1.4^-((50|v| - 550) / 2000), y unramped)
+  is 0.72-0.89 at |v| 25-50.
+- analysis/speedgap.py (speed at the same place, 10-tick displacement): he is faster on the straights by 1.5-4 px/t
+  and equal or slower at the turns (U-turn 1 apex -0.7 / -2.7, left U-turn -0.8 .. -1.3). A steady ~5% (~1.5 px/t at
+  ~33) over the ~1600 post-grenade ticks is the whole deficit (lag -17.6 at rt 1002 -> +63.6 at 2600).
+- analysis/kickvs.py (our kick windows rt e-3..e+4 vs the stretches between): at our kick spots we gain more speed
+  than he does over the same path (+4.69 vs +3.36 px/t per kick, 54 kicks); between kicks we lose speed faster
+  (-0.189 vs -0.126 px/t per tick over 1224 ticks). The stretches where we lose >= 3 px/t more than he does are mostly
+  hook-heavy for us (rt 1459-1497: hook grabbed 22/38 ticks, ours -11.3 his -4.6; 1530-1548 13/18, -6.5 / -1.8;
+  1799-1827 21/28, -14.8 / -10.6; 2294-2323 19/29, -19.9 / -1.9).
+- eaudit 2602 (rt 966-2602, d(v^2/2)): explosions +18,258, hook -9,842, direction -8,731, collisions -1,291,
+  jump -69, gravity/rest +1,701. Over half of the kick energy goes into hook and direction braking. Above 15 px/t
+  (hook_drag_speed) a hook pull is applied only if it does not raise |v|, so a high-speed hook can only turn or brake.
+- So the missing techniques are not stronger rockets but carrying the speed: turning with less braking (rope geometry
+  that rotates v at near-zero loss, wider lines, kicks that turn), and keeping |vy| low on horizontal straights
+  (vertical speed lowers the ramp on vx). The searches cannot see this: their windows rank by time to a gate 35-70
+  ticks ahead with a v^2 - y energy credit, and a line that brakes less pays off over hundreds of ticks.
