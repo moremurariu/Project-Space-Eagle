@@ -1083,3 +1083,24 @@ dir, jump, cursor aim, shots with aim, certainties; best effort, not exact) and 
   and incumbent-kept windows fall back onto the incumbent, so neither can show whether a different structure (shot
   schedule + line) is better. The missing tool is a planner that builds the line and the shot schedule together for a
   section (davinci's notes reached the same conclusion for double kicks).
+
+## Section planner v1 (tas-work/plan/xplan.py): staged x_ds windows + (time, energy) Pareto front
+- Design: split a section of the incumbent at waypoints (every `stage` ticks); each stage = short x_ds windows
+  (incforce=0, prefix = a kept state, gate = the incumbent's progress at the next waypoint) from each of K kept
+  states x V variants; the arrivals non-dominated in (gate time, energy) are kept (then the earliest).
+- Why x_ds alone fails at turns (U-turn 1, 2606 cut 1095): a free window races into the turn (+2.8 at rt 1144) and
+  loses 15 in the 56 ticks after the apex, on an exit 126-188 px off the good line at |v| ~24. Its rollout lookaheads
+  make it worse: rollh=30 1297/1304, rollh=60 / shh=40 / both: the beam dies. From the incumbent's own apex state
+  (cut 1165) a free x_ds exit window is fine (1201.0 vs 1200).
+- Planner, U-turn 1 (cut 1095 -> 1270, stage 35, K 6), plain variants (seeds / egain / kickmin): apex gate 1166.3
+  (+1.3) but every arrival jumped at the apex (vy -11.5, up to y ~2040) instead of the incumbent's point-blank apex kick
+  (vx -18.8 -> -29.9, staying low) -> exit gate 1213 (+13), 1256 at rt 1235. With dschain's tracking variants
+  (trackfrac / shadow / shh, /tmp list in xplan docs): apex 1163.7 (-1.3, ahead), exit gate 1201.1 (+1.1), then
+  1256 (+21) at rt 1235: every line runs into the single block in the left-going corridor (x 7680-7711, y 2112-2175)
+  at |v| 37 -> 6, where the incumbent fires forward at rt 1206 (aim -174, along its motion) so the grenade explodes on
+  that block as it passes (kick to |v| 48): a catch-up pre-fire none of the stage windows finds.
+- Planner, descent after the double kick (cut 1627 -> 1800, dschain variants): stage gates -0.8, +0.9, +4.1, +3.7,
+  +2.4 vs the incumbent (a single segf window from the same cut: 1798 / +0.6..0.9).
+- Result: staging + a Pareto front fixes the apex collapse (with tracking variants) but not precision maneuvers
+  (catch-up pre-fire on a block), so the planned lines end behind the polished incumbent. A technique still needs a
+  complete line that is then polished (the double kick: dk2 + 50 LNS jobs). xplan.py is kept as an experimental tool.
