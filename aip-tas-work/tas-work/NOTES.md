@@ -1255,3 +1255,12 @@ dir, jump, cursor aim, shots with aim, certainties; best effort, not exact) and 
 - xsweep on 2597 (dschain_variants_rf2: seeds 31-34 + rotfar + brakew): post-pickup again +2.0 at 1127 but off 2597's
   line (26-32 px), no graft; U-turn 1 (1095-1270) +0.8 at 1125, +1.0 1155-1245, +1.6 at 1275 -> x_graft D=1 from cut
   1282: **2596 (51.92 s)**, server-checked (TasReplay finish tick 2664; TasServer).
+- Same sweep, 1270-1445: +1.0 at 1315, +2.5 at 1345, +3.2 at 1375, +4.0 from 1405 to 1465 on 2596's line -> x_graft
+  D=4 from cut 1458 (the window's look-ahead part, past the left U-turn's pre-fire that blocked the 2605-era lead):
+  **2592 (51.84 s)**, server-checked (TasReplay finish tick 2660; TasServer).
+- hookref A/B on 2596 (x_ds windows, rf variants v0 / v1, raw gate tick): 1007->1077 rf 1077.00 / 1076.90, hr0.5 =,
+  hr1.5 =, hard 1079.4; 1165->1235 rf 1235.51 / 1235.99, hr0.5 1235.82 / 1235.47; 1440->1510 rf 1507.89 / 1506.67,
+  hr0.5 1507.58 / 1506.36, hr1.5 1507.63 / 1510.84, hard 1510.3 / 1510.5; 1520->1590 rf 1582.71 / 1581.57, hr1.5
+  1581.92 / 1590.03; 1785->1855 rf 1877.82 / 1855.00, hr0.5 1862.05 / 1855.00, hr1.5 1854.41 / 1855.00; 2120->2190
+  rf 2189.71 / 2189.64, hr0.5 2189.79 / 2189.56; 2430->2500 rf 2500 / 2500, hr0.5 2499.63 / 2499.77. Soft prior:
+  a different search, sometimes 0.3-0.8 better, sometimes worse; hard prior worse. Kept as an extra variant set.
