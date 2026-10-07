@@ -1225,3 +1225,13 @@ dir, jump, cursor aim, shots with aim, certainties; best effort, not exact) and 
   Teero hooked 492/1551 ticks (32%) in 134 grabs (median 3 ticks); 2599 721/1629 (44%) in 312 grabs (median 1 tick).
   Teero: forward 22%, low-loss (90-100 deg) 24%, braking (> 100) 47%; 2599: 7%, 14%, 73%. So ~213 braking hook ticks
   for him vs ~495 for us: he hooks less, longer, and brakes with the hook less than half as often.
+- Rebuilding his run from his inputs: x_tig hooks=teero/hooks/teero_hooks.csv tolh=N (new) holds / presses the hook
+  only where he hooks (+-N ticks), releases where he does not, and aims new hooks at his anchor. From 2599 at rt 1100
+  (off 13.25): tolh 1 kills the beam at rt 1114 (the extracted timing is not that exact), tolh 3 survives but drifts
+  (d 9 -> 51 px by rt 1119, 1.2 ticks behind): at the same place our state is slower than his. From rt 990 (right after
+  the pickup, off 17.55, both ~14 px/t) to rt 1160: no hooks 12.7 behind, tolh 3 16, tolh 2 25. The tracker matches
+  him to rt 1003 (d 6-19 px), our pickup double kick gives his speed (|v| 28.5 at rt 1009), then over rt 1012-1030 he
+  moves 27-32 px/tick and we 23-26 (|v| 25.5-27.8): the gap opens in the first 40 ticks after the pickup. Hook timing
+  from the video does not make his run reproducible (+-1-3 ticks, anchors +-10 px).
+- CSV vs track: CSV jump rising edges match the track's velocity jumps within 0.3 ticks (23 jumps), so the CSV and
+  the track share a clock; the video renders the tee 2.6 ticks later (the hook timeline uses the track's clock).

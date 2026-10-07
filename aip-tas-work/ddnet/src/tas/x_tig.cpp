@@ -7,6 +7,9 @@
 // usage: x_tig <map> <prefix> csv=FILE track=FILE off=11.5 [beam=3000] [cap=160] [tolj=1] [tolf=1] [ring=16]
 //        [pert=3,6] [fpert=0.5,1,2,4] [fring=64] [qp=2] [qv=0.5] [maxt=2700] [threads=4] [out=PATH] [every=25]
 //        [lagw=0] (adds lagw * ticks behind the reference line, by projection, to the tracking cost)
+//        [hooks=FILE tolh=1] his hook timeline from the video (teero/hooks/teero_hooks.csv: k,state,anchor_x,anchor_y
+//        on the track's clock; state G grabbed, F flying, - none): the hook is held / pressed only where he hooks
+//        (within tolh ticks), released where he does not, and new hooks aim at his anchor (+-0.5..4 deg)
 #define private public
 #define protected public
 #include <game/client/prediction/entities/character.h>
@@ -335,6 +338,39 @@ int main(int argc, const char **argv)
 			}
 		}
 		std::fclose(f);
+	}
+	// his hook timeline (video): per label state and anchor
+	const std::string HooksFile = Get("hooks", "");
+	const bool HaveHooks = !HooksFile.empty();
+	const int TolH = std::stoi(Get("tolh", "1"));
+	std::vector<char> vHkS(6000, 0);
+	std::vector<vec2> vHkA(6000, vec2(0, 0));
+	if(HaveHooks)
+	{
+		FILE *f = std::fopen(HooksFile.c_str(), "r");
+		if(!f)
+		{
+			std::printf("cannot read hooks\n");
+			return 1;
+		}
+		char aLine[512];
+		std::fgets(aLine, sizeof(aLine), f);
+		int N = 0;
+		while(std::fgets(aLine, sizeof(aLine), f))
+		{
+			std::vector<std::string> v = SplitCsv(aLine);
+			if(v.size() < 4)
+				continue;
+			int k = std::atoi(v[0].c_str());
+			if(k < 0 || k >= 6000 || v[1].empty())
+				continue;
+			vHkS[k] = v[1][0];
+			if(v[1][0] == 'G' && !v[2].empty())
+				vHkA[k] = vec2(ToF(v[2]), ToF(v[3]));
+			N++;
+		}
+		std::fclose(f);
+		std::printf("hooks: %d labels from %s (tolh %d)\n", N, HooksFile.c_str(), TolH);
 	}
 	// reference positions per label (smoothed +-1)
 	std::vector<vec2> vTP(6000, vec2(0, 0));
@@ -683,6 +719,32 @@ int main(int argc, const char **argv)
 				const int T = Nd.m_G.m_Tick;
 				const bool Pend = Nd.m_PendTau >= 0 && T - Nd.m_PendTau <= 95;
 				const bool CanFire = Nd.m_G.m_ReloadTimer == 0 && FireNear; // a direct shot drops a reserved slot
+				// his hooks near this label: may hold / press (he hooks), may release (he does not), his next anchor
+				bool HkOn = true, HkOff = true, HkAnc = false;
+				vec2 HkA(0, 0);
+				if(HaveHooks)
+				{
+					const int LabI = (int)std::lround(ProjMode ? Nd.m_Lab + 1 : Lab);
+					HkOn = HkOff = false;
+					for(int d = -TolH; d <= TolH; d++)
+					{
+						int kk = LabI + d;
+						char c = kk >= 0 && kk < 6000 ? vHkS[kk] : 0;
+						if(c == 'G' || c == 'F')
+							HkOn = true;
+						else if(c == '-')
+							HkOff = true;
+						else
+							HkOn = HkOff = true;
+					}
+					for(int kk = std::max(0, LabI - TolH); kk < std::min(6000, LabI + 9); kk++)
+						if(vHkS[kk] == 'G')
+						{
+							HkA = vHkA[kk];
+							HkAnc = true;
+							break;
+						}
+				}
 				// plain inputs (and, at a reference shot, reserve the slot: no hook press, the shot's aim comes later)
 				std::vector<STasInput> vNoPress;
 				for(int Dir = -1; Dir <= 1; Dir++)
@@ -697,22 +759,53 @@ int main(int argc, const char **argv)
 						In.m_Weapon = -1;
 						if(P.m_Hook)
 						{
-							vC.push_back(In);
-							vNoPress.push_back(In);
-							In.m_Hook = 0;
-							vC.push_back(In);
-							vNoPress.push_back(In);
+							if(HkOn)
+							{
+								vC.push_back(In);
+								vNoPress.push_back(In);
+							}
+							if(HkOff)
+							{
+								In.m_Hook = 0;
+								vC.push_back(In);
+								vNoPress.push_back(In);
+							}
 						}
 						else
 						{
 							In.m_Hook = 0;
-							vC.push_back(In);
-							vNoPress.push_back(In);
-							for(float a : vHA)
+							if(HkOff || !HkOn)
 							{
-								In.m_Hook = 1;
-								AimTo(a, In);
 								vC.push_back(In);
+								vNoPress.push_back(In);
+							}
+							if(!HaveHooks)
+							{
+								for(float a : vHA)
+								{
+									In.m_Hook = 1;
+									AimTo(a, In);
+									vC.push_back(In);
+								}
+							}
+							else if(HkOn)
+							{
+								std::vector<float> vA;
+								if(HkAnc)
+								{
+									const vec2 Q = Nd.m_G.m_Pos;
+									const float B = std::atan2(HkA.y - Q.y, HkA.x - Q.x) * 180.0f / pi;
+									for(float o : {0.0f, 0.5f, -0.5f, 1.0f, -1.0f, 2.0f, -2.0f, 4.0f, -4.0f})
+										vA.push_back(B + o);
+								}
+								for(size_t a = 0; a < vHA.size() && a < 3; a++)
+									vA.push_back(vHA[a]);
+								for(float a : vA)
+								{
+									In.m_Hook = 1;
+									AimTo(a, In);
+									vC.push_back(In);
+								}
 							}
 						}
 					}
