@@ -1178,3 +1178,6 @@ dir, jump, cursor aim, shots with aim, certainties; best effort, not exact) and 
   that rotates v at near-zero loss, wider lines, kicks that turn), and keeping |vy| low on horizontal straights
   (vertical speed lowers the ramp on vx). The searches cannot see this: their windows rank by time to a gate 35-70
   ticks ahead with a v^2 - y energy credit, and a line that brakes less pays off over hundreds of ticks.
+- xsweep rounds on 2602 (dschain_variants_b, rounds 3): U-turn 1 round 0 / 1 +0.46 / +0.49 (no graft), final maze
+  round 0 +0.36; final maze round 1 (seeds +100): +2.0 at rt 2565 on 2602's line -> x_graft D=2 from cut 2555:
+  **2600 (52.00 s)**, server-checked (TasReplay finish tick 2668; TasServer).
