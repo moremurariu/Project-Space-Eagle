@@ -1216,3 +1216,12 @@ dir, jump, cursor aim, shots with aim, certainties; best effort, not exact) and 
   brakew 2071.64 @2070 / 2108.00 @2105; without 2071.06 / 2110.91 (run 2070 / 2105). The new hook aims help free
   search by ~3 ticks over two stages, but free search stays behind the polished run; stopped there. The productive
   setup is incumbent-tracking variants + rotfar + brakew (dschain_variants_rf.txt), now the sweep's default choice.
+
+## Teero's hooks from his video (Oct 7; user uploaded the video, teero/hooks/)
+- The video is "Aip-Gores TAS in 50.720": Teero's run is a TAS (user: no human can play this fast). The camera is
+  centered on Teero; Tater is a solo ghost. Registration: 1.75 px per world unit; video time t shows the track's tick
+  (t - 1.383) * 50 - 2.6 (the input CSV's s_since_start is 2.6 ticks ahead of the track; median error 7 px).
+- Hook timeline (teero/hooks/teero_hooks.csv, k 978-2537), vs 2599 (rt 966-2595), pull angle against v at |v| >= 15:
+  Teero hooked 492/1551 ticks (32%) in 134 grabs (median 3 ticks); 2599 721/1629 (44%) in 312 grabs (median 1 tick).
+  Teero: forward 22%, low-loss (90-100 deg) 24%, braking (> 100) 47%; 2599: 7%, 14%, 73%. So ~213 braking hook ticks
+  for him vs ~495 for us: he hooks less, longer, and brakes with the hook less than half as often.
