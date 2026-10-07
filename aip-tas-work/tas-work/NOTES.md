@@ -1264,3 +1264,9 @@ dir, jump, cursor aim, shots with aim, certainties; best effort, not exact) and 
   1581.92 / 1590.03; 1785->1855 rf 1877.82 / 1855.00, hr0.5 1862.05 / 1855.00, hr1.5 1854.41 / 1855.00; 2120->2190
   rf 2189.71 / 2189.64, hr0.5 2189.79 / 2189.56; 2430->2500 rf 2500 / 2500, hr0.5 2499.63 / 2499.77. Soft prior:
   a different search, sometimes 0.3-0.8 better, sometimes worse; hard prior worse. Kept as an extra variant set.
+- Left U-turn + shaft (2592, xsweep 1420:1640, look 60, K 8, rf variants): stages +4.4 @1515, +4.2 @1550, then -1.1
+  @1620. The +4 line is on 2592's line (1-2 px) to the shaft floor (rt 1568) but fired a point-blank at 1540, so its
+  grenade is not back for 2592's lob (fired 1561, explodes at the block 1586 with the point-blank 1586 -> 1587; floor
+  jump 1575). With nofire=1533,1556 (dschain_variants_rf_nf.txt): +1.6 at 1556-1572, and every plan fires short
+  shots (~1560 -> 1562-1567, ~1588 -> 1589-1592) instead of the lob + point-blank stack: -5 at 1596, -17 at 1620.
+  The shaft double kick is the wall for any faster left U-turn; x_ds does not rebuild it from a different state.
