@@ -105,10 +105,17 @@ bash setup.sh          # from aip-tas-work/; details in HOW_TO_USE.md
 - `BENCHMARKS.md`: simulator and search benchmarks across the branches.
 
 ## Next steps
-- Keep polishing the best run with `x_ds` LNS (20 minutes gave 2608 -> 2607) and the late-cut `survx` finish searches.
-- Pre-grenade: carry on with `ddsearch` from 962, then graft the new prefix the same way (`x_graft`, D = its lead over
-  the full run's line minus the fraction; check the lead with the method in NOTES first).
-- Post-grenade (where the 88 ticks to Teero are): `x_ds` LNS from early cuts and `tigloop.py` (Teero tracking) are the
-  productive tools; the notes list the big known losses (shaft double kick ~16 ticks, U-turn exits, hook braking).
-- `seg` speed: the simulator is no longer its bottleneck; its survival rollouts (~50%) and action generation (~40%)
-  are (BENCHMARKS 2).
+- **What limits further gains (measured, see NOTES "Techniques session"):** Teero's remaining techniques (U-turn 1 far-wall
+  pre-fire + apex double, a better descent after the shaft double kick, the left U-turn) change the line and the shot
+  schedule together. Free searches started far before a gate are 15-40 ticks weaker than the polished runs, and
+  searches that keep the incumbent fall back onto it, so neither can judge or build such a change. The double kick
+  worked only because a complete line with it already existed (dk2), which incumbent LNS then polished. The next tool
+  to build is a section planner that constructs the line and the shot schedule together (seeded from Teero's shot
+  spots, which our runs already hit from the channel on), producing complete candidate lines for LNS.
+- Plain incumbent LNS is saturated on the current runs (2606: 90 x_ds jobs without gain; 962: 47 ddsearch jobs).
+- Where the remaining ~70 ticks are (lag vs Teero): shaft + top turn ~6 left after the double kick, right U-turn 1
+  ~13, left U-turn ~8, 2050-2450 ~17 (spread), final maze ~9-10 (plus a ~5-tick artifact of his track's end).
+- Pre-grenade: Teero's newer run is +4.5 ahead at the right U-turn; following his line gains +2.6 by rt 300 but no
+  search reproduces his turn, and the line does not graft back onto ours.
+- `seg` speed: the simulator is no longer its bottleneck; survival rollouts (~50%) and action generation (~40%) are
+  (BENCHMARKS 2).

@@ -1069,3 +1069,17 @@ dir, jump, cursor aim, shots with aim, certainties; best effort, not exact) and 
 - When x_graft works: two lines that are the same line shifted in time, with small state differences that a
   saturation (air-control clamp |vx| 5, a jump setting vy, a wall or floor) erases. Different lines (double kick vs
   single kick; Teero's U-turn vs ours) stay 12-175 apart in its distance and never merge.
+- segf window from 2606 cut 1627 to 2606's progress at rt 1800 (own track k 1803, beam 10000, no inc): 1798, a line
+  +0.5..+0.9 ahead of 2606 through the channel (lead.py) - a little room in the descent, under one tick, so it cannot
+  be grafted. Forcing the descent kick lower (plan "1652 1668 4410 2943 48" + free, planforce, prefire; 2607's spot):
+  1802 (worse), also with retro=3.
+- Right U-turn 1 windows, 2606 cut 1095 -> 2606's progress at rt 1270 (x_ds beam 5000, 3 seeds): free 1288-1293 (one
+  died), free + nokick=1100,1140 (no approach kick, reload free for Teero's far-wall pre-fire) 1325 or died;
+  incforce=1 with or without nokick: 1270.006-1270.022 (= incumbent).
+- Saturation: x_ds incumbent LNS on 2606 over all cuts >= 1000 (30 min, 36 jobs) and over 1590-2050 (30 min, 54
+  jobs): no gain. ddsearch LNS on 962 (fast/tools/lns.py, cuts >= 600, 2 workers, 30 min, 47 jobs): no gain.
+- Conclusion of this session: Teero's techniques can only be brought in as complete seeded lines (like dk2), which
+  incumbent LNS then polishes. Free searches started far before a gate are 15-40 ticks weaker than the polished runs,
+  and incumbent-kept windows fall back onto the incumbent, so neither can show whether a different structure (shot
+  schedule + line) is better. The missing tool is a planner that builds the line and the shot schedule together for a
+  section (davinci's notes reached the same conclusion for double kicks).
