@@ -772,3 +772,22 @@ dir, jump, cursor aim, shots with aim, certainties; best effort, not exact) and 
 3. dschain from rt 2050 with prefix0 = the 2647 run's prefix, anc0 = the 2647 run (forced lineage), inc = 2639:
    2633. Without a forced lineage, chains from any novel prefix lost 25-34 ticks in the first window - that was the
    blocker for every earlier rejoin attempt (double kick, channel, tracker cut points).
+
+### Tracker loop results (Oct 6-7) and what limits it
+- Best so far **2614 (52.28 s)**, server-checked: 2639 -> 2633 -> 2630 -> 2629 -> 2627 -> 2622 -> 2616 -> 2615 -> 2614,
+  every gain from tigloop starts in rt 1700-2050 (velocity-matched Teero tracker, vw 1-2, judged cuts, follower +
+  chain with the follower as forced lineage).
+- Follower fixes that mattered: (1) a judge follower that dies before its horizon fails the cut (it used to measure
+  the lead at the death point); (2) children made by the shadow run's own inputs are kept past the cell quota and the
+  survival check (shkeep), but the survival exemption only applies within 3 px / 1.5 px/t of the shadow's own state
+  (far from it those inputs steer into freeze). From the incumbent's own state at rt 2140 the follower now loses 2.4
+  ticks by rt 2300 (was 8.6).
+- Dead ends: a 10000-wide tracker beam (worse than 3000: the ranking, not the width, limits it); polishing chains
+  (dsloop) on the 2614 run: all ties or worse; the Teero tracker after rt 2200 finds no ahead cuts.
+- Lag vs Teero of the 2614 run: rt 1600-1650 +16.4 (his double kick + climb), 1650-2000 only +5, 2000-2050 +6,
+  2400-2600 +14.
+- Shaft: tracker cuts ahead by up to +5 at rt 1650 have velocities ~10 px/t off ours and collapse when following our
+  line. hybridref.py (Teero's reference up to label 1667, then the 2614 run relabelled -33) gave a tracker run 9.4
+  ticks ahead at rt 1640 and 3.7 at 1700, but it loses ~14 ticks over 1700-1850 (finish 2640); chains with it as
+  forced lineage ended 7-10 behind. The states it reaches after the top turn / channel are not Teero's (it lags him
+  by ~8 more between rt 1640 and 1700, where his ceiling kick and channel kick are).
