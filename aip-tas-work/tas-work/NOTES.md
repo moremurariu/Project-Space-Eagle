@@ -791,3 +791,33 @@ dir, jump, cursor aim, shots with aim, certainties; best effort, not exact) and 
   ticks ahead at rt 1640 and 3.7 at 1700, but it loses ~14 ticks over 1700-1850 (finish 2640); chains with it as
   forced lineage ended 7-10 behind. The states it reaches after the top turn / channel are not Teero's (it lags him
   by ~8 more between rt 1640 and 1700, where his ceiling kick and channel kick are).
+
+### Oct 7: why new branches lose their lead (shaft double kick, polish chains)
+- Chain dk2 (shaft double kick, prefix L0_c1700 + F1700_0 lineage): ties 2614. Lead over 2614: +12.4 at rt 1640,
+  +8.4 at 1700, +2.6 at 1800, 0 at 1840; from ~1960 on it is the 2614 run itself (merged).
+- Same-x comparison through the channel (x 4300-8800): Teero's and 2614's displacement speeds match within ~1 px/t
+  (2614's channel came from Teero tracking); dk2 is 2-6 px/t slower everywhere. Energy at x=4900: 2614 -1080, dk2
+  -1750 (2614 kicks at 1679 on the descent, dk2 spent that slot at 1656 and loses ~360 to hook steering there).
+- Every attempt to keep the shaft lead loses it in the channel: Teero tracker from dk2@1700 (4 seeds) +1-3 at 1800;
+  incumbent follower from dk2@1645 -26/-36 at 1870; tigloop D1 on the dk2 run (starts 1630-1710) no cuts; x_ds
+  windows from dk2 cut 1630/1645/1658 with dk2 as lineage +3.2..+4.3 at 1790.
+- Polish chains P2_006..P2_008 (x_ds windows from cuts 1155-1507 of 2614) reach +5..+9.7 at rt 1647, then the
+  window through the channel (gate 1825) loses 27-29 ticks (and P2_006/P2_008 got no gate at all).
+- x_ds free search (no incumbent lineage, no shadow) is far below the polished incumbent everywhere: channel 1640 ->
+  1790: -5.8 (beam 3000), -9.9 (beam 10000), -8.8 with energy weights x5-x10; final 2440 -> finish 2618, 2300 ->
+  finish 2632. (Exception: U-turn 1, cut 1095 -> gate 1262: beam 10000 free 1258.5 vs 1262 with +1100 energy
+  (one more kick: 1146, 1177, 1196, 1215, 1242); beam 3000 1261-1262.) The channel loss is kick-spot timing: the
+  free search kicks off the valley floor at 1707 (|f| 7) instead of the small block at x~5450 (1712, |f| 12).
+- **The polished run is pixel-brittle** (x_pert, new: replay to tick K, perturb the state, continue with the run's
+  own inputs): +-1/256 px/t is absorbed by quantization (positions are integers, velocities 1/256 after every tick),
+  but +-4..16 quanta or +-1 px at rt 1640/1700/1900/2200 usually ends frozen. An approximate rejoin onto the run
+  cannot reuse its inputs; a branch needs its own pixel-level polish downstream.
+- Energy accounting of 2614 (eacct.py, rt 1030-2614): kicks +34,100, hook -32,000 (964 hooked ticks), jumps -1,200,
+  braking dir -2,000, dir0 -1,300, walls -600. About 19,000 of the hook loss is braking right before turns
+  (1125-1150, 1250, 1425-1450, 1800-1825, 1950-2000, 2175, 2300, 2450), mostly 20-30 ticks after a kick that
+  accelerated into the turn. Example, the hop at rt 2300 (peak at x~3800): kick 2299 to |v| 47, hook-braked to 13.5
+  at 2325; Teero crosses it at ~25 without braking and is 2-4 px/t faster in the following corridor (x 4300-7600).
+  An x_ds window that forbids the 2299 kick (nokick=2286,2318) found nothing better than the incumbent.
+- Lag of 2614 vs Teero by section: 971-1150 +3.5, U-turn 1 (1150-1250) +11.8, 1250-1500 +4.3, 1500-1600 +7.9,
+  shaft 1600-1650 +16.4, channel 1650-1825 +2.6, 1825-2000 +3.4, S-bend 2000-2050 +5.9, 2050-2300 +9.5,
+  2300-2450 +7.6, final 2450-2614 +11.4 (83 in total; we start 12.3 ahead).
