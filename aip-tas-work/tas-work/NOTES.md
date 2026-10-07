@@ -1197,3 +1197,18 @@ dir, jump, cursor aim, shots with aim, certainties; best effort, not exact) and 
   configs (also from cuts 2260 / 2266 / 2290), v1 2345.03-2345.27 in all configs. -> rotfar ~ -1 tick on the turn
   exit, a light braking cost helps a little, a heavy one hurts. dschain_variants_rf.txt = variants_b + rotfar=1
   brakew=0.3.
+- More windows on 2600 (raw gate tick, |v| at the gate; base -> rotfar=1 brakew=0.3; dschain variants v0 / v1):
+  1520 -> 1590: 1588.07 -> 1587.57 (|v| 26.7 -> 33.0) / 1583.33 -> 1582.85; 1390 -> 1460: 1460.00 = 1460.00 /
+  1458.96 -> 1458.58; 1785 -> 1855: base dies (both) -> 1864.71 / 1856.29; 1165 -> 1235: 1235.01 -> 1235.54
+  (|v| 53.4 -> 57.9) / 1235.35 -> 1236.16 (53.5 -> 56.0); 2120 -> 2190: 2189.00 = 2189.00 / 2189.84 -> 2190.00
+  (40.0 -> 42.2). With 1440 -> 1510: earlier in 5 of 12, equal in 2, alive where base dies in 2, later but 2-4.5 px/t
+  faster in 3. (x_ds's printed GATE t is the raw arrival; the energy credit only ranks.)
+- A/B xsweep on 2600 (dschain_variants_b vs _rf, same seeds, cores 2 each; ranked arrival vs the run): left U-turn
+  1583.73 vs 1587.54 (both skip the shaft lob; no graft), U-turn 1 1304.54 vs 1304.93 (1305), final maze 2594.63 vs
+  2594.84 (2595), 1825-2000 2034.68 (plain; 2035). No gain either way: with incumbent-tracking variants the planner
+  reproduces the run's own hooks.
+- ... the A/B's last section: 1825-2000 plain 2034.68 (0 ahead), with rotfar + brakew 2033.63 (+1.0 from rt 1975 on
+  2600's line) -> x_graft D=1 from cut 1985: **2599 (51.98 s)**, server-checked (TasReplay finish tick 2667;
+  TasServer). Its line differs from rt 1828 (other hook aims, several off the 32-angle grid); the section's energy
+  budget is the same as 2600's (rt 1825-1989: expl +2421 / +2387, hook -1123 / -1087, dir -1519 / -1542), so it is a
+  better line found by the search with the new options, not a large braking saving.

@@ -10,18 +10,19 @@ Make a tool-assisted run of the KoG version of **AiP-Gores** that beats Teero's 
 - Don't start from Teero's inputs; generate the run. His video, track and catalog may be used as references.
 
 ## Status (Oct 7)
-- **Best full run: 2600 race ticks (52.00 s)**, `tas-work/kog_full_best.txt` (= `kog_full_2600.txt`), server-checked
-  (TasReplay: start tick 68, finish tick 2668, no freeze; TasServer: no death, no freeze, no double start). Grenade
-  pickup at race tick 966. Six ticks on 2606 from the section planner (`tas-work/plan/xplan.py`, overlapping stages)
+- **Best full run: 2599 race ticks (51.98 s)**, `tas-work/kog_full_best.txt` (= `kog_full_2599.txt`), server-checked
+  (TasReplay: start tick 68, finish tick 2667, no freeze; TasServer: no death, no freeze, no double start). Grenade
+  pickup at race tick 966. Seven ticks on 2606 from the section planner (`tas-work/plan/xplan.py`, overlapping stages)
   + `x_graft`, automated by `tas-work/plan/xsweep.py`: right U-turn 1 (2605), the final maze (2604), U-turn 1 again
-  (2603, 2602), the final maze again (2600, a D=2 graft). See NOTES "Section planner v2".
+  (2603, 2602), the final maze again (2600, a D=2 graft), and 1825-2000 with the new low-loss hook aims and braking
+  cost in `x_ds` (`rotfar=1 brakew=0.3`, 2599). See NOTES "Section planner v2" and "Braking cost and far low-loss hooks".
 - 2606 (52.12 s): first full run with **Teero's shaft double kick** (see "The shaft double kick" below).
 - 2607 (52.14 s): faraday's 962 pre-grenade dive grafted onto the 2613 run -> 2608 (below), then 20 minutes of
   `x_ds` incumbent LNS -> 2607.
 - Previous best: 2613 (52.26 s, cray), pickup at 971.
 - **Best pre-grenade run: pickup at race tick 962** (a dive, searched for the earliest pickup only),
   `pre_grenade_kog/kog_pregren_best.txt`, server-checked.
-- Teero: pickup ~980, finish 2536. We are 64 ticks behind overall: ~16 ahead at the pickup, ~80 behind after it.
+- Teero: pickup ~980, finish 2536. We are 63 ticks behind overall: ~16 ahead at the pickup, ~79 behind after it.
 
 ### The 962 graft (2613 -> 2608)
 The 962 dive follows the same line as the 968 dive the 2613 run was built on, ~5.6-5.9 ticks earlier (measured along
