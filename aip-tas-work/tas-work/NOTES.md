@@ -1212,3 +1212,7 @@ dir, jump, cursor aim, shots with aim, certainties; best effort, not exact) and 
   TasServer). Its line differs from rt 1828 (other hook aims, several off the 32-angle grid); the section's energy
   budget is the same as 2600's (rt 1825-1989: expl +2421 / +2387, hook -1123 / -1087, dir -1519 / -1542), so it is a
   better line found by the search with the new options, not a large braking saving.
+- Free variants (plan/free_variants.txt, no incumbent tracking) on 2600's 2000-2175, xplan stages: with rotfar +
+  brakew 2071.64 @2070 / 2108.00 @2105; without 2071.06 / 2110.91 (run 2070 / 2105). The new hook aims help free
+  search by ~3 ticks over two stages, but free search stays behind the polished run; stopped there. The productive
+  setup is incumbent-tracking variants + rotfar + brakew (dschain_variants_rf.txt), now the sweep's default choice.
