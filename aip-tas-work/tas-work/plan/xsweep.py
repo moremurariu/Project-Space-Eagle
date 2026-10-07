@@ -8,7 +8,8 @@ whole ticks ahead there (and one less): if the planned line is the run's line so
 run's remaining inputs on it. The best finishing graft that passes the server check (TasReplay) becomes the run.
 This is how 2606 -> 2605 was found (U-turn 1, cut 1095 -> 1270, graft D=1 from rt 1250).
 
-usage: xsweep.py RUN DIR CUT:END [CUT:END ...] [cores=4] [off=6] [rounds=1] [K=6] [look=35] [stage=35] [variants=FILE]
+usage: xsweep.py RUN DIR CUT:END [CUT:END ...] [cores=4] [off=6] [rounds=1] [seed0=0] [K=6] [look=35] [stage=35]
+       [variants=FILE]
 rounds: repeat the section list with new seeds (xplan seedadd=100*round); a re-plan of a section on a new best run
 usually differs anyway (U-turn 1 gave a tick on three re-plans).
 Writes DIR/sweep.log, DIR/sec<i>/ (xplan), DIR/sec<i>/g_*.txt (grafts) and DIR/best_<ticks>.txt for every gain."""
@@ -25,6 +26,7 @@ secs = [tuple(map(int, a.split(':'))) for a in sys.argv[3:] if ':' in a and '=' 
 kw = dict(a.split('=', 1) for a in sys.argv[3:] if '=' in a)
 CORES = int(kw.get('cores', 4))
 ROUNDS = int(kw.get('rounds', 1))
+SEED0 = int(kw.get('seed0', 0))  # seed offset (xplan seedadd = seed0 + 100 * round)
 LOOK = int(kw.get('look', 35))
 OFF = float(kw.get('off', 6))
 plan_kw = [f'{k}={v}' for k, v in kw.items() if k in ('K', 'look', 'stage', 'beam')]
@@ -99,7 +101,7 @@ for i, (rnd, (cut, end)) in enumerate((r, s) for r in range(ROUNDS) for s in sec
     fin = os.path.join(sd, 'final.txt')
     if not os.path.exists(fin):  # (a rerun reuses a finished plan)
         subprocess.run([sys.executable, os.path.join(HERE, 'xplan.py'), run, str(cut), str(end), sd, f'cores={CORES}',
-                        f'seedadd={100 * rnd}'] + plan_kw, capture_output=True, text=True)
+                        f'seedadd={SEED0 + 100 * rnd}'] + plan_kw, capture_output=True, text=True)
     if not os.path.exists(fin):
         log(f'section {cut}-{end}: planner failed ({time.time()-t0:.0f}s)')
         continue
