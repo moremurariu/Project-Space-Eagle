@@ -27,7 +27,7 @@ cd ddnet-up/build
 [ -f build.ninja ] || cmake .. -GNinja -DCMAKE_BUILD_TYPE=Release -DCLIENT=OFF -DDOWNLOAD_GTEST=ON -DMYSQL=OFF \
 	-DWEBSOCKETS=OFF -DDISCORD=OFF -DSTEAM=OFF -DUPNP=OFF -DAUTOUPDATE=OFF -DVIDEORECORDER=OFF $LAUNCH
 # the tools the recommended workflows use (README "Which tool for what"); add more names as needed
-ninja -j"${JOBS:-$(nproc)}" segf seg x_ds x_tig x_trace x_lob x_dbl x_win x_pert rdv ddsearch replay fastcheck viacheck \
+ninja -j"${JOBS:-$(nproc)}" segf seg x_ds x_tig x_trace x_lob x_dbl x_win x_pert x_graft rdv ddsearch replay fastcheck viacheck \
 	eacct eaudit fgcheck lobscan rejoin perturb lab mapdump simbench testrunner
 cd "$ROOT"
 ln -sfn "$ROOT/ddnet-up/build" ddnet/build-sim
