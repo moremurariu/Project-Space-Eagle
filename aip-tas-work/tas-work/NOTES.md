@@ -891,3 +891,6 @@ Teero played the **KoG** version of AiP-Gores (user, from Teero). Our runs so fa
 - Large-beam finish searches on 2620 (cuts 2600..2540; beam 20000 survx / beam 40000 / beam 20000 retro=3 loadres):
   all 2620 (beam 40000 from 2555/2540: > 60 s). The ending is optimal for seg's action set.
 - lateloop m1: **2613 (52.26 s), server-checked** (start 68, no freeze, no double start): cut 2470 of the previous best, segx [survx=300] seed 1334 -> kog_full_2613.txt = kog_full_best.txt.
+- Other agent: 2615 -> **2614** (tigloop L7 start 1900). lateloop m1 on 2614 (cuts 2590..2350, 8 survx-heavy
+  variants, 2 rounds): **2613** (cut 2470, survx seed 1334, server-checked); nothing more in round 1. Pattern: a
+  late-cut survx finish search squeezes 1-2 ticks from each new tigloop best.
