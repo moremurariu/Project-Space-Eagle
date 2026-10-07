@@ -7,8 +7,11 @@ window (dschain) is the greedy choice that loses at turns. Here every stage is a
 state to the incumbent's progress at the next waypoint, and the K arrivals that are non-dominated in (arrival time,
 energy) go on to the next stage.
 
-usage: xplan.py INC CUT END DIR [stage=35] [K=6] [cores=4] [beam=3000] [variants=default|FILE]
+usage: xplan.py INC CUT END DIR [stage=35] [look=35] [K=6] [cores=4] [beam=3000] [variants=default|FILE]
        [stagevar=S:extra,S:extra] (extra x_ds keys for stage S only, e.g. a nokick window)
+look: overlap. Each stage's windows run `look` incumbent ticks past the stage's gate and are ranked there; only their
+part up to the gate (x_ds commitk=) is kept. Without it (look=0) a window spends its grenade just before the gate and
+arrives where the next obstacle cannot be passed (U-turn 1: -21 at the corridor block; with look=35 see NOTES).
 INC: the incumbent run (inputs from spawn); the section is INC's race ticks CUT..END, waypoints every `stage` ticks.
 Writes DIR/plan.log, DIR/s<stage>_<n>.txt (arrivals) and DIR/best.txt (the earliest arrival at END's gate).
 Status (NOTES "Section planner v1"): with tracking variants (variants=FILE with dschain-style trackfrac / shadow / shh
@@ -23,9 +26,10 @@ TW = os.path.dirname(HERE)  # tas-work
 XDS = os.environ.get('XDSBIN', os.path.join(TW, '..', 'ddnet', 'build-sim', 'x_ds'))
 MAP = os.path.join(TW, 'AiP-Gores.map')
 
-inc, cut, end, d = sys.argv[1], int(sys.argv[2]), int(sys.argv[3]), sys.argv[4]
+inc, cut, END, d = sys.argv[1], int(sys.argv[2]), int(sys.argv[3]), sys.argv[4]
 kw = dict(a.split('=', 1) for a in sys.argv[5:])
 STAGE, K, CORES, BEAM = int(kw.get('stage', 35)), int(kw.get('K', 6)), int(kw.get('cores', 4)), kw.get('beam', '3000')
+LOOK = int(kw.get('look', 35))
 VARIANTS = [
     'seed=1 jitter=0.3 retro=4 egain=0.004',
     'seed=2 jitter=0.3 retro=4 egain=0.01',
@@ -51,14 +55,19 @@ def log(m):
 
 
 def window(prefix, gate, out, extra):
-    args = [XDS, MAP, f'inc={inc}', f'prefix={os.path.abspath(prefix)}', f'gate=rt{gate}', 'incforce=0', 'threads=1',
+    """x_ds window from prefix; ranked at gate+LOOK, the kept prefix is the line up to gate (out.c)"""
+    far = min(gate + LOOK, END) if LOOK > 0 else gate
+    args = [XDS, MAP, f'inc={inc}', f'prefix={os.path.abspath(prefix)}', f'gate=rt{far}', 'incforce=0', 'threads=1',
             'verbose=0', f'beam={BEAM}', f'out={os.path.abspath(out)}'] + extra.split()
+    if far > gate:
+        args.append(f'commitk={gate}')
     r = subprocess.run(args, capture_output=True, text=True, cwd=TW).stdout
     m = re.search(r'GATE t ([\d.]+) \(incumbent ([\d.]+)\) E (-?\d+)', r)
     v = re.search(r'verify \(CTasGame\): gate rt (-?\d+) end rt (-?\d+) geo \S+ finish (-?\d+) dead (\d)', r)
-    if not m or not v or v.group(4) != '0' or int(v.group(1)) < 0 or not os.path.exists(out):
+    keep = out + '.c' if far > gate else out
+    if not m or not v or v.group(4) != '0' or int(v.group(1)) < 0 or not os.path.exists(keep):
         return None
-    return float(m.group(1)), float(m.group(2)), int(m.group(3)), out
+    return float(m.group(1)), float(m.group(2)), int(m.group(3)), keep
 
 
 def pareto(arr, k):
@@ -82,9 +91,9 @@ def pareto(arr, k):
 start = os.path.join(d, 'start.txt')
 lines = open(inc).read().splitlines()
 open(start, 'w').write('\n'.join(lines[:cut + 68]) + '\n')
-gates = list(range(cut + STAGE, end, STAGE)) + [end]
+gates = list(range(cut + STAGE, END, STAGE)) + [END]
 kept = [(0.0, 0.0, 0, start)]
-log(f'xplan inc={inc} cut={cut} end={end} gates={gates} K={K} beam={BEAM} variants={len(VARIANTS)}')
+log(f'xplan inc={inc} cut={cut} end={END} gates={gates} look={LOOK} K={K} beam={BEAM} variants={len(VARIANTS)}')
 for si, g in enumerate(gates):
     jobs = []
     for ki, (_, _, _, p) in enumerate(kept):
@@ -94,14 +103,18 @@ for si, g in enumerate(gates):
     t0 = time.time()
     with ThreadPoolExecutor(CORES) as ex:
         res = list(ex.map(lambda j: window(*j), jobs))
-    arr = [r for r in res if r]
+    arr, seen = [], set()
+    for r in res:  # variants from one prefix often commit the same line
+        if r and (h := hash(open(r[3]).read())) not in seen:
+            seen.add(h)
+            arr.append(r)
     if not arr:
         log(f'stage {si} (gate rt{g}): no arrival')
         sys.exit(1)
     inc_t = arr[0][1]
     kept = pareto(arr, K)
-    log(f'stage {si} gate rt{g} (incumbent {inc_t:.2f}): {len(arr)}/{len(jobs)} arrivals in {time.time()-t0:.0f}s; kept ' +
+    log(f'stage {si} gate rt{g} (ranked at rt{min(g + LOOK, END) if LOOK else g}, incumbent {inc_t:.2f}): {len(arr)}/{len(jobs)} arrivals in {time.time()-t0:.0f}s; kept ' +
         ' '.join(f'[{a[0]:.2f} E{a[2]}]' for a in kept))
 best = kept[0]
 open(os.path.join(d, 'best.txt'), 'w').write(open(best[3]).read())
-log(f'BEST arrival at rt{end}: {best[0]:.3f} (incumbent {best[1]:.3f}) E {best[2]} -> {best[3]}')
+log(f'BEST arrival at rt{END}: {best[0]:.3f} (incumbent {best[1]:.3f}) E {best[2]} -> {best[3]}')
