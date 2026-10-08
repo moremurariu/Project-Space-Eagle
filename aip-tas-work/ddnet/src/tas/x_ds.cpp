@@ -549,6 +549,17 @@ static bool LoadTrackLine(const char *pPath, int Shift, int Smooth, SRefLine &L)
 }
 
 // reload slot availability: a shot at tick Tau is allowed if it is >= 25 ticks away from every shot of the lineage
+// noshot=a,b[,c,d...]: no shot (normal or retro) is fired by a step ending at a race tick in [a, b] (keeps the reload
+// free for a pre-fire the incumbent needs later, e.g. the shaft lob, when the line runs ahead of it)
+static std::vector<std::pair<int, int>> gs_vNoShot;
+static bool NoShotAt(int RtAfter)
+{
+	for(auto &[a, b] : gs_vNoShot)
+		if(RtAfter >= a && RtAfter <= b)
+			return true;
+	return false;
+}
+static int gs_StartTick = 0;
 static bool SlotFree(const SState &S, int Tau)
 {
 	for(int i = 0; i < S.m_NFire; i++)
@@ -1055,7 +1066,7 @@ static void RetroFind(const SState &S, int Step, vec2 RouteDir, std::vector<SRet
 		const bool InputOk = !N.m_In.m_Fire && !N.m_HookPress;
 		vec2 APos = N.m_Parent >= 0 ? gs_vHist[St - 1][N.m_Parent].m_Pos : gs_RootPos;
 		const int TauT = t + 1 - Tau; // flight ticks until the explosion step
-		if(InputOk && Tau != ExcludeTau && SlotFree(S, Tau) && TauT <= 99)
+		if(InputOk && Tau != ExcludeTau && SlotFree(S, Tau) && TauT <= 99 && (gs_vNoShot.empty() || !NoShotAt(Tau - gs_StartTick + 1)))
 		{
 			for(int e = 0; e < NE; e++)
 			{
@@ -1524,6 +1535,18 @@ int main(int argc, const char **argv)
 		else if(K == "sinkmin") gs_Line.m_SinkMin = std::stof(V);
 		else if(K == "nofire") std::sscanf(V.c_str(), "%d,%d", &gs_P.m_NoFire0, &gs_P.m_NoFire1);
 		else if(K == "nokick") std::sscanf(V.c_str(), "%d,%d", &gs_P.m_NoKick0, &gs_P.m_NoKick1);
+		else if(K == "noshot")
+		{
+			std::vector<int> v;
+			for(size_t a = 0; a < V.size();)
+			{
+				size_t b = V.find(',', a);
+				v.push_back(std::stoi(V.substr(a, b == std::string::npos ? std::string::npos : b - a)));
+				a = b == std::string::npos ? V.size() : b + 1;
+			}
+			for(size_t i = 0; i + 1 < v.size(); i += 2)
+				gs_vNoShot.push_back({v[i], v[i + 1]});
+		}
 		else if(K == "trackfrac") gs_P.m_TrackFrac = std::stof(V);
 		else if(K == "trackv") gs_P.m_TrackV = std::stof(V);
 		else if(K == "tracklag") gs_P.m_TrackLag = std::stof(V);
@@ -1583,6 +1606,7 @@ int main(int argc, const char **argv)
 		F.FromGame(G);
 		gs_Ref.m_Rt0 = F.RaceTick();
 		gs_IncStart = F.m_StartTick;
+		gs_StartTick = F.m_StartTick;
 		bool CutDone = !gs_P.m_Prefix.empty();
 		for(; i < vInc.size(); i++)
 		{
@@ -1870,6 +1894,8 @@ int main(int argc, const char **argv)
 				const bool Grounded = CTasGame::Collision()->IsOnGround(G.m_Pos, 28.0f);
 				const bool CanJump = !Prev.m_Jump && (Grounded || !(G.m_Core.m_Jumped & 2));
 				auto Emit = [&](const STasInput &In, const SRetroShot *pR1, const SRetroShot *pR2, bool ImmFire, bool IsInc) {
+					if(In.m_Fire && !IsInc && !gs_vNoShot.empty() && NoShotAt(G.RaceTick() + 1))
+						return;
 					if(In.m_Fire && G.RaceTick() + 1 >= gs_P.m_NoFire0 && G.RaceTick() + 1 <= gs_P.m_NoFire1 && !IsInc)
 						return;
 					if((In.m_Fire || pR1) && G.RaceTick() + 1 >= gs_P.m_NoKick0 && G.RaceTick() + 1 <= gs_P.m_NoKick1 && !IsInc)

@@ -1314,3 +1314,33 @@ dir, jump, cursor aim, shots with aim, certainties; best effort, not exact) and 
   multigraft.py (scratch: every on-line cut with lead >= 1, largest D first) found x_graft D=4 from cut 1503:
   **2584 (51.68 s)**, server-checked (TasReplay finish tick 2652; TasServer). Lesson: try grafts at every on-line
   cut of a long plan, not only the latest ones.
+
+## High-resolution x_ds (Oct 8): fine cells + big beams
+Session goal: < 50 s (< 2500). User: no huge tricks, it is about higher speeds (and maybe pathing) after the pickup.
+- Where the 2584 run loses to Teero (approximate track from the hook-video samples, teero/hooks/hooks_raw.csv, 15 Hz,
+  interpolated): -17.7 at rt 1000 -> +41 at 2550; our line is his within ~10-25 px almost everywhere; he is 1-4 px/t
+  faster in displacement on most straights. On straights our run flies nearly lossless (hook pulses rotate at
+  ~0 cost; a/t ~0); speed is set by the turn exit and the kicks (the kick schedule has 40-66-tick gaps in places).
+- **Search resolution was the hidden limit of free search.** x_ds free (no incumbent tracking), cut 1815 -> rt 1925
+  (return straight), same variant: beam 3000 cellpos 16 cellvel 2: 1936.8 (11.8 behind the incumbent); beam 12000
+  8 / 1: 1925.7; beam 40000 5 / 0.6: **1924.3 (0.7 ahead, |v| 69 vs 62 at the gate, an extra kick at 1921)**. The
+  selected beam is cell-limited (with 16 px / 2 px/t cells only ~300-900 states survive per step whatever beam= is).
+- Free search still fails at turns (U-turn 1, cut 1095 -> rt 1290): 1305.9 (beam 40000 fine), 1298.3 with a
+  velocity-stratified quota (quota=500 qpos=100000 qvel=5), 1297.0 with the new brake-feasibility guard sinkcap=1.1
+  (ahead by ~3 at the apex, then a slow exit). The beam races into the turn with high energy; the hook can turn only
+  ~3 px/t^2. Hop section (cut 2215 -> 2345): free 2353.3 vs 2345.
+- **Incumbent-tracking variants at high resolution are a much stronger polisher:** U-turn 1 (cut 1095 -> rt 1290, rf
+  variant seed 21, beam 40000 cellpos 5 cellvel 0.6, 4 threads, 6 min): 1287.9 vs 1290 (+2.1), on the incumbent's line
+  (<= 11 px) with the same kicks +-1-4 ticks, 0.5-2.4 px/t faster. multigraft D=1 from cut 1247: **2583 (51.66 s)**,
+  server-checked (TasReplay finish tick 2651; TasServer no freeze / double start).
+- Teero's approximate track as the reference line (x_ds tref=): hop 2215 -> his k2293: +0.3 at rt 2315 (both lines drop
+  to ~10 px/t over the top); U-turn 1: +2.2 on the approach, then his low exit (60-110 px below our line) is ~5 ticks
+  slower in our hands. The 15 Hz track is too coarse to copy his line.
+- plan/bigchain.py (new): receding-horizon chain of high-resolution x_ds windows (W 150, C 75, forced lineage). First
+  run (bc1) from cut 1007: +1.1 at 1157, +1.2 at 1232, +1.5 at 1307, **+3.4 at 1382**, +2.8 at 1457, then +0.4 at 1532
+  and -1.2 at 1607 (the shaft): the faster line's shot rhythm leaves no reload slot for the incumbent's lobs (left
+  U-turn pre-fire, shaft lob), the same wall the planner hit. New x_ds option noshot=a,b[,c,d..] (no normal or retro
+  shot fired by a step ending in those race ticks); bigchain reserves the reload for each incumbent pre-fire (flight
+  >= 8, plan/shots.py) shifted by the current lead.
+- x_ds sinkcap=C [sinkw sinkab sinklook]: penalty (ticks per px/t) for speed that cannot be braked at sinkab px/t^2
+  to C x the incumbent's speed at its next speed minima (turns) within sinklook px of path.
