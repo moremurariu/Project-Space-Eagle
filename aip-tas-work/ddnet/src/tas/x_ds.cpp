@@ -131,6 +131,7 @@ struct SPar
 	float m_Boost = 0; // diagnostics: add this many px/t along the root velocity (a hypothetical extra kick)
 	int m_NoFire0 = -1, m_NoFire1 = -1;
 	int m_NoKickAll = 0; // nokick applies to the incumbent's own lineage too
+	int m_ShNoFire = 0; // shadow inputs without their shots
 	int m_NoKick0 = -1, m_NoKick1 = -1; // no explosions at all in these race ticks (keeps the slots for later stacks) // no shots fired in these race ticks (shadow / point-blank); retro slots there stay usable
 	float m_TrackFrac = 0, m_TrackV = 3, m_TrackLag = 2;
 	int m_Shadow = 0; // add the incumbent's inputs at the matched progress point (this many, from the next one)
@@ -1513,6 +1514,7 @@ int main(int argc, const char **argv)
 		else if(K == "nofire") std::sscanf(V.c_str(), "%d,%d", &gs_P.m_NoFire0, &gs_P.m_NoFire1);
 		else if(K == "nokick") std::sscanf(V.c_str(), "%d,%d", &gs_P.m_NoKick0, &gs_P.m_NoKick1);
 		else if(K == "nokickall") gs_P.m_NoKickAll = std::stoi(V);
+		else if(K == "shnofire") gs_P.m_ShNoFire = std::stoi(V);
 		else if(K == "trackfrac") gs_P.m_TrackFrac = std::stof(V);
 		else if(K == "trackv") gs_P.m_TrackV = std::stof(V);
 		else if(K == "tracklag") gs_P.m_TrackLag = std::stof(V);
@@ -1999,6 +2001,8 @@ int main(int argc, const char **argv)
 						if(IncHere && gs_P.m_Anc.empty() && Idx == (long)(IncBase + Step))
 							continue; // that one is the forced child already
 						STasInput In = ShadowInput(Idx, G, Prev);
+						if(gs_P.m_ShNoFire)
+							In.m_Fire = 0; // phase-free shadow: the line's keys and hooks, kicks only from this search's own shots
 						Emit(In, nullptr, nullptr, false, false);
 					}
 				}
