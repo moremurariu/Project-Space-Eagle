@@ -1455,3 +1455,10 @@ lead.py), `x_tfield` (new), x_ds `tfield=` / `tfmode=` / `nokickall=` (new).
   - Final maze without the 2414 approach shot (to the finish): 2583-2588 (run 2576); no pre-fire reaches 2430-2455.
 - plan/structsweep.py (new): the recipe automated per shot (stage 1 with the shot forbidden around its time, stage 2
   re-searched from a later cut, multigraft, server check).
+- **x_opt on the restructured U-turn 1 -> 2575:** x_opt cut 1083 end 1200 (kv 0.3, tail 20, 4M iters, 2 threads) on
+  2576: point-blank 1151 -> 1148 and new hooks, +1.42 at 1200 and +2.8 px/t (its tail dies). Stage 2 x_ds rf variants
+  from its cut 1175 to 1320: v2 1319.67, +1.0 on 2576's line (0 px) from 1180 to 1250; multigraft D=1 from cut 1203:
+  **2575 (51.50 s)**, server-checked (TasReplay finish tick 2643; no freeze). x_opt is useful as the stage-1 polisher
+  of a new structure (its window end must be followed by an x_ds re-search through the next turn).
+- Polish sweep (xsweep rf, allcuts) on 2576: 1095-1270 +0.8 (no graft cuts), 1200-1380 +1.3 at 1414 (graft 0/2; the
+  line continued through the left U-turn ends 4-15 behind at 1500).
