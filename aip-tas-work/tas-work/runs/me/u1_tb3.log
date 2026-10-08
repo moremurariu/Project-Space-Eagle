@@ -469,3 +469,6 @@ step  154 rt 1250 beam 55637 cand 1778960 | best lag 11.37 geo 1252 E 631 |v| 53
   retro found 679766 emitted 3699708 | fire aims 1119642 emitted 1468266 | pre 240658 sel 49437 surv 42440
   on-incumbent states: 0
 step  155 rt 1251 beam 42440 cand 2353080 | best lag 12.23 geo 1253 E 325 |v| 51.1 pos 5957 2283 | inc lag 0.00 | 1641s
+  retro found 681742 emitted 3707298 | fire aims 1130284 emitted 1504548 | pre 241870 sel 59391 surv 43186
+  on-incumbent states: 0
+step  156 rt 1252 beam 43186 cand 1829115 | best lag 12.77 geo 1254 E 160 |v| 49.6 pos 5927 2303 | inc lag 0.00 | 1657s
