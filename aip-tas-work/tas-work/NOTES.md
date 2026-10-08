@@ -1474,3 +1474,4 @@ lead.py), `x_tfield` (new), x_ds `tfield=` / `tfmode=` / `nokickall=` (new).
   finish tick 2638).
 - optsweep round 2 on 2570 (runs/os3, 4 cores sequential): 1800 U-turn window (x_opt 1700-1840, stage 2 to 1960: 1958.47) -> graft D=1 at 1907: **2569 (51.38 s)**, server-checked.
 - Same sweep: S-bend window (x_opt 1880-2020, stage 2 to 2100: 2097.56) -> graft D=2 at 2080: **2567 (51.34 s)**, server-checked.
+- optsweep round 3 on 2567 (runs/os4, x_opt 6M iters): dip window (x_opt 1200-1300, stage 2 to 1420: 1419.08) -> graft D=1 at 1349: **2566 (51.32 s)**, server-checked.
