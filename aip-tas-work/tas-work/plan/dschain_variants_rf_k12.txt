@@ -1,0 +1,5 @@
+# dschain_variants_rf + kickmin=11.9: only full-strength kicks (explosion within ~48 units, as Teero's: 44 of his 49 vs 25 of our 54)
+seed=21 lam=0,0.004,0.01,0.02 cellpos=16 cellvel=2 shadow=2 surv=12 trackfrac=0.3 shh=40 rollpre=4 shmode=1 kcred=0.5 kready=3 retro=4 egain=0.004 rotfar=1 brakew=0.3 kickmin=11.9
+seed=22 lam=0,0.004,0.01 cellpos=12 cellvel=1.5 jitter=0.3 shadow=3 surv=8 trackfrac=0.15 shh=30 rollpre=4 shmode=2 kcred=0 kready=6 retro=3 egain=0.004 rotfar=1 brakew=0.3 kickmin=11.9
+seed=23 lam=0,0.002,0.006,0.012 cellpos=16 cellvel=2 shadow=2 surv=8 credw=0.3 trackfrac=0.45 shh=60 rollpre=4 shmode=1 kcred=1 kready=0 sinkh=40 retro=4 egain=0.004 rotfar=1 brakew=0.3 kickmin=11.9
+seed=24 lam=0,0.004,0.01,0.02 cellpos=20 cellvel=2.5 jitter=0.3 shadow=2 surv=12 trackfrac=0.3 shh=40 rollpre=4 shmode=2 kcred=0.5 kready=3 retro=3 egain=0.004 rotfar=1 brakew=0.3 kickmin=11.9
