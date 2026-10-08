@@ -1330,3 +1330,5 @@ dir, jump, cursor aim, shots with aim, certainties; best effort, not exact) and 
   sections (1007:1450, 1270:1800, 1640:1830, 1830:2200, 2100:2575; vsets/xs passthrough), on 2582: section
   1007-1450 (rf, seed0 3000, 23 min) -> x_graft D=1 from cut 1423: **2581 (51.62 s)**, server-checked (TasReplay
   finish tick 2649; TasServer).
+- Same pass: 1270-1800 3 ahead, 0/12 grafts; 1640-1830 (9 min plan) 3 ahead, 48 graft jobs -> x_graft D=1 from cut
+  1750: **2580 (51.60 s)**, server-checked (TasReplay finish tick 2648; TasServer).
