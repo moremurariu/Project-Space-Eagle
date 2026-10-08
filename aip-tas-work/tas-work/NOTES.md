@@ -1438,3 +1438,20 @@ lead.py), `x_tfield` (new), x_ds `tfield=` / `tfmode=` / `nokickall=` (new).
   are 1-2 behind those from the run itself by rt 2060 (the end state was ahead by being faster before the S-bend):
   a window-end score is misleading unless the window ends after a turn. Finish-time windows (cut 2300 -> finish):
   no gain. SA cannot repair a dying plan (degenerate survivors), so it is a polisher, not a structure finder.
+- Other Teero-structure attempts on 2576 (all the same recipe; none beat the run):
+  - Left U-turn exit, extra shot (our gun idles 1490-1514 while Teero fires at ~1486): x_pfscan from 2576's states
+    gives 1491-1497 shots exploding 1500-1508 (+6..+9 along v); forced at 1492 (aim 27.6) the kick throws the tee into
+    the small solid block at (1824, 2591) at 1506 (12-13 behind at 1550); forced at 1497 / 1495 x_ds never rebuilds
+    the shaft (-22..-60 at 1640 or no gate). Even from 2576's own state at 1490, x_ds rf variants reach the rt-1640
+    gate 6-31 ticks late: the shaft double kick (1551 lob + 1576 point-blank) is not reproducible by x_ds from any
+    other cut. Moving the 1466 shot to 1462 (needed for a 25-tick slot at ~1487): every scanned aim either kills the
+    tee within 6 ticks or explodes 110-140 px from it (forward-up aims like Teero's hit the ceiling behind the tee).
+  - Top-left corner without our approach shot (nokick 2071-2096): x_ds finds Teero's stack by itself (lob 2095 +
+    point-blank 2120, both exploding at 2120), 1.6-2.4 behind at 2160 with 8-10 px/t more speed, but every stage-2
+    re-search (tracking variants from cuts 2125 / 2135, free + field variants) ends 2-4 (tracking) / 13-21 (free)
+    behind at rt 2230 after the bottom-left turn. (nokick blocks shots FIRED in the window, not explosions in it.)
+  - rt-1800 U-turn without the 1777 approach shot: 6-11 behind at 1880 (no pre-fire reaches its exit in time).
+  - Hop without the 2266 turning kick (cos 0.18): 16-19 behind at 2330. x_opt on 2250-2335: +0.14 / +1.5 px/t only.
+  - Final maze without the 2414 approach shot (to the finish): 2583-2588 (run 2576); no pre-fire reaches 2430-2455.
+- plan/structsweep.py (new): the recipe automated per shot (stage 1 with the shot forbidden around its time, stage 2
+  re-searched from a later cut, multigraft, server check).
