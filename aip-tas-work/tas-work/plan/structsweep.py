@@ -61,7 +61,8 @@ def head(path, rt, out):
 
 
 def xds(prefix, gate, out, var, extra=()):
-    cmd = [os.path.join(BIN, 'x_ds'), MAP, 'inc=' + run, 'prefix=' + prefix, 'gate=rt%d' % gate, 'incforce=0', 'threads=1',
+    g = 'gate=finish' if gate >= FIN - 3 else 'gate=rt%d' % gate
+    cmd = [os.path.join(BIN, 'x_ds'), MAP, 'inc=' + run, 'prefix=' + prefix, g, 'incforce=0', 'threads=1',
            'beam=' + BEAM, 'verbose=0', 'out=' + out] + var.split() + list(extra)
     with open(out + '.log', 'w') as lf:
         subprocess.run(cmd, stdout=lf, stderr=subprocess.STDOUT)
@@ -82,21 +83,25 @@ def try_shot(F):
     cut = F - PRE
     head(run, cut, tag + '_p.txt')
     t1, l1 = stage(tag + '_p.txt', F + G1, tag + '_a', ('nokick=%d,%d' % (lo, hi), 'nokickall=1'))
-    log('shot %d: stage 1 (cut %d, gate %d): %s' % (F, cut, F + G1, 'NOGATE' if t1 is None else '%.2f (%+.2f)' % (t1, F + G1 - t1)))
-    if t1 is None or t1 > F + G1 + 3:
+    g1 = min(F + G1, FIN)
+    log('shot %d: stage 1 (cut %d, gate %d): %s' % (F, cut, g1, 'NOGATE' if t1 is None else '%.2f (%+.2f)' % (t1, g1 - t1)))
+    if t1 is None or t1 > g1 + 3:
         return
     head(l1, F + C2, tag + '_c.txt')
     t2, l2 = stage(tag + '_c.txt', F + G2, tag + '_b')
-    log('shot %d: stage 2 (cut %d, gate %d): %s' % (F, F + C2, F + G2, 'NOGATE' if t2 is None else '%.2f (%+.2f)' % (t2, F + G2 - t2)))
-    if t2 is None or t2 > F + G2 - 1:
+    g2 = min(F + G2, FIN)
+    log('shot %d: stage 2 (cut %d, gate %d): %s' % (F, F + C2, g2, 'NOGATE' if t2 is None else '%.2f (%+.2f)' % (t2, g2 - t2)))
+    if t2 is None or t2 > g2 - 1:
         return
     gd = tag + '_mg'
-    out = subprocess.run(['python3', os.path.join(HERE, 'multigraft.py'), l2, run, gd, str(F + C2 + 5), str(F + G2), '6', '4', str(CORES)],
+    out = subprocess.run(['python3', os.path.join(HERE, 'multigraft.py'), l2, run, gd, str(F + C2 + 5), str(min(F + G2, FIN - 5)), '6', '4', str(CORES)],
                          capture_output=True, text=True).stdout
     log('shot %d: multigraft: %s' % (F, ' | '.join(out.strip().splitlines()[-3:])))
     best = None
-    for g in sorted(os.listdir(gd)) if os.path.isdir(gd) else []:
-        p = os.path.join(gd, g)
+    cands = [os.path.join(gd, g) for g in sorted(os.listdir(gd))] if os.path.isdir(gd) else []
+    if g2 == FIN:
+        cands.append(l2)  # a stage-2 line that reaches the finish is a full run already
+    for p in cands:
         f = finish(p)
         if f is not None and (best is None or f < best[0]):
             best = (f, p)
@@ -113,6 +118,7 @@ def try_shot(F):
             log('shot %d: graft %d failed the server check: %s' % (F, best[0], chk.strip().replace('\n', ' | ')))
 
 
+FIN = finish(run)
 if 'shots' in kw:
     todo = [int(x) for x in kw['shots'].split(',')]
 else:
