@@ -1401,3 +1401,4 @@ dir, jump, cursor aim, shots with aim, certainties; best effort, not exact) and 
   vs theirs: +1 at 1490-1685 (our left U-turn is 1 better), -1 from 1745 (they gain 2 at 1700-1760). Our 2557 onto
   their 2556 with D=1 at cut 1578: **2555 (51.10 s)**, server-checked (TasReplay finish tick 2623; TasServer).
   plan/optloop.py copied (commits to the checked-out branch with this session's link).
+- optloop round 0 (../../../../../tmp/claude-0/-home-user-Project-Space-Eagle/bf839c41-4cac-52da-8623-74ac5407b85c/scratchpad/oloop/r0): 2555 -> **2551 (51.02 s)**, server-checked (windows on the run's turns, kv 0.3).
