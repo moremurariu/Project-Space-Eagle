@@ -1,0 +1,12 @@
+w1 k11: GATE t 1249.657 (incumbent 1250.000) E 1824 retro patches 1 -> runs/km/w1_k11.txt (201s)
+w1 k10: GATE t 1248.892 (incumbent 1250.000) E 1637 retro patches 2 -> runs/km/w1_k10.txt (203s)
+w1 k11.5: GATE t 1249.734 (incumbent 1250.000) E 1829 retro patches 1 -> runs/km/w1_k11.5.txt (185s)
+w2 k11: NOGATE
+w2 k10: NOGATE
+w2 k11.5: NOGATE
+w3 k10: GATE t 2439.000 (incumbent 2440.000) E 510 retro patches 2 -> runs/km/w3_k10.txt (292s)
+w3 k11: GATE t 2439.000 (incumbent 2440.000) E 403 retro patches 2 -> runs/km/w3_k11.txt (293s)
+w3 k11.5: NOGATE
+w4 k10: GATE t 1788.085 (incumbent 1790.000) E 2243 retro patches 1 -> runs/km/w4_k10.txt (312s)
+w4 k11: GATE t 1788.085 (incumbent 1790.000) E 2243 retro patches 1 -> runs/km/w4_k11.txt (314s)
+w4 k11.5: GATE t 1788.238 (incumbent 1790.000) E 2217 retro patches 1 -> runs/km/w4_k11.5.txt (293s)

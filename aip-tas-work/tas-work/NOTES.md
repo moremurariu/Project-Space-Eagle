@@ -1344,3 +1344,26 @@ Session goal: < 50 s (< 2500). User: no huge tricks, it is about higher speeds (
   >= 8, plan/shots.py) shifted by the current lead.
 - x_ds sinkcap=C [sinkw sinkab sinklook]: penalty (ticks per px/t) for speed that cannot be braked at sinkab px/t^2
   to C x the incumbent's speed at its next speed minima (turns) within sinklook px of path.
+- **Stronger / more energetic kicks (user idea, Oct 8): aim slightly more down for a full-strength kick, rotate the extra
+  down speed forward with short hooks.** Off a freeze-lined ceiling (tee centre >= 32 px from the solid) the kick that
+  gives the most |v| explodes ~36-45 px behind the tee (distance 48-55, |f| 11-12, ~9 forward / 6-8 down): from 50 px/t
+  it gives 59.5 vs 58.3 for an explosion 60 px behind and 51.4 straight above. Above 15 px/t a hook pull is applied
+  only if |v| does not grow, so rotating the down part forward keeps |v| at best: |v| right after the kick is the bound.
+  New tool x_kopt (re-fire each real shot from every free tick within +-W at N aims, exact; the tee's path is the
+  run's until the explosion): on 2583, re-aiming every kick for energy alone would add +2600 v^2/2 (+1800 without
+  delaying any explosion; all kicks give ~18,000), mostly at low-alignment kicks (rt 1250 cos 0.16, 1581 0.54,
+  1783 0.49, 1963 0.18, 2221 0.41). Tests (x_ds, incumbent tracking, beam 40000 cellpos 5 cellvel 0.6):
+  - kickmin 10 / 11 / 11.5 (full-strength kicks only): rt 1170->1250 1248.89 / 1249.66 / 1249.73 (energy 1637 ->
+    1825), 2340->2440 2439.0 / 2439.0 / died, 1700->1790 1788.09 / 1788.09 (incumbent 1250 / 2440 / 1790).
+  - new x_ds options kvalr= kvale= (kick candidates ranked by speed gain instead of route direction), rrays= (retro
+    rays, default 32), firer= (point-blank range, default 47 px); kvalr=0.1 rrays=64 retro=6 firer=60 firekeep=8:
+    1248.90, 2439.0, 1788.00, U-turn 1 1288.10 (baseline 1287.88): no change.
+  - the most energetic re-aim substituted for one kick, then 90-110 ticks re-optimized, vs the same search from the
+    original kick: rt 1250 kick (|v| after 49.6 vs 43.9): 1339.73 vs 1339.18; shaft point-blank 1581: 1692.6 vs
+    1691.7; S-bend 1963 (fired 1957): dies (vs 2049.18 from rt 1959); 2221: dies (vs 2332.1).
+  The low-alignment kicks are turning kicks: the extra speed from re-aiming them has to be braked or arrives at the
+  next bend at the wrong angle, and hook rotation at 40-60 px/t is too slow (~3-4 deg/tick) to fix it in time. Kicks
+  on straights are already near the sweet spot (cos 0.85-0.95, 30-48 px). Not the lever.
+- By-product: the high-resolution tracking windows come out ahead of the incumbent almost everywhere they are run
+  (rt 1170->1250 +1.1, 2340->2440 +1.0, 1700->1790 +1.9, U-turn 1 +2.1, 1959->2050 +0.8, 1250->1340 +0.8); they
+  need on-line cuts to graft (1700->1790: only one on-line cut, D=1 failed).

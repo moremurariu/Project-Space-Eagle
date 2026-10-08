@@ -1,0 +1,4 @@
+w1 E: GATE t 1248.899 (incumbent 1250.000) E 1656 retro patches 1 -> runs/km/w1_E.txt (231s)
+w3 E: GATE t 2439.000 (incumbent 2440.000) E 527 retro patches 2 -> runs/km/w3_E.txt (329s)
+w4 E: GATE t 1788.000 (incumbent 1790.000) E 2269 retro patches 3 -> runs/km/w4_E.txt (314s)
+u1 E: GATE t 1288.103 (incumbent 1290.000) E -678 retro patches 3 -> runs/km/u1_E.txt (620s)

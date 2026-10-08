@@ -95,6 +95,9 @@ struct SPar
 	int m_Beam = 3000, m_Threads = 4, m_MaxSteps = 2000;
 	int m_MaxF = 95, m_Retro = 3, m_Retro2 = 1;
 	int m_HookAngles = 32, m_FireAngles = 64, m_FireKeep = 6;
+	float m_KValR = 0.5f, m_KValE = 1.0f; // kick candidate ranking: route-direction weight, speed-gain weight
+	int m_RRays = 32; // retro: rays to solid points around the tee
+	float m_FireR = 47.0f; // point-blank aims: max distance of the solid point along the aim
 	std::vector<float> m_vLam = {0.0f, 0.004f, 0.01f, 0.02f};
 	float m_OptW = 0; // energy credit per free shot slot in the lineage's last maxf ticks
 	float m_BrakeW = 0; // ticks per px/t of speed lost to hook pull / direction braking (lineage total)
@@ -999,7 +1002,7 @@ static void FireAims(const CFastG &G, vec2 RouteDir, std::vector<std::pair<int16
 		float Ang = 2 * pi * a / gs_P.m_FireAngles;
 		vec2 D(std::cos(Ang), std::sin(Ang));
 		bool Hit = false;
-		for(float r = 4.0f; r <= 47.0f; r += 3.0f)
+		for(float r = 4.0f; r <= gs_P.m_FireR; r += 3.0f)
 		{
 			vec2 Q = P + D * r;
 			if(M.Tile((int)std::floor(Q.x / 32), (int)std::floor(Q.y / 32)) == TILE_SOLID)
@@ -1011,7 +1014,7 @@ static void FireAims(const CFastG &G, vec2 RouteDir, std::vector<std::pair<int16
 		if(!Hit)
 			continue;
 		vec2 K = -D * 12.0f;
-		float Val = dot(K, RouteDir) * 0.5f + (length(V + K) - length(V));
+		float Val = dot(K, RouteDir) * gs_P.m_KValR + gs_P.m_KValE * (length(V + K) - length(V));
 		v.push_back({Val, (int16_t)std::lround(D.x * 10000), (int16_t)std::lround(D.y * 10000)});
 	}
 	std::sort(v.begin(), v.end(), [](const SA &a, const SA &b) { return a.m_V > b.m_V; });
@@ -1032,11 +1035,12 @@ static void RetroFind(const SState &S, int Step, vec2 RouteDir, std::vector<SRet
 	const vec2 Q = G.m_Pos, V = G.m_Core.m_Vel;
 	const int t = G.m_Tick;
 	// solid points around the tee
-	vec2 aE[32];
+	vec2 aE[256];
 	int NE = 0;
-	for(int a = 0; a < 32; a++)
+	const int NR = std::clamp(gs_P.m_RRays, 4, 256);
+	for(int a = 0; a < NR; a++)
 	{
-		const float Ang = 2 * pi * a / 32;
+		const float Ang = 2 * pi * a / NR;
 		const vec2 D(std::cos(Ang), std::sin(Ang));
 		for(float r = 6.0f; r < 100.0f; r += 3.0f)
 		{
@@ -1119,7 +1123,7 @@ static void RetroFind(const SState &S, int Step, vec2 RouteDir, std::vector<SRet
 				vec2 Fk = Fd * Dmg * 2;
 				if(length(Fk) < gs_P.m_KickMin)
 					continue;
-				float Val = dot(Fk, RouteDir) * 0.5f + (length(V + Fk) - length(V));
+				float Val = dot(Fk, RouteDir) * gs_P.m_KValR + gs_P.m_KValE * (length(V + Fk) - length(V));
 				bool Dup = false;
 				for(auto &C : s_vC)
 					if(distance(C.m_Col, Col) < 6.0f && C.m_Tau == Tau)
@@ -1528,6 +1532,10 @@ int main(int argc, const char **argv)
 		else if(K == "tsmooth") gs_P.m_TSmooth = std::stoi(V);
 		else if(K == "sinkh") gs_Line.m_SinkH = std::stof(V);
 		else if(K == "sinkcap") gs_P.m_SinkCap = std::stof(V);
+		else if(K == "kvalr") gs_P.m_KValR = std::stof(V);
+		else if(K == "kvale") gs_P.m_KValE = std::stof(V);
+		else if(K == "rrays") gs_P.m_RRays = std::stoi(V);
+		else if(K == "firer") gs_P.m_FireR = std::stof(V);
 		else if(K == "sinkw") gs_P.m_SinkW = std::stof(V);
 		else if(K == "sinkab") gs_P.m_SinkAb = std::stof(V);
 		else if(K == "sinklook") gs_P.m_SinkLook = std::stof(V);

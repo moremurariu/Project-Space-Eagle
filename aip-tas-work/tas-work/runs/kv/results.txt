@@ -1,0 +1,14 @@
+k1249 orig: x_ds: cut rt 1250 (tick 1318) pos 5988 2251 v -43.9 21.3 geo 40575 | incumbent finish rt 2583, ref time at cut 1250.0 | geo field 0.1s
+k1249 orig: GATE t 1339.183 (incumbent 1340.000) E 831 retro patches 3 -> runs/kv/k1249_orig_out.txt (302s)
+k1249 var: x_ds: cut rt 1250 (tick 1318) pos 5983 2261 v -49.6 20.4 geo 40565 | incumbent finish rt 2583, ref time at cut 1250.2 | geo field 0.1s
+k1249 var: GATE t 1339.729 (incumbent 1340.000) E 734 retro patches 1 -> runs/kv/k1249_var_out.txt (302s)
+k1962 orig: x_ds: cut rt 1963 (tick 2031) pos 4096 3434 v -8.8 -31.2 geo 17149 | incumbent finish rt 2583, ref time at cut 1963.0 | geo field 0.1s
+k1962 orig: GATE t 2050.586 (incumbent 2050.000) E -1945 retro patches 1 -> runs/kv/k1962_orig_out.txt (232s)
+k2221 var: x_ds: cut rt 2223 (tick 2291) pos 1808 4089 v 50.0 6.8 geo 10122 | incumbent finish rt 2583, ref time at cut 2222.7 | geo field 0.1s
+k2221 var: NOGATE
+k2221 orig: x_ds: cut rt 2223 (tick 2291) pos 1808 4118 v 44.3 14.3 geo 10109 | incumbent finish rt 2583, ref time at cut 2223.0 | geo field 0.1s
+k2221 orig: GATE t 2332.057 (incumbent 2330.000) E -3051 retro patches 1 -> runs/kv/k2221_orig_out.txt (304s)
+k1581 orig: x_ds: cut rt 1582 (tick 1650) pos 3264 3237 v 8.5 -43.0 geo 30114 | incumbent finish rt 2583, ref time at cut 1582.0 | geo field 0.1s
+k1581 orig: GATE t 1691.743 (incumbent 1680.000) E -961 retro patches 2 -> runs/kv/k1581_orig_out.txt (300s)
+k1581 var: x_ds: cut rt 1582 (tick 1650) pos 3271 3249 v 12.0 -42.3 geo 30124 | incumbent finish rt 2583, ref time at cut 1581.8 | geo field 0.1s
+k1581 var: GATE t 1692.645 (incumbent 1680.000) E -769 retro patches 2 -> runs/kv/k1581_var_out.txt (378s)
