@@ -1386,3 +1386,8 @@ dir, jump, cursor aim, shots with aim, certainties; best effort, not exact) and 
 - optsweep on 2563 (seed 21): U-turn 1 x_opt +0.8 but stage 2 1327.8 (behind); left U-turn +0.1; shaft top +0.4,
   no on-line cut; rt-1800 U-turn (x_opt 1700-1840, stage 2 1830 -> 1960 1957.22) -> graft D=1 at 1929:
   **2562 (51.24 s)**, server-checked (TasReplay finish tick 2630; TasServer).
+- sweet-maxwell reached 2562 too (dip -1 at 1349, shaft top -3 at 1739, rt-1800 U-turn -1 at 1914), without our left
+  U-turn. Ours vs theirs: -1 at 1280-1440 (their dip), +3 at 1460-1660 (our left U-turn), level from 1780. Same two
+  grafts: their 2562 onto ours D=1 at 1423 (2561), that onto theirs D=4 at 1580: **2558 (51.16 s)**, server-checked
+  (TasReplay finish tick 2626; TasServer). Lesson: two parallel branches polishing different turns combine almost
+  additively when both runs follow the same line between the turns.
