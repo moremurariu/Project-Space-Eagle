@@ -111,6 +111,10 @@ struct SPar
 	float m_Over = 1.4f; // overselect factor before the survival check
 	int m_Verbose = 1;
 	int m_DirAll = 1;
+	int m_NoFly = 0; // nofly=1: never let go of a hook that is still flying (same as not having pressed it)
+	int m_HookAim = 1; // hookaim=2: aims from a simulated hook flight (real reach with the tee's motion), one per pull bin
+	int m_HookRays = 64;
+	float m_HookBin = 8; // degrees of pull direction per kept aim (hookaim=2)
 	float m_KickMin = 0; // drop retro / fire kicks weaker than this
 	float m_Jitter = 0;
 	int m_Seed = 0;
@@ -641,6 +645,88 @@ static void HookAims(const CFastG &G, std::vector<std::pair<int16_t, int16_t>> &
 		vSeen.push_back(Hit);
 		vOut.push_back({(int16_t)std::lround(D.x * 10000), (int16_t)std::lround(D.y * 10000)});
 	}
+}
+
+// hookaim=2: simulate the hook head like the game does (starts 42 px out, flies 80 px per tick in a straight line,
+// retracts when it gets more than 380 px from the tee, which keeps moving), for hookrays directions. Directions that
+// never grab are dropped; of the ones that grab, one aim per hookbin degrees of pull direction at the grab is kept
+// (the earliest grab, then the nearest anchor).
+static void HookAims2(const CFastG &G, std::vector<std::pair<int16_t, int16_t>> &vOut)
+{
+	vOut.clear();
+	const SMapInfo &M = CTasGame::Map();
+	const vec2 P = G.m_Pos, V0 = G.m_Core.m_Vel;
+	const int NB = std::max(1, (int)std::lround(360.0f / gs_P.m_HookBin));
+	struct SBin
+	{
+		int m_K = 1 << 30;
+		float m_D = 1e9f;
+		vec2 m_Dir;
+	};
+	std::vector<SBin> vBin(NB);
+	for(int a = 0; a < gs_P.m_HookRays; a++)
+	{
+		const float Ang = 2 * pi * (a + 0.5f) / gs_P.m_HookRays;
+		const vec2 D(std::cos(Ang), std::sin(Ang));
+		vec2 Head = P + D * 42.0f, Base = P, Vel = V0;
+		int GrabK = -1;
+		vec2 Anchor(0, 0);
+		for(int k = 0; k < 8 && GrabK < 0; k++)
+		{
+			vec2 New = Head + D * 80.0f;
+			bool Retract = false;
+			if(distance(Base, New) > 380.0f)
+			{
+				New = Base + normalize(New - Base) * 380.0f;
+				Retract = true;
+			}
+			const float L = distance(Head, New);
+			const int NS = std::max(1, (int)std::ceil(L / 4.0f));
+			bool Stop = false;
+			for(int s = 1; s <= NS; s++)
+			{
+				const vec2 Q = Head + (New - Head) * (s / (float)NS);
+				const int T = M.Tile((int)std::floor(Q.x / 32), (int)std::floor(Q.y / 32));
+				if(T == TILE_SOLID)
+				{
+					GrabK = k;
+					Anchor = Q;
+					Stop = true;
+					break;
+				}
+				if(T == TILE_NOHOOK)
+				{
+					Stop = true;
+					break;
+				}
+			}
+			if(Stop || Retract)
+				break;
+			Head = New;
+			Vel.y += 0.5f;
+			const float W = length(Vel) * 50;
+			const float Ramp = W < 550 ? 1.0f : std::pow(1.4f, -(W - 550) / 2000);
+			Base += vec2(Vel.x * Ramp, Vel.y);
+		}
+		if(GrabK < 0)
+			continue;
+		const vec2 Pull = Anchor - Base;
+		float PA = std::atan2(Pull.y, Pull.x);
+		if(PA < 0)
+			PA += 2 * pi;
+		const int B = std::min(NB - 1, (int)(PA / (2 * pi) * NB));
+		const float Dist = length(Pull);
+		SBin &Bn = vBin[B];
+		if(GrabK < Bn.m_K || (GrabK == Bn.m_K && Dist < Bn.m_D))
+		{
+			Bn.m_K = GrabK;
+			Bn.m_D = Dist;
+			Bn.m_Dir = D;
+		}
+	}
+	for(const SBin &Bn : vBin)
+		if(Bn.m_K < (1 << 30))
+			vOut.push_back({(int16_t)std::lround(Bn.m_Dir.x * 10000), (int16_t)std::lround(Bn.m_Dir.y * 10000)});
 }
 
 // rotation pulses (as seg's RotHookAims, both turning directions): a hook fired at a solid tile 47..122 px away grabs
@@ -1467,6 +1553,10 @@ int main(int argc, const char **argv)
 		else if(K == "cellvel") gs_P.m_CellVel = std::stof(V);
 		else if(K == "verbose") gs_P.m_Verbose = std::stoi(V);
 		else if(K == "dirall") gs_P.m_DirAll = std::stoi(V);
+		else if(K == "nofly") gs_P.m_NoFly = std::stoi(V);
+		else if(K == "hookaim") gs_P.m_HookAim = std::stoi(V);
+		else if(K == "hookrays") gs_P.m_HookRays = std::stoi(V);
+		else if(K == "hookbin") gs_P.m_HookBin = std::stof(V);
 		else if(K == "kickmin") gs_P.m_KickMin = std::stof(V);
 		else if(K == "surv") gs_P.m_Surv = std::stoi(V);
 		else if(K == "rot") gs_P.m_Rot = std::stoi(V);
@@ -1988,7 +2078,10 @@ int main(int argc, const char **argv)
 				Base.m_Weapon = 3;
 				if(!Hooking)
 				{
-					HookAims(G, vHook);
+					if(gs_P.m_HookAim == 2)
+						HookAims2(G, vHook);
+					else
+						HookAims(G, vHook);
 					if(HrOn && HrAnc)
 					{
 						const float B = std::atan2(HrA.y - G.m_Pos.y, HrA.x - G.m_Pos.x);
@@ -2012,7 +2105,7 @@ int main(int argc, const char **argv)
 						const bool Fly = G.m_Core.m_HookState == HOOK_FLYING;
 						gs_Cat = !Hooking ? CAT_NOHOOK : Fly ? CAT_HOLD_FLY : CAT_HOLD_GRAB;
 						Emit(In, nullptr, nullptr, false, false);
-						if(Hooking)
+						if(Hooking && !(Fly && gs_P.m_NoFly))
 						{
 							STasInput R = In;
 							R.m_Hook = 0;
