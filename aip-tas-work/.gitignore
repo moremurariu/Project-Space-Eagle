@@ -26,3 +26,6 @@ tas-work/runs/tf/
 tas-work/runs/sp/
 tas-work/runs/pf/
 tas-work/sp/__pycache__/
+tas-work/runs/opt/
+tas-work/runs/u1s/
+tas-work/runs/auto_tf/

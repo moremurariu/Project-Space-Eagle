@@ -1402,3 +1402,39 @@ lead.py), `x_tfield` (new), x_ds `tfield=` / `tfmode=` / `nokickall=` (new).
   time-shifted. Exact from the run's own state (2580 from cuts 1640 / 1900). From a perturbed state (+-1 px or
   +-0.1 px/t at rt 1640) it dies 40-70 ticks later, raw replay 40-43: the run's freeze margins, not its aims, make it
   knife-edge; a plan does not transfer without search.
+
+## Shot structure from Teero, turn by turn (Oct 8): U-turn 1 -> 2576
+- Teero's shots mapped onto our path by position (teero/teero_inputs_0-3131.csv fire rows, label = s_since_start x 50
+  - 2.6, projected on 2580): the same spots as ours almost everywhere, except: U-turn 1 (he skips our approach shot
+  1108 and pre-fires ~1122 so it lands at the exit with his point-blank), an extra shot at ~1490 (left U-turn exit; our
+  gun idles 1493-1517), the top-left corner (2095 / 2119 vs our 2086 / 2113), no shot at 2418 (our approach kick before
+  the final maze) and the final maze (2519 vs our 2509).
+- Implied |v| (sp/teerov.py: his smoothed displacement solved through the horizontal ramp): 3-10 px/t above ours on
+  most straights, e.g. 40 vs 30 at the U-turn 1 exit, 57 vs 46-53 at 1210-1250, 55-65 vs 50-53 at 1750-1780.
+- Energy (eacct, 2580 1000-2580): kicks +34390, hooked ticks -30287 (865 of 1580 ticks hooked; Teero ~32%).
+  sp/hookloss.py lists the braking hook episodes (e.g. 1971-1984 -10.9 px/t, 2433-2438 -8.9, 1558-1568 -8.4).
+- **x_pfscan** (new, src/tas/x_pfscan.cpp): for fire ticks F0..F1 on a run's own states and every aim (0.1 deg), the
+  grenade's exact flight and the kick the run's tee would get where it explodes in E0..E1, scored along the run's
+  velocity or dir=dx,dy. Finds pre-fires that can land at a turn exit. U-turn 1 from a line without the approach shot:
+  fired 1126 aim 30 -> 1147 at (9490, 2080); fired <= 1125 every lob hits the divider top (y 1888) first. The rt-1800
+  U-turn, the S-bend and the final-maze entrance have no pre-fire that reaches the exit in time (grenade too slow).
+- **U-turn 1 restructure:** (1) x_ds from cut 1082 with nofire=1082,1118 nokick=1095,1132 nokickall=1 (no approach
+  kick; nofire alone is not enough, retro shots still fire then) -> runs/opt/u1k_r1 (0.9 behind at 1200 with single
+  kicks). (2) its inputs to rt 1125 + a forced shot at 1126 aim 30 deg (runs/u1s/p_1126_30.txt). (3) x_ds rf variants
+  from there to gate 1200: +2.4 (kicks 1146 pre-fire 8.0/cos 0.5, 1151 point-blank 12/0.83, 1184): only -0.9 at the
+  apex. (4) continued from the same prefix to 1320 all variants die in the dip (-2.5..-45); re-searched from its cut
+  1165 instead: variant 3 (seed 23) **+4.0 at rt 1320, on 2580's line (0 px) from 1240**, kicks 1146, 1151, 1184,
+  1205, 1247 (dip turn), 1281, 1304 = Teero's schedule (his 1147, 1176, 1204, 1244, 1271, 1302). (5) multigraft D=4
+  from cut 1315: **2576 (51.52 s)**, server-checked (TasReplay finish tick 2644; no freeze). All 19 D=4 cuts 1243-1315
+  finished.
+- Lesson: our searches never find these structures (the approach without the kick ranks worse until the stacked exit
+  pays off), and a forced structure only holds through the next turn when the re-search starts a little after the
+  change (cut 1165, not at the end of the 1200 window), so the kicks after it can be re-timed.
+- **x_opt** (new, src/tas/x_opt.cpp): simulated annealing on a semantic plan of a window (hook holds with anchors,
+  shots with explosion points or angles, direction / jump keys; mutations shift / re-aim / merge / split / drop / add,
+  shift the shot schedule), exact CFastG evaluation (~8000 evals/s/thread for 200 ticks), score lead + kv x speed along
+  the run's direction - lateral penalty at the window end, survival tail (the run's own plan), off-route = dead,
+  prefix= / shift= / ref= / shots= / field=. On 1636-1850 it finds +0.76 and +1.7 px/t, but x_ds continuations from it
+  are 1-2 behind those from the run itself by rt 2060 (the end state was ahead by being faster before the S-bend):
+  a window-end score is misleading unless the window ends after a turn. Finish-time windows (cut 2300 -> finish):
+  no gain. SA cannot repair a dying plan (degenerate survivors), so it is a polisher, not a structure finder.
