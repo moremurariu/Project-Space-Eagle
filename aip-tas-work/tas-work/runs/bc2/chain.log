@@ -4,3 +4,4 @@
 07:04:22 window 2 1157->rt1307 lead 0 noshot [1250, 1273]: GATE 1305.581 (incumbent 1307.000) E 362 finish -1 [294s]
 07:11:14 window 3 1232->rt1382 lead 1 noshot [1249, 1272]: GATE 1379.660 (incumbent 1382.000) E 1625 finish -1 [412s]
 07:18:01 window 4 1307->rt1457 lead 1 noshot [1384, 1407]: GATE 1455.619 (incumbent 1457.000) E -2142 finish -1 [407s]
+07:24:31 window 5 1382->rt1532 lead 2 noshot [1383, 1406, 1443, 1466, 1491, 1514]: GATE 1539.352 (incumbent 1532.000) E -1283 finish -1 [390s]
