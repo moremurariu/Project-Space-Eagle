@@ -1332,3 +1332,5 @@ dir, jump, cursor aim, shots with aim, certainties; best effort, not exact) and 
   finish tick 2649; TasServer).
 - Same pass: 1270-1800 3 ahead, 0/12 grafts; 1640-1830 (9 min plan) 3 ahead, 48 graft jobs -> x_graft D=1 from cut
   1750: **2580 (51.60 s)**, server-checked (TasReplay finish tick 2648; TasServer).
+- Same pass: 1830-2200 3 ahead, no on-line cut; 2100-2575 6 ahead -> x_graft D=1 from cut 2570: **2579 (51.58 s)**,
+  server-checked (TasReplay finish tick 2647; TasServer). Pass total (rf, seed0 3000, ~2 h): 2582 -> 2579.
