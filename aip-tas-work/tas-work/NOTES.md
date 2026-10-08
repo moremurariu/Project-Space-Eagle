@@ -1339,3 +1339,6 @@ dir, jump, cursor aim, shots with aim, certainties; best effort, not exact) and 
   part, past the rt-1800 U-turn): **2576 (51.52 s)**, server-checked (TasReplay finish tick 2644; TasServer).
 - Same pass: 1830-2200 3 ahead, no on-line cut; 2100-2575 4 ahead -> x_graft D=1 from cut 2558: **2575 (51.50 s)**,
   server-checked (TasReplay finish tick 2643; TasServer). Long-section autosweep so far: 2582 -> 2575 in ~6 h.
+- Cycle 3 rf (seed0 4000) on 2575: no gain in 5 sections. autosweep restarted with vsets rf2,rf only (rf_hr gave
+  nothing in its last pass; rf2 and rf gave all six recent gains). rf2 (seed0 6000): 1007-1450 6 ahead -> x_graft
+  D=1 from cut 1466: **2574 (51.48 s)**, server-checked (TasReplay finish tick 2642; TasServer).
