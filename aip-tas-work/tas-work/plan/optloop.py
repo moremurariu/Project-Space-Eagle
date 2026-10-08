@@ -53,20 +53,25 @@ def finish(path):
     return min(f) if f else None
 
 
-for r in range(ROUNDS):
+R0 = int(kw.get('r0', 0))
+for r in range(R0, R0 + ROUNDS):
     rd = os.path.join(d, 'r%d' % r)
     os.makedirs(rd, exist_ok=True)
     subprocess.run(['cp', BEST, os.path.join(rd, 'run.txt')])
     T = trace(os.path.join(rd, 'run.txt'))
     ap, fin = apexes(T)
     rng = random.Random(SEED + r)
+    span = 2 if r % 2 == 1 else 1  # odd rounds: windows over two turns (joint optimization)
     wins = []
     for i, a in enumerate(ap):
+        if i + span - 1 >= len(ap):
+            break
+        b = ap[i + span - 1]
         cut = a - rng.randint(90, 110)
-        end = a + rng.randint(20, 35)
+        end = b + rng.randint(20, 35)
         if cut < 1000 or end >= fin - 15:
             continue
-        nxt = ap[i + 1] + 30 if i + 1 < len(ap) else fin + 20
+        nxt = ap[i + span] + 30 if i + span < len(ap) else fin + 20
         g2 = min(nxt, fin + 20)
         if g2 - end < 40:
             g2 = min(end + 80, fin + 20)
@@ -76,7 +81,8 @@ for r in range(ROUNDS):
     f0 = finish(os.path.join(rd, 'run.txt'))
     log('round %d on %d: apexes %s, windows %s, kv %s' % (r, f0, ap, wins, kv))
     subprocess.run(['python3', os.path.join(HERE, 'optsweep.py'), os.path.join(rd, 'run.txt'), rd] + wins +
-                   ['threads=' + TH, 'par=' + TH, 'seed=%d' % (SEED + 100 * r), 'iters=' + ITERS, 'kv=' + kv])
+                   ['threads=' + TH, 'par=' + TH, 'seed=%d' % (SEED + 100 * r), 'iters=%d' % (int(ITERS) * span), 'kv=' + kv,
+                    't0=%s' % ('0.6' if r % 3 == 2 else '0.4')])
     f1 = finish(os.path.join(rd, 'run.txt'))
     cur = finish(BEST)
     log('round %d: %s -> %s (best file %s)' % (r, f0, f1, cur))
