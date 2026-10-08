@@ -1473,3 +1473,4 @@ lead.py), `x_tfield` (new), x_ds `tfield=` / `tfmode=` / `nokickall=` (new).
   spliced onto 2572 (2572's rt 2300 state = the maze line's rt 2301): **2570 (51.40 s)**, server-checked (TasReplay
   finish tick 2638).
 - optsweep round 2 on 2570 (runs/os3, 4 cores sequential): 1800 U-turn window (x_opt 1700-1840, stage 2 to 1960: 1958.47) -> graft D=1 at 1907: **2569 (51.38 s)**, server-checked.
+- Same sweep: S-bend window (x_opt 1880-2020, stage 2 to 2100: 2097.56) -> graft D=2 at 2080: **2567 (51.34 s)**, server-checked.
