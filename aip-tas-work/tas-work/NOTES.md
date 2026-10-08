@@ -1306,3 +1306,11 @@ dir, jump, cursor aim, shots with aim, certainties; best effort, not exact) and 
 - Teero tracker (x_tig, vw=1.5) from 2589 at rt 1612 / 1640, 2 seeds each: best +0.9 at 1752, others -2..-5.
 - autosweep pass 2 (dschain_variants_rf2, seeds 31-34) on 2589: 1700-1875 again +1.0 at rt 1880 -> x_graft D=1 from
   cut 1892: **2588 (51.76 s)**, server-checked (TasReplay finish tick 2656; TasServer).
+- Full post-pickup plan (chain1: xplan on 2590 from rt 1007 to 2575, stage 35, look 35, K 6, rf variants, cores 2,
+  ~4.5 h): stage leads +0.1..+6.4 (left U-turn and shaft), +1..+4 through the channel, ranked +1.15 at rt 2585; its
+  line finishes at 2589 (x_ds gate=finish). Against 2588 it is +1.0 on the line (0 px) at 1360-1455, +4..+6 in the
+  left U-turn (1493-1558, 0-6 px), +12 at 1576 (off the line: no shaft stack), +1.4..+3.0 at 1614-1799, and back to
+  -1 after the rt-1800 U-turn. xsweep's automatic graft only tried its two latest cuts (1802 / 1812: no finish);
+  multigraft.py (scratch: every on-line cut with lead >= 1, largest D first) found x_graft D=4 from cut 1503:
+  **2584 (51.68 s)**, server-checked (TasReplay finish tick 2652; TasServer). Lesson: try grafts at every on-line
+  cut of a long plan, not only the latest ones.
