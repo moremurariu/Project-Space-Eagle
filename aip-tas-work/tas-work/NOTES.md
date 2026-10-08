@@ -1314,3 +1314,10 @@ dir, jump, cursor aim, shots with aim, certainties; best effort, not exact) and 
   multigraft.py (scratch: every on-line cut with lead >= 1, largest D first) found x_graft D=4 from cut 1503:
   **2584 (51.68 s)**, server-checked (TasReplay finish tick 2652; TasServer). Lesson: try grafts at every on-line
   cut of a long plan, not only the latest ones.
+- Two more full plans on 2584 from rt 1007 (chain2: rf2 variants, seedadd 500; chain3: rf_hr, seedadd 700): leads
+  +0.2..+3.5 through rt 1532 (chain2) / +1.8 at 1392 (chain3), then both collapse (chain3 -5.5 at the left U-turn
+  1462, chain2 -2.7 at the shaft 1602 and -8.5 at the rt-1800 U-turn); stopped at stages 28 / 24. The full plans
+  keep losing at the same three places (left U-turn, shaft, rt-1800 U-turn); their value is the stretches before.
+  multigraft of chain2's stage-14 line (s14_k1_v1, +1.5..+3.3 on 2584's line at 1382-1534) onto 2584: x_graft D=1
+  from cut 1395: **2583 (51.66 s)**, server-checked (TasReplay finish tick 2651; TasServer). 56 other cuts / D: no
+  finish.
