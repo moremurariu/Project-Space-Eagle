@@ -1342,3 +1342,27 @@ dir, jump, cursor aim, shots with aim, certainties; best effort, not exact) and 
 - Cycle 3 rf (seed0 4000) on 2575: no gain in 5 sections. autosweep restarted with vsets rf2,rf only (rf_hr gave
   nothing in its last pass; rf2 and rf gave all six recent gains). rf2 (seed0 6000): 1007-1450 6 ahead -> x_graft
   D=1 from cut 1466: **2574 (51.48 s)**, server-checked (TasReplay finish tick 2642; TasServer).
+
+## Search anatomy and Teero's kicks (Oct 8)
+- Beam visualization ("Beam at U-turn 1" artifact; x_ds beamdump=FILE, analysis/beamviz_prep.py): free search
+  (no incumbent) tries 50-130k moves per tick, keeps 3000, reaches the rt-1200 gate 19.9 ticks late; the tracking
+  variant ties the incumbent.
+- x_ds candidate kinds (new CAT counters; U-turn 1 window): hook presses on the 32-angle grid are 54-69% of all tries
+  but 29-41% of kept states; "let go while the hook is still flying" (= never pressing) is 6% of the free search's
+  kept beam; 2/3 of point-blank tries do not explode in the step. In 2574 after the pickup 81 of 405 hook presses
+  never grab (68 would grab if held: press-then-release ties; 13 never grab: the old reach check allows 380 + 3|v|).
+- nofly=1 (no release of a flying hook) and hookaim=2 (aims from a simulated hook flight, one per pull bin) on 10
+  windows (5 cuts x 2 tracking variants): results within noise; nofly does not reduce tries (+20-50%: the beam
+  keeps more non-hooking states); hookaim=2 with 16-24 deg bins tries about as many moves as the grid.
+- Fake window gains: 1440->1510 reached 1508.5 / 1508.8 (16-deg bins / kickmin 11.9) but every continuation dies
+  6-7 ticks after the gate (the window's survival check only looks 12-16 ticks ahead).
+- Teero's explosions measured from his video (scratch expl/scan.py: orange sprite blobs, distance to the screen
+  centre = to him, 1.75 px per unit): 49 post-grenade kicks, 44 within 48 units (full strength), median 35 units,
+  average strength 11.72; ours (2574): 54 kicks, 25 full, median 49, average 11.15. But his push is along his motion
+  far less (median cos 0.46, 25 kicks < 0.5) than ours (0.76, 8 < 0.5): he turns with full-strength kicks, we turn
+  with hooks and the direction key (each ~-9k energy).
+- Wall proximity: both lines are within 48 units of a solid tile ~22% of the ticks; both fit ~50 full-strength kicks
+  25 ticks apart (ours 52, his 49). The line has the room; our shot timing does not use it (shots chained every ~25
+  ticks at whatever wall is behind, e.g. rt 1337 / 1359 / 1384 at 57 / 62 / 71 units).
+- kickmin=11.9 (full-strength kicks only) on the 10 short windows: ties, final maze ~1 worse; brakew 1.0: no gain.
+  Now in a long-section autosweep (dschain_variants_rf_k12 / rf2_k12) on 2574.
