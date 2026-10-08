@@ -374,6 +374,7 @@ struct SState
 	float m_Brake = 0; // speed lost to hook pull / direction braking along the lineage (px/t)
 	float m_TK = 0; // Teero's track tick at this position (hookref)
 	float m_HDis = 0; // ticks of hook disagreement with Teero along the lineage
+	uint8_t m_Cat = 0; // kind of the move that made this state (catstats)
 };
 
 struct SRetroShot
@@ -407,9 +408,21 @@ static vec2 gs_RootPos;
 static int gs_RootRt = 0;
 static int gs_IncStart = 0; // incumbent start tick: its input index for the step from race tick R is R + gs_IncStart
 
+// candidate kinds (catstats): how many are tried, survive the step, and end up in the kept beam
+enum
+{
+	CAT_INC = 0, CAT_SHADOW, CAT_NOHOOK, CAT_HOLD_FLY, CAT_HOLD_GRAB, CAT_REL_FLY, CAT_REL_GRAB, CAT_PRESS, CAT_PRESS_ROT,
+	CAT_PB, CAT_RETRO, CAT_STACK, NUM_CAT
+};
+static const char *gs_apCatName[NUM_CAT] = {"incumbent", "shadow", "no hook", "hold (flying)", "hold (grabbed)",
+	"release (flying)", "release (grabbed)", "press (32 grid)", "press (rot/far)", "point-blank", "retro kick", "stacked kick"};
+static std::atomic<long> gs_aCatTry[NUM_CAT], gs_aCatValid[NUM_CAT], gs_aCatKept[NUM_CAT];
+static thread_local int gs_Cat = 0;
+
 struct SCand
 {
 	int m_Parent;
+	uint8_t m_Cat = 0;
 	STasInput m_In;
 	int m_NR = 0;
 	SRetroShot m_aR[2];
@@ -1834,6 +1847,7 @@ int main(int argc, const char **argv)
 						return;
 					if((In.m_Fire || pR1) && G.RaceTick() + 1 >= gs_P.m_NoKick0 && G.RaceTick() + 1 <= gs_P.m_NoKick1 && !IsInc)
 						return;
+					gs_aCatTry[gs_Cat]++;
 					Tmp = S;
 					if(pR1)
 						ApplyRetro(Tmp, *pR1);
@@ -1869,8 +1883,10 @@ int main(int argc, const char **argv)
 						gs_NFireEmit++;
 					if(ImmFire && pR1)
 						gs_NStackEmit++;
+					gs_aCatValid[gs_Cat]++;
 					SCand C;
 					C.m_Parent = i;
+					C.m_Cat = (uint8_t)gs_Cat;
 					C.m_In = In;
 					C.m_NR = 0;
 					if(pR1)
@@ -1943,8 +1959,10 @@ int main(int argc, const char **argv)
 				};
 				// incumbent continuation
 				bool IncHere = gs_P.m_IncForce >= 0 && S.m_Inc && IncBase + Step < vForced.size();
+				gs_Cat = CAT_INC;
 				if(IncHere)
 					Emit(vForced[IncBase + Step], nullptr, nullptr, false, true);
+				gs_Cat = CAT_SHADOW;
 				// shadow: the incumbent's own inputs where it was at this progress (time-shifted imitation)
 				if(gs_P.m_Shadow > 0)
 				{
@@ -1991,15 +2009,19 @@ int main(int argc, const char **argv)
 						In.m_Dir = Dir;
 						In.m_Jump = Jump;
 						In.m_Hook = Hooking;
+						const bool Fly = G.m_Core.m_HookState == HOOK_FLYING;
+						gs_Cat = !Hooking ? CAT_NOHOOK : Fly ? CAT_HOLD_FLY : CAT_HOLD_GRAB;
 						Emit(In, nullptr, nullptr, false, false);
 						if(Hooking)
 						{
 							STasInput R = In;
 							R.m_Hook = 0;
+							gs_Cat = Fly ? CAT_REL_FLY : CAT_REL_GRAB;
 							Emit(R, nullptr, nullptr, false, false);
 						}
 						else
 						{
+							gs_Cat = CAT_PRESS;
 							for(auto [TX, TY] : vHook)
 							{
 								STasInput H = In;
@@ -2015,6 +2037,7 @@ int main(int argc, const char **argv)
 									RotAims(G, Dir, Jump, vRot);
 								if(!vFarR.empty())
 									RotFarAims(G, Dir, vFarR, vRot);
+								gs_Cat = CAT_PRESS_ROT;
 								for(auto [TX, TY] : vRot)
 								{
 									STasInput H = In;
@@ -2034,6 +2057,7 @@ int main(int argc, const char **argv)
 				{
 					FireAims(G, RouteDir, vFire);
 					gs_NFireTry += (long)vFire.size();
+					gs_Cat = CAT_PB;
 					for(auto [TX, TY] : vFire)
 						for(int Dir = -1; Dir <= 1; Dir++)
 							for(int Hk = 0; Hk <= (Hooking ? 1 : 0); Hk++)
@@ -2066,6 +2090,7 @@ int main(int argc, const char **argv)
 							}
 					}
 					// lob + point-blank double kicks: an old retro shot (25+ ticks, reload back) with a shot now
+					gs_Cat = CAT_STACK;
 					if(CanPB)
 						for(auto &R : vR)
 							if(G.m_Tick - R.m_Tau >= 25)
@@ -2085,6 +2110,7 @@ int main(int argc, const char **argv)
 					for(int r = 0; r < (int)vR.size() && Used < gs_P.m_Retro; r++)
 					{
 						Used++;
+						gs_Cat = CAT_RETRO;
 						for(int Dir = -1; Dir <= 1; Dir++)
 							for(int Hk = 0; Hk <= (Hooking ? 1 : 0); Hk++)
 							{
@@ -2095,6 +2121,7 @@ int main(int argc, const char **argv)
 								Emit(In, &vR[r], nullptr, false, false);
 							}
 						// stacked: a second retro shot from another slot for the same step
+						gs_Cat = CAT_STACK;
 						if(gs_P.m_Retro2 > 0 && r < gs_P.m_Retro2)
 						{
 							SState T2 = S;
@@ -2386,6 +2413,7 @@ int main(int argc, const char **argv)
 					if(S.m_G.m_ReloadTimer > Rl0)
 						AddFire(S, Tk); // a real shot (incumbent pre-fires included)
 					S.m_Prev = c.m_In;
+					S.m_Cat = c.m_Cat;
 					S.m_Inc = c.m_Inc;
 					S.m_Node = j;
 					S.m_G0 = c.m_G;
@@ -2470,6 +2498,8 @@ int main(int argc, const char **argv)
 		}
 		gs_vHist.push_back(std::move(vNodes));
 		vBeam = std::move(vNew);
+		for(const SState &K : vBeam)
+			gs_aCatKept[K.m_Cat]++;
 		if(pDump)
 		{
 			// step header: step, race tick, candidates generated, selected, kept; then one line per kept state:
@@ -2604,6 +2634,19 @@ int main(int argc, const char **argv)
 	}
 	WriteInputs(gs_P.m_Out.c_str(), vFull);
 	std::printf("stacks: tried %ld emitted %ld | retro found %ld emitted %ld | canpb %ld with pb aims %ld with old retro %ld\n", gs_NStackTry.load(), gs_NStackEmit.load(), gs_NRetroFound.load(), gs_NRetroEmit.load(), gs_NCanPB.load(), gs_NPBAims.load(), gs_NOldR.load());
+	{
+		long Tt = 0, Tk = 0;
+		for(int k = 0; k < NUM_CAT; k++)
+		{
+			Tt += gs_aCatTry[k];
+			Tk += gs_aCatKept[k];
+		}
+		std::printf("CATS kind: tried / valid (not dead) / kept in the beam\n");
+		for(int k = 0; k < NUM_CAT; k++)
+			if(gs_aCatTry[k])
+				std::printf("CAT %-18s %10ld %10ld %8ld  (%.1f%% of tries, %.1f%% of kept)\n", gs_apCatName[k], gs_aCatTry[k].load(),
+					gs_aCatValid[k].load(), gs_aCatKept[k].load(), 100.0 * gs_aCatTry[k] / std::max(1L, Tt), 100.0 * gs_aCatKept[k] / std::max(1L, Tk));
+	}
 	std::printf("GATE t %.3f (incumbent %.3f) E %.0f retro patches %zu -> %s (%.0fs)\n", gs_vHist.empty() ? 0.0f : Best.m_T + (GateG >= 0 ? gs_P.m_EGain * (Best.m_E - gs_Line.EnergyAt(GateG)) : 0.0f),
 		GateG >= 0 ? GateG : (float)IncFinish, Best.m_E, vPatches.size(), gs_P.m_Out.c_str(),
 		std::chrono::duration<double>(std::chrono::steady_clock::now() - t0).count());
