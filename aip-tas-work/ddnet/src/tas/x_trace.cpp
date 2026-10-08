@@ -56,7 +56,15 @@ int main(int argc, const char **argv)
 	G.Spawn(CTasGame::Map().m_vSpawns[0]);
 	size_t i = 0;
 	for(; i < vIn.size() && !G.HasGrenade(); i++)
+	{
 		G.Step(vIn[i]);
+		if(std::getenv("XT_PRE"))
+		{
+			vec2 P0 = G.Pos(), V0 = G.Vel();
+			std::printf("P %d %d %.2f %.2f %.3f %.3f %.3f hs %d hp %.0f %.0f in %d %d %d %d %d %d j %d gr %d\n", (int)i, (int)i - 68, P0.x, P0.y, V0.x, V0.y, length(V0),
+				G.HookState(), G.HookPos().x, G.HookPos().y, vIn[i].m_Dir, vIn[i].m_Jump, vIn[i].m_Hook, vIn[i].m_Fire, vIn[i].m_TX, vIn[i].m_TY, G.Jumped(), (int)G.Grounded());
+		}
+	}
 	CFastG F;
 	F.FromGame(G);
 	std::vector<SExplLog> vLog;

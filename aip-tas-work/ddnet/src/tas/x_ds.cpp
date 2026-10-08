@@ -121,6 +121,7 @@ struct SPar
 	int m_ShH = 0, m_ShOff = 2; // shadow rollouts (lookahead by following the incumbent's inputs)
 	int m_ShMix = 1; // 1: best of shadow and the cheap policies
 	float m_LatPen = 0, m_LatDz = 32;
+	float m_SinkCap = -1, m_SinkW = 1.0f, m_SinkAb = 2.0f, m_SinkLook = 1500; // brake-feasibility guard at the incumbent's speed minima
 	float m_EGain = 0.004f;
 	int m_GateSurv = 30;
 	int m_CommitK = -1;
@@ -309,6 +310,39 @@ struct SRefLine
 		return m_vE[i];
 	}
 	std::vector<float> m_vSinks; // incumbent race ticks of its speed minima (U-turn exits)
+	std::vector<float> m_vS; // cumulative path length per index
+	void BuildArc()
+	{
+		m_vS.assign(m_vP.size(), 0.0f);
+		for(size_t i = 1; i < m_vP.size(); i++)
+			m_vS[i] = m_vS[i - 1] + distance(m_vP[i], m_vP[i - 1]);
+	}
+	float ArcAt(float K) const
+	{
+		float t = std::clamp(K - m_Rt0, 0.0f, (float)m_vS.size() - 1.001f);
+		int i = (int)t;
+		return m_vS[i] + (m_vS[i + 1] - m_vS[i]) * (t - i);
+	}
+	// brake feasibility: px/t by which speed V at progress K stays above Cap x the speed at the next sinks after
+	// braking at Ab px/t^2 over the path length to them
+	float SinkExcess(float K, float V, float Cap, float Ab, float Look) const
+	{
+		if(m_vS.empty())
+			return 0;
+		float S0 = ArcAt(K), Ex = 0;
+		for(float Sk : m_vSinks)
+		{
+			if(Sk <= K)
+				continue;
+			float d = ArcAt(Sk) - S0;
+			if(d > Look)
+				break;
+			float vs = length(m_vV[std::clamp((int)std::lround(Sk - m_Rt0), 0, (int)m_vV.size() - 1)]);
+			float vb = std::sqrt(std::max(0.0f, V * V - 2 * Ab * d));
+			Ex = std::max(Ex, vb - Cap * vs);
+		}
+		return Ex;
+	}
 	// energy weight: energy just before a sink gets braked away; 1 far from it, down to m_SinkMin at the sink
 	float m_SinkH = 0, m_SinkMin = 0.25f;
 	float EWeight(float K) const
@@ -1187,6 +1221,8 @@ static void Score(const CFastG &G, SCand &C, const SState &Par)
 	C.m_Opt = 0;
 	C.m_TCost = Par.m_TCost;
 	C.m_Lag += gs_P.m_BrakeW * C.m_Brake + gs_P.m_HRefW * C.m_HDis;
+	if(gs_P.m_SinkCap > 0)
+		C.m_Lag += gs_P.m_SinkW * gs_Line.SinkExcess(C.m_G, length(G.m_Core.m_Vel), gs_P.m_SinkCap, gs_P.m_SinkAb, gs_P.m_SinkLook);
 	if(gs_P.m_TTrack > 0)
 	{
 		// time-indexed: distance to the reference's position at the same (offset) race tick
@@ -1480,6 +1516,10 @@ int main(int argc, const char **argv)
 		else if(K == "tshift") gs_P.m_TShift = std::stoi(V);
 		else if(K == "tsmooth") gs_P.m_TSmooth = std::stoi(V);
 		else if(K == "sinkh") gs_Line.m_SinkH = std::stof(V);
+		else if(K == "sinkcap") gs_P.m_SinkCap = std::stof(V);
+		else if(K == "sinkw") gs_P.m_SinkW = std::stof(V);
+		else if(K == "sinkab") gs_P.m_SinkAb = std::stof(V);
+		else if(K == "sinklook") gs_P.m_SinkLook = std::stof(V);
 		else if(K == "boost") gs_P.m_Boost = std::stof(V);
 		else if(K == "sinkmin") gs_Line.m_SinkMin = std::stof(V);
 		else if(K == "nofire") std::sscanf(V.c_str(), "%d,%d", &gs_P.m_NoFire0, &gs_P.m_NoFire1);
@@ -1628,6 +1668,14 @@ int main(int argc, const char **argv)
 			gs_TRef = true;
 		}
 		gs_Line.FindSinks();
+		gs_Line.BuildArc();
+		if(gs_P.m_SinkCap > 0)
+		{
+			std::printf("sinks:");
+			for(float Sk : gs_Line.m_vSinks)
+				std::printf(" %.0f(%.1f)", Sk, length(gs_Line.m_vV[std::clamp((int)std::lround(Sk - gs_Line.m_Rt0), 0, (int)gs_Line.m_vV.size() - 1)]));
+			std::printf("\n");
+		}
 		gs_Ref.m_vEnv.resize(gs_Ref.m_vG.size());
 		float m = 1e9f;
 		for(size_t k = 0; k < gs_Ref.m_vG.size(); k++)
