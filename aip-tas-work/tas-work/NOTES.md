@@ -1478,3 +1478,4 @@ lead.py), `x_tfield` (new), x_ds `tfield=` / `tfmode=` / `nokickall=` (new).
 - Same round: shaft-top window (x_opt 1550-1650, stage 2 to 1760: 1755.58) -> graft D=3 at 1739: **2563 (51.26 s)**, server-checked.
 - Same round: 1800 U-turn window (x_opt 1720-1840, stage 2 to 1960: 1957.92) -> graft D=1 at 1914: **2562 (51.24 s)**, server-checked.
 - optsweep round 4 on 2562 (runs/os5, kv 0.4): left U-turn window (x_opt 1330-1450, stage 2 to 1540: 1535.10) -> graft D=3 at 1477: **2559 (51.18 s)**, server-checked.
+- Same round: shaft exit / channel window (x_opt 1600-1700, stage 2 to 1800: 1795.40) -> graft D=2 at 1746: **2557 (51.14 s)**, server-checked.
