@@ -1325,3 +1325,8 @@ dir, jump, cursor aim, shots with aim, certainties; best effort, not exact) and 
   -3.3 at the rt-1800 U-turn and -5..-7 after (stopped); chain5 from rt 1830 (rf2, seedadd 1100) +0..+2.1 all the way,
   ranked +1.2 at rt 2578 (a steady 1-tick lead from rt 2220 on, 0-2 px on 2583's line). multigraft of chain5's best
   line: x_graft D=1 from cut 2573: **2582 (51.64 s)**, server-checked (TasReplay finish tick 2650; TasServer).
+- xsweep allcuts=1 (new: grafts at every on-line cut, spacing 4, largest D first, batches of cores/2, stops at the
+  first batch that beats the run; a plan that ends behind still offers its top 3 arrivals) + autosweep with long
+  sections (1007:1450, 1270:1800, 1640:1830, 1830:2200, 2100:2575; vsets/xs passthrough), on 2582: section
+  1007-1450 (rf, seed0 3000, 23 min) -> x_graft D=1 from cut 1423: **2581 (51.62 s)**, server-checked (TasReplay
+  finish tick 2649; TasServer).
