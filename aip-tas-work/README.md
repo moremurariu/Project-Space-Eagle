@@ -13,13 +13,13 @@ Make a tool-assisted run of the KoG version of **AiP-Gores** that beats Teero's 
   (https://www.youtube.com/watch?v=eHJJNU-hQoU): direction keys, jump, aim, fire per 60-fps frame, no hook.
 
 ## Status (Oct 7)
-- **Best full run: 2570 race ticks (51.40 s)**, `tas-work/kog_full_best.txt` (= `kog_full_2570.txt`), server-checked
-  (TasReplay: start tick 68, finish tick 2638, no freeze; TasServer: no death, no freeze, no double start). Grenade
+- **Best full run: 2563 race ticks (51.26 s)**, `tas-work/kog_full_best.txt` (= `kog_full_2563.txt`), server-checked
+  (TasReplay: start tick 68, finish tick 2631, no freeze; TasServer: no death, no freeze, no double start). Grenade
   pickup at race tick 966. 36 ticks on 2606 from the section planner (`tas-work/plan/xplan.py`, overlapping stages)
   + `x_graft`, automated by `tas-work/plan/xsweep.py`: right U-turn 1 (2605), the final maze (2604), U-turn 1 again
   (2603, 2602), the final maze again (2600), 1825-2000 with the low-loss hook aims and braking cost in `x_ds`
   (`rotfar=1 brakew=0.3`, 2599), right after the pickup's double kick (2598, 2597), U-turn 1 (2596) and 1270-1445
-  (2592, a D=4 graft through the left U-turn) 2000-2175 (2591, autosweep.py), 2350-2525 (2590) and 1700-1875 (2589, with the Teero hook prior; 2588, seeds 31-34), all with those options; then the full post-pickup plan (xplan from rt 1007 to 2575) grafted through the left U-turn (2584), a second full plan grafted before it (2583) a plan from rt 1830 grafted in the final maze (2582), then autosweep with long sections and `xsweep allcuts=1` (2581, 1007-1450; 2580, 1640-1830; 2579, 2100-2575; 2576, 1640-1830 again, a D=3 graft at rt 1860; 2575, 2100-2575; 2574, 1007-1450); then `x_opt` + `optsweep.py` (borrowed from the claude/sweet-maxwell-3t11yw branch: window plan optimizer, x_ds re-search through the next turn, graft) on the left U-turn (2570).
+  (2592, a D=4 graft through the left U-turn) 2000-2175 (2591, autosweep.py), 2350-2525 (2590) and 1700-1875 (2589, with the Teero hook prior; 2588, seeds 31-34), all with those options; then the full post-pickup plan (xplan from rt 1007 to 2575) grafted through the left U-turn (2584), a second full plan grafted before it (2583) a plan from rt 1830 grafted in the final maze (2582), then autosweep with long sections and `xsweep allcuts=1` (2581, 1007-1450; 2580, 1640-1830; 2579, 2100-2575; 2576, 1640-1830 again, a D=3 graft at rt 1860; 2575, 2100-2575; 2574, 1007-1450); then `x_opt` + `optsweep.py` (borrowed from the claude/sweet-maxwell-3t11yw branch: window plan optimizer, x_ds re-search through the next turn, graft) on the left U-turn (2570); combined with the claude/sweet-maxwell-3t11yw branch's 2567 (`kog_full_2567_maxwell.txt`: its U-turn 1 rebuilt with Teero's shot plan, shaft top, S-bend, corner and final-maze gains) by two grafts: its run to rt 1400, our left U-turn to rt 1584, its run after that (2563).
   See NOTES "Section planner v2", "Braking cost and far low-loss hooks", "Teero's hooks from his video".
 - 2606 (52.12 s): first full run with **Teero's shaft double kick** (see "The shaft double kick" below).
 - 2607 (52.14 s): faraday's 962 pre-grenade dive grafted onto the 2613 run -> 2608 (below), then 20 minutes of
@@ -27,7 +27,7 @@ Make a tool-assisted run of the KoG version of **AiP-Gores** that beats Teero's 
 - Previous best: 2613 (52.26 s, cray), pickup at 971.
 - **Best pre-grenade run: pickup at race tick 962** (a dive, searched for the earliest pickup only),
   `pre_grenade_kog/kog_pregren_best.txt`, server-checked.
-- Teero: pickup ~980, finish 2536. We are 34 ticks behind overall: ~16 ahead at the pickup, ~50 behind after it.
+- Teero: pickup ~980, finish 2536. We are 27 ticks behind overall: ~16 ahead at the pickup, ~43 behind after it.
 
 ### The 962 graft (2613 -> 2608)
 The 962 dive follows the same line as the 968 dive the 2613 run was built on, ~5.6-5.9 ticks earlier (measured along

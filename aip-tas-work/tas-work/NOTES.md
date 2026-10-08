@@ -1375,3 +1375,11 @@ dir, jump, cursor aim, shots with aim, certainties; best effort, not exact) and 
   U-turn 1 1083-1200 +0.2 (stage 2 1319.93 vs 1320, no graft); left U-turn 1330-1460: x_opt +1.14 and |v| 31.4 vs
   28.1, stage 2 1450 -> 1540 1533.99 (6 ahead) -> graft D=4 at 1498: **2570 (51.40 s)**, server-checked (TasReplay
   finish tick 2638; TasServer).
+- Copied the rest of claude/sweet-maxwell-3t11yw's tools (its x_ds changes merged 3-way with ours: tfield / tfmode /
+  nokickall / shnofire; x_tfield, x_sem, plan/structsweep.py, sp/, dschain_variants_tf.txt) and, with the user's
+  go-ahead, its best run 2567 (kog_full_2567_maxwell.txt). 2570 vs 2567 by place: theirs 4 ahead from U-turn 1 (1160)
+  to 1440, ours wins it back in the left U-turn (level at 1500-1600), theirs ahead again at the shaft top (~1.8),
+  S-bend / corner (2-3) and final maze. Combination by two grafts (plan/multigraft.py): their 2567 onto our 2570 with
+  D=4 at cut 1400 (their U-turn 1 + our left U-turn + our rest: 2566), then that onto their 2567 with D=4 at cut 1584
+  (it is 4.0 ahead of 2567 on its line, 0 px, at 1524-1576): **2563 (51.26 s)**, server-checked (TasReplay finish
+  tick 2631; TasServer).

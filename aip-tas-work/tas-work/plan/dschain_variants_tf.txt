@@ -1,0 +1,5 @@
+# (seeds 41-44) incumbent-tracking variants ranked by the velocity-aware time-to-go field (x_tfield, runs/tf/f0.bin) instead of the energy-credit hedge
+seed=41 lam=0 tfield=runs/tf/f0.bin kickmin=10 cellpos=16 cellvel=2 shadow=2 surv=12 trackfrac=0.3 shh=40 rollpre=4 shmode=1 kcred=0.5 kready=3 retro=4 egain=0.004 rotfar=1 brakew=0.3
+seed=42 lam=0 tfield=runs/tf/f0.bin kickmin=0 cellpos=12 cellvel=1.5 jitter=0.3 shadow=3 surv=8 trackfrac=0.15 shh=30 rollpre=4 shmode=2 kcred=0 kready=6 retro=3 egain=0.004 rotfar=1 brakew=0.3
+seed=43 lam=0 tfield=runs/tf/f0.bin kickmin=11 cellpos=16 cellvel=2 shadow=2 surv=8 credw=0.3 trackfrac=0.45 shh=60 rollpre=4 shmode=1 kcred=1 kready=0 sinkh=40 retro=4 egain=0.004 rotfar=1 brakew=0.3
+seed=44 lam=0 tfield=runs/tf/f0.bin kickmin=10 cellpos=20 cellvel=2.5 jitter=0.3 shadow=2 surv=12 trackfrac=0.3 shh=40 rollpre=4 shmode=2 kcred=0.5 kready=3 retro=3 egain=0.004 rotfar=1 brakew=0.3

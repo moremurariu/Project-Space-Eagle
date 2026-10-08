@@ -32,6 +32,7 @@
 #undef protected
 #include "fastg.h"
 #include "sim.h"
+#include "tfield.h"
 #include <game/collision.h>
 #include <game/mapitems.h>
 
@@ -135,6 +136,8 @@ struct SPar
 	int m_TShift = 3, m_TSmooth = 2;
 	float m_Boost = 0; // diagnostics: add this many px/t along the root velocity (a hypothetical extra kick)
 	int m_NoFire0 = -1, m_NoFire1 = -1;
+	int m_NoKickAll = 0; // nokick applies to the incumbent's own lineage too
+	int m_ShNoFire = 0; // shadow inputs without their shots
 	int m_NoKick0 = -1, m_NoKick1 = -1; // no explosions at all in these race ticks (keeps the slots for later stacks) // no shots fired in these race ticks (shadow / point-blank); retro slots there stay usable
 	float m_TrackFrac = 0, m_TrackV = 3, m_TrackLag = 2;
 	int m_Shadow = 0; // add the incumbent's inputs at the matched progress point (this many, from the next one)
@@ -142,8 +145,16 @@ struct SPar
 	float m_RollPre = 3.0f, m_RollLam = 0.004f;
 	float m_QPos = 64, m_QVel = 8;
 	int m_CredH = 40;
+	std::string m_TField; // velocity-aware time-to-go field (x_tfield): rank by race tick + T instead of the lag
+	float m_TFW = 1.0f; // weight of the field's time-to-go (1 = ticks)
+	int m_TFMode = 1; // 1: rank by race tick + T; 2: lag + (T(pos, v) - T(pos, incumbent's v at the same progress))
+	float m_TFCap = 30; // mode 2: cap of the field term (ticks)
+	float m_TFMargin = 1; // mode 3: free margin before the trap penalty (ticks)
 };
 static SPar gs_P;
+static STField gs_TF;
+static bool gs_HaveTF = false;
+static float gs_TFBase = 0; // race tick + T of the root state (so the root's lag is 0)
 
 // ------------------------------------------------------------------------------------------------ geodesic field
 struct SGeo
@@ -1284,6 +1295,24 @@ static void Score(const CFastG &G, SCand &C, const SState &Par)
 	C.m_G0Rt = G.RaceTick();
 	float Rt = (float)G.RaceTick();
 	C.m_Lag = Rt - C.m_G + gs_P.m_LatPen * std::max(0.0f, Lat - gs_P.m_LatDz);
+	if(gs_HaveTF && gs_P.m_TFMode == 1)
+	{
+		float Tv = gs_TF.Value(G.m_Core.m_Pos, G.m_Core.m_Vel);
+		if(Tv >= STField::INF * 0.5f)
+			Tv = gs_TFBase - Rt + 60.0f; // outside the model (e.g. touching a block): rank 60 ticks behind the root
+		C.m_Lag = Rt + gs_P.m_TFW * Tv - gs_TFBase + gs_P.m_LatPen * std::max(0.0f, Lat - gs_P.m_LatDz);
+	}
+	else if(gs_HaveTF)
+	{
+		// hybrid: the lag behind the incumbent at the same progress, plus the field's value of this velocity against the
+		// incumbent's velocity there, both at this position (the model's absolute errors cancel)
+		float Ts = gs_TF.Value(G.m_Core.m_Pos, G.m_Core.m_Vel);
+		float Ti = gs_TF.Value(G.m_Core.m_Pos, gs_Line.VelAt(C.m_G));
+		float D = Ts < STField::INF * 0.5f && Ti < STField::INF * 0.5f ? Ts - Ti : (Ts >= STField::INF * 0.5f && Ti < STField::INF * 0.5f ? gs_P.m_TFCap : 0.0f);
+		if(gs_P.m_TFMode == 3) // trap penalty only: a velocity the model rates worse than the incumbent's here
+			D = std::max(0.0f, D - gs_P.m_TFMargin);
+		C.m_Lag += gs_P.m_TFW * std::clamp(D, -gs_P.m_TFCap, gs_P.m_TFCap);
+	}
 	C.m_E = Energy(G);
 	C.m_Opt = 0;
 	C.m_TCost = Par.m_TCost;
@@ -1590,6 +1619,8 @@ int main(int argc, const char **argv)
 		else if(K == "sinkmin") gs_Line.m_SinkMin = std::stof(V);
 		else if(K == "nofire") std::sscanf(V.c_str(), "%d,%d", &gs_P.m_NoFire0, &gs_P.m_NoFire1);
 		else if(K == "nokick") std::sscanf(V.c_str(), "%d,%d", &gs_P.m_NoKick0, &gs_P.m_NoKick1);
+		else if(K == "nokickall") gs_P.m_NoKickAll = std::stoi(V);
+		else if(K == "shnofire") gs_P.m_ShNoFire = std::stoi(V);
 		else if(K == "trackfrac") gs_P.m_TrackFrac = std::stof(V);
 		else if(K == "trackv") gs_P.m_TrackV = std::stof(V);
 		else if(K == "tracklag") gs_P.m_TrackLag = std::stof(V);
@@ -1601,6 +1632,11 @@ int main(int argc, const char **argv)
 		else if(K == "qvel") gs_P.m_QVel = std::stof(V);
 		else if(K == "credh") gs_P.m_CredH = std::stoi(V);
 		else if(K == "over") gs_P.m_Over = std::stof(V);
+		else if(K == "tfield") gs_P.m_TField = V;
+		else if(K == "tfw") gs_P.m_TFW = std::stof(V);
+		else if(K == "tfmode") gs_P.m_TFMode = std::stoi(V);
+		else if(K == "tfcap") gs_P.m_TFCap = std::stof(V);
+		else if(K == "tfmargin") gs_P.m_TFMargin = std::stof(V);
 		else if(K == "lam")
 		{
 			gs_P.m_vLam.clear();
@@ -1792,6 +1828,18 @@ int main(int argc, const char **argv)
 	if(gs_P.m_TOff < -1e8f)
 		gs_P.m_TOff = std::round(Root.m_G.RaceTick() - Root.m_G0);
 	std::printf("root progress %.1f (incumbent path %.1f), time offset vs reference %.0f\n", Root.m_G0, Root.m_KInc, gs_P.m_TOff);
+	if(!gs_P.m_TField.empty())
+	{
+		if(!gs_TF.Load(gs_P.m_TField.c_str()))
+		{
+			std::printf("cannot read %s\n", gs_P.m_TField.c_str());
+			return 1;
+		}
+		gs_HaveTF = true;
+		float Tv = gs_TF.Value(Root.m_G.m_Core.m_Pos, Root.m_G.m_Core.m_Vel);
+		gs_TFBase = Root.m_G.RaceTick() + gs_P.m_TFW * (Tv < STField::INF * 0.5f ? Tv : 0.0f);
+		std::printf("tfield %s: root T %.1f (race tick + T = %.1f)\n", gs_P.m_TField.c_str(), Tv, gs_TFBase);
+	}
 	if(!gs_P.m_HookRef.empty())
 	{
 		if(!LoadTrackLine(gs_P.m_HTrack.c_str(), 0, 1, gs_TL))
@@ -1935,7 +1983,7 @@ int main(int argc, const char **argv)
 				auto Emit = [&](const STasInput &In, const SRetroShot *pR1, const SRetroShot *pR2, bool ImmFire, bool IsInc) {
 					if(In.m_Fire && G.RaceTick() + 1 >= gs_P.m_NoFire0 && G.RaceTick() + 1 <= gs_P.m_NoFire1 && !IsInc)
 						return;
-					if((In.m_Fire || pR1) && G.RaceTick() + 1 >= gs_P.m_NoKick0 && G.RaceTick() + 1 <= gs_P.m_NoKick1 && !IsInc)
+					if((In.m_Fire || pR1) && G.RaceTick() + 1 >= gs_P.m_NoKick0 && G.RaceTick() + 1 <= gs_P.m_NoKick1 && (!IsInc || gs_P.m_NoKickAll))
 						return;
 					gs_aCatTry[gs_Cat]++;
 					Tmp = S;
@@ -2069,6 +2117,8 @@ int main(int argc, const char **argv)
 						if(IncHere && gs_P.m_Anc.empty() && Idx == (long)(IncBase + Step))
 							continue; // that one is the forced child already
 						STasInput In = ShadowInput(Idx, G, Prev);
+						if(gs_P.m_ShNoFire)
+							In.m_Fire = 0; // phase-free shadow: the line's keys and hooks, kicks only from this search's own shots
 						Emit(In, nullptr, nullptr, false, false);
 					}
 				}
