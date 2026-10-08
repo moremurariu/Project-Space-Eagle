@@ -22,6 +22,7 @@
 //     hrefhard=0]: a state is matched to his track by position; hooking where he has no hook within hrefwin of his
 //     ticks, or not hooking where he hooks throughout, costs hrefw ticks per tick (lineage total; hrefhard=1 drops
 //     such children instead); where he hooks, aims at his anchor are added
+//   beamdump=FILE: every kept state of every step (node, parent, pos, vel, hook, lag, retro kicks) for visualizing
 //   rotfar=1: low-loss turning hooks at anchors up to the hook length (flight time included): per side the aim whose
 //     pull at the grab is the strongest turn that does not raise |v|, and the farthest anchor turning >= 80% of that
 #define private public
@@ -100,6 +101,7 @@ struct SPar
 	float m_BrakeW = 0; // ticks per px/t of speed lost to hook pull / direction braking (lineage total)
 	int m_RotFar = 0; // far low-loss turning hook aims
 	std::string m_HookRef, m_HTrack = "teero_track.txt";
+	std::string m_BeamDump; // beamdump=FILE: every kept state of every step (for visualizing the search)
 	float m_HRefW = 0.5f;
 	int m_HRefWin = 2, m_HRefHard = 0;
 	int m_IncForce = 1;
@@ -1426,6 +1428,7 @@ int main(int argc, const char **argv)
 		else if(K == "prefix") gs_P.m_Prefix = V;
 		else if(K == "anc") gs_P.m_Anc = V;
 		else if(K == "out") gs_P.m_Out = V;
+		else if(K == "beamdump") gs_P.m_BeamDump = V;
 		else if(K == "gate") gs_P.m_Gate = V;
 		else if(K == "cut") gs_P.m_Cut = std::stoi(V);
 		else if(K == "beam") gs_P.m_Beam = std::stoi(V);
@@ -1771,6 +1774,11 @@ int main(int argc, const char **argv)
 		int m_Cand = -1;
 	} Best;
 	int FirstGate = -1;
+	FILE *pDump = gs_P.m_BeamDump.empty() ? nullptr : std::fopen(gs_P.m_BeamDump.c_str(), "w");
+	if(pDump)
+		std::fprintf(pDump, "R %d %.0f %.0f %.3f %.3f\n", Root.m_G.RaceTick(), Root.m_G.m_Pos.x, Root.m_G.m_Pos.y,
+			Root.m_G.m_Core.m_Vel.x, Root.m_G.m_Core.m_Vel.y);
+	long DumpCand = 0;
 
 	for(int Step = 0; Step < gs_P.m_MaxSteps && !vBeam.empty(); Step++)
 	{
@@ -2119,6 +2127,7 @@ int main(int argc, const char **argv)
 		for(auto &v : vTC)
 			N += v.size();
 		vAll.reserve(N);
+		DumpCand = N;
 		for(auto &v : vTC)
 			for(auto &c : v)
 				vAll.push_back(c);
@@ -2461,6 +2470,20 @@ int main(int argc, const char **argv)
 		}
 		gs_vHist.push_back(std::move(vNodes));
 		vBeam = std::move(vNew);
+		if(pDump)
+		{
+			// step header: step, race tick, candidates generated, selected, kept; then one line per kept state:
+			// node, parent node (previous step), pos, vel, hook state, hook pos, lag (ticks behind the incumbent), retro kicks
+			std::fprintf(pDump, "S %d %d %ld %ld %zu\n", Step, vBeam.empty() ? -1 : vBeam[0].m_G.RaceTick(), DumpCand, gs_NSel,
+				vBeam.size());
+			for(const SState &S : vBeam)
+			{
+				const SNode &Nd = gs_vHist.back()[S.m_Node];
+				std::fprintf(pDump, "%d %d %.0f %.0f %.2f %.2f %d %.0f %.0f %.3f %d\n", S.m_Node, Nd.m_Parent, S.m_G.m_Pos.x,
+					S.m_G.m_Pos.y, S.m_G.m_Core.m_Vel.x, S.m_G.m_Core.m_Vel.y, S.m_G.m_Core.m_HookState, S.m_G.m_Core.m_HookPos.x,
+					S.m_G.m_Core.m_HookPos.y, S.m_Lag, (int)Nd.m_NPatch);
+			}
+		}
 		if(gs_P.m_Verbose && (Step % gs_P.m_Verbose == 0 || FirstGate == Step))
 		{
 			// best by lag (lam 0)
