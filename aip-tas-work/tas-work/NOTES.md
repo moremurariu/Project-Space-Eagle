@@ -1334,3 +1334,6 @@ dir, jump, cursor aim, shots with aim, certainties; best effort, not exact) and 
   1750: **2580 (51.60 s)**, server-checked (TasReplay finish tick 2648; TasServer).
 - Same pass: 1830-2200 3 ahead, no on-line cut; 2100-2575 6 ahead -> x_graft D=1 from cut 2570: **2579 (51.58 s)**,
   server-checked (TasReplay finish tick 2647; TasServer). Pass total (rf, seed0 3000, ~2 h): 2582 -> 2579.
+- autosweep pass rf_hr (seed0 3010) on 2579: no gain in 5 sections (1007-1450 / 1270-1800 / 1640-1830 3 ahead each, 0 of
+  87 grafts finished). Pass rf2 (seed0 3020): 1640-1830 6 ahead -> x_graft D=3 from cut 1860 (the plan's look-ahead
+  part, past the rt-1800 U-turn): **2576 (51.52 s)**, server-checked (TasReplay finish tick 2644; TasServer).
