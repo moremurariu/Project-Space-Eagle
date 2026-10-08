@@ -1378,3 +1378,27 @@ lead.py), `x_tfield` (new), x_ds `tfield=` / `tfmode=` / `nokickall=` (new).
   1420 it is 10-15 behind (7 lost in the dip at 1252-1290); with that slot kept free (nokick 1222-1245) it ties the
   incumbent at 1250 and ends 4.8 behind at 1420. Every local re-timing of the kick phase meets the next section's
   critical kick (the 25-tick reload couples all sections) - the same wall as the shaft double kick and the planner.
+- **Value of speed by place (x_ds boost=12 at a cut, rf tracking variant, gate ~150 ticks on):** at turn exits into a
+  straight +12 px/t saves 3.6 (U-turn 1, 1150), 3.7 (shaft top 1615), 4.4 (1812), 5.4 (S-bend 2003), 4.0 (corner 2116),
+  6.4 (hop 2308) ticks; on approaches it saves nothing (1114: -1.0, 1931: -0.4, 1782: 0) while taking 6 px/t away costs
+  1.5-4 (26 at 1782: crash); at the start of vertical sections it costs 12-33 (1418, 1582, 1999, 2449: the V-turn at
+  their end overshoots). Speed only pays where the next stretch can carry it: right after turns.
+- Teero vs 2580 by place: both fire at the same spots (his 53 fires map onto ours within +-3 ticks of position except
+  U-turn 1 and the top-left corner). At the same places in 1640-1790 his displacement is a steady 1-4 px/t higher
+  even where we fly hook-free; the offset is set at the shaft top (rt 1640: 40.6 vs 34.4): his top-turn shot is aimed
+  -138 deg (ours -113), he descends steeper (vy 33 vs 29 at 1638) and the same upward-aimed descent kick is better
+  aligned for him (ours cos 0.53). A grid of top-turn aims (-105..-150 deg x fire 1608-1610) + x_ds gives at best +0.47
+  at 1700; tracking his descent positions (tref + ttrack) reproduces the better kick (cos 0.76, |v| 41 at 1640) but our
+  search then cannot follow his channel line (-5.3 at 1700).
+- Top-left corner (rt ~2112): Teero fires his corner shot where we fire our approach shot (rt ~2097 positions) and
+  gets a descent kick right after the corner; he takes a line 60-80 px lower through the corner. Forced versions
+  (lobscan pre-fires 2096-2106 onto the corner ceiling + x_ds; nokick re-searches from 2062/2084; tref to his line)
+  end 3-19 behind at rt 2200: the descent kick gains ~3, the approach without our kick loses 5.5.
+- Searches with field ranking + survival check off (surv=0), finer hook / fire angles (128 / 256), shadow inputs for
+  the free search, the trap-penalty field mode: no gain. Free field search at U-turn 1: beam 3000 1252.4, 12000
+  1248.63, 48000 1248.28 (diminishing); past the dip (gate 1300) 1302.0.
+- **x_sem** (new): semantic replay of a run - its keys, hook presses re-aimed at the anchors its hook grabbed (rebuilt
+  on the original ray, the stored hook position is quantized) and shots re-aimed at its explosion points, optionally
+  time-shifted. Exact from the run's own state (2580 from cuts 1640 / 1900). From a perturbed state (+-1 px or
+  +-0.1 px/t at rt 1640) it dies 40-70 ticks later, raw replay 40-43: the run's freeze margins, not its aims, make it
+  knife-edge; a plan does not transfer without search.
