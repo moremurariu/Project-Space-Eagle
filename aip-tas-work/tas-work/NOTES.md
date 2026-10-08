@@ -1366,3 +1366,12 @@ dir, jump, cursor aim, shots with aim, certainties; best effort, not exact) and 
   ticks at whatever wall is behind, e.g. rt 1337 / 1359 / 1384 at 57 / 62 / 71 units).
 - kickmin=11.9 (full-strength kicks only) on the 10 short windows: ties, final maze ~1 worse; brakew 1.0: no gain.
   Now in a long-section autosweep (dschain_variants_rf_k12 / rf2_k12) on 2574.
+- Full-strength-only sweep (kickmin=11.9 variants, long sections, allcuts) on 2574: 1007-1450 / 1270-1800 / 1640-1830
+  3 ahead each, 0 of 46 grafts finished; stopped.
+- Borrowed from branch claude/sweet-maxwell-3t11yw (its notes: "Speed session", "Shot structure from Teero"): x_opt
+  (simulated annealing on a window's semantic plan: hook holds with anchors, shots with explosion points, keys; score
+  at the window end = lead + kv x speed), x_pfscan, tfield.h, plan/optsweep.py (x_opt window ending after a turn exit,
+  x_ds rf re-search through the next turn, multigraft, server check). optsweep on 2574 (4M iters, kv 0.3, seed 11):
+  U-turn 1 1083-1200 +0.2 (stage 2 1319.93 vs 1320, no graft); left U-turn 1330-1460: x_opt +1.14 and |v| 31.4 vs
+  28.1, stage 2 1450 -> 1540 1533.99 (6 ahead) -> graft D=4 at 1498: **2570 (51.40 s)**, server-checked (TasReplay
+  finish tick 2638; TasServer).
