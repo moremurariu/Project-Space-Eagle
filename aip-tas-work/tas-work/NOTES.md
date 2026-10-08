@@ -1391,3 +1391,8 @@ dir, jump, cursor aim, shots with aim, certainties; best effort, not exact) and 
   grafts: their 2562 onto ours D=1 at 1423 (2561), that onto theirs D=4 at 1580: **2558 (51.16 s)**, server-checked
   (TasReplay finish tick 2626; TasServer). Lesson: two parallel branches polishing different turns combine almost
   additively when both runs follow the same line between the turns.
+- optsweep round on 2558 (seed 41, the usual 11 windows): no gain; the top-left corner (x_opt +1.6, |v| +9) and the
+  final maze (+2.0) lose it in stage 2. Longer windows that run through the next turn (seed 51, 6M iters): corner
+  2030-2240 -16 in stage 2; maze 2380-2545 no change; channel 1640-1840 +0.03; S-bend 1900-2110: x_opt +0.94, stage
+  2 2100 -> 2230 2228.69 -> graft D=1 at 2123: **2557 (51.14 s)**, server-checked (TasReplay finish tick 2625;
+  TasServer).
