@@ -1321,3 +1321,7 @@ dir, jump, cursor aim, shots with aim, certainties; best effort, not exact) and 
   multigraft of chain2's stage-14 line (s14_k1_v1, +1.5..+3.3 on 2584's line at 1382-1534) onto 2584: x_graft D=1
   from cut 1395: **2583 (51.66 s)**, server-checked (TasReplay finish tick 2651; TasServer). 56 other cuts / D: no
   finish.
+- Plans on 2583 starting after the trouble spots: chain4 from rt 1640 (rf, seedadd 900) +0.3..+2.2 to 1780, then
+  -3.3 at the rt-1800 U-turn and -5..-7 after (stopped); chain5 from rt 1830 (rf2, seedadd 1100) +0..+2.1 all the way,
+  ranked +1.2 at rt 2578 (a steady 1-tick lead from rt 2220 on, 0-2 px on 2583's line). multigraft of chain5's best
+  line: x_graft D=1 from cut 2573: **2582 (51.64 s)**, server-checked (TasReplay finish tick 2650; TasServer).
