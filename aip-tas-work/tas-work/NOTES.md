@@ -1396,3 +1396,8 @@ dir, jump, cursor aim, shots with aim, certainties; best effort, not exact) and 
   2030-2240 -16 in stage 2; maze 2380-2545 no change; channel 1640-1840 +0.03; S-bend 1900-2110: x_opt +0.94, stage
   2 2100 -> 2230 2228.69 -> graft D=1 at 2123: **2557 (51.14 s)**, server-checked (TasReplay finish tick 2625;
   TasServer).
+- Long-window round, last window (U-turn 1 + dip 1083-1320): +0.0, no cut. sweet-maxwell 2556 (optloop.py: endless
+  optsweep rounds with windows placed on the run's turns; its own left U-turn -3, S-bend exit -1 at 2157). Ours 2557
+  vs theirs: +1 at 1490-1685 (our left U-turn is 1 better), -1 from 1745 (they gain 2 at 1700-1760). Our 2557 onto
+  their 2556 with D=1 at cut 1578: **2555 (51.10 s)**, server-checked (TasReplay finish tick 2623; TasServer).
+  plan/optloop.py copied (commits to the checked-out branch with this session's link).
