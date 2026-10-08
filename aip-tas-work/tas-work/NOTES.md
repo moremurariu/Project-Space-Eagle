@@ -1402,3 +1402,6 @@ dir, jump, cursor aim, shots with aim, certainties; best effort, not exact) and 
   their 2556 with D=1 at cut 1578: **2555 (51.10 s)**, server-checked (TasReplay finish tick 2623; TasServer).
   plan/optloop.py copied (commits to the checked-out branch with this session's link).
 - optloop round 0 (../../../../../tmp/claude-0/-home-user-Project-Space-Eagle/bf839c41-4cac-52da-8623-74ac5407b85c/scratchpad/oloop/r0): 2555 -> **2551 (51.02 s)**, server-checked (windows on the run's turns, kv 0.3).
+- 2551 checked on TasServer too. sweet-maxwell is at 2552 with gains in the same windows (left U-turn 1489, maze
+  entrance 2512, 2118-2238): our 2551 and their 2552 are the same line to rt 2170 (0 px, +0.0), ours 1 ahead from
+  2185 (our 2097-2224 window). Nothing to combine this time: the two loops converge on the same polish.
