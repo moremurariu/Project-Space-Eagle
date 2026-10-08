@@ -1332,3 +1332,49 @@ dir, jump, cursor aim, shots with aim, certainties; best effort, not exact) and 
   finish tick 2649; TasServer).
 - Same pass: 1270-1800 3 ahead, 0/12 grafts; 1640-1830 (9 min plan) 3 ahead, 48 graft jobs -> x_graft D=1 from cut
   1750: **2580 (51.60 s)**, server-checked (TasReplay finish tick 2648; TasServer).
+
+## Speed session (Oct 8): where the post-grenade speed goes, and a velocity-aware time-to-go field
+Goal of the session: < 2500 (50.00 s) from 2580, i.e. -81 ticks; the user's hint: no new tricks, the post-grenade
+part needs higher speeds and keeping them. Tools: `sp/` (analysis scripts: trk.py, prof.py, gap.py, bound.py,
+lead.py), `x_tfield` (new), x_ds `tfield=` / `tfmode=` / `nokickall=` (new).
+- teero_track.txt is not in git; rebuilt from teero/hooks/hooks_raw.csv (Teero's position per video frame, k 978-2538,
+  interpolated per label) - same registration as the old track, post-grenade only.
+- Speed budget of 2580 (rt 1000-2580, |v| changes): kicks +453 px/t (54 kicks, sum |f| cos = 418 of a possible
+  12 x 64 = 768), hooked ticks -365, everything else -85. On straights the 351 hooked ticks cost -130 (the 82 ticks
+  pulling 105-135 deg behind the velocity cost -104 for 336 deg of turning; the 200 ticks at 90-105 deg only -27 for
+  693 deg). eaudit: direction braking -9,155 (v^2/2), as large as the hook's -8,713, almost all in the 50 ticks
+  before a turn.
+- 24 of the 54 kicks lose their speed gain within 30 ticks (kicked right before a turn; e.g. 1113, 1251, 1781, 1930,
+  1961, 2061, 2097, 2271, 2419, 2448). Teero fires as often as we do (53 vs 54); the difference is where/when.
+- Time below 30 px/t: 406 ticks (25%). Value of speed at turn exits (bound-style estimate on our own line: +12 px/t
+  carried from each sink to the next speed peak): ~190 ticks in total, 18-26 each after U-turn 1, the shaft top, the
+  S-bend, rt 2112 and the hop. That is where "higher speeds, kept" pays; approach kicks are worth little.
+- Hook physics at speed: above 15 px/t a pull applies only if |v| does not grow, so a held hook turns losslessly only
+  while the anchor stays ~90 deg off v; a circular swing at radius r needs v^2/r <= ~3 -> ~34 px/t at the hook length
+  (380). U-turn 1's apex (21.7 px/t) is exactly sqrt(3 x 135) for its 135 px swing around the divider tip.
+- Free x_ds (no incumbent tracking) is far below the polished incumbent: U-turn 1 (cut 1095 -> rt-1250 gate) 1263-1265,
+  1275 without the approach kick; dip + climb + left corridor (1250 -> rt 1420) 1475 (incumbent 1250 / 1420). Its
+  ranking (geodesic lag + energy credit) races into turns.
+- **x_tfield** (src/tas/x_tfield.cpp, tfield.h): T(x, y, heading, speed) = ticks to the finish under a reduced
+  point-mass model (gravity, the horizontal ramp, lossless hook turning up to lat x 3 px/t^2 scaled like the hook,
+  hook + direction braking, an average kick acceleration, freeze kills, solid slides like MoveBox), by value
+  iteration on 16-px cells x 24 headings x 16 speeds (20.5M states, ~15-25 min on 3-4 cores). Along 2580 the model's
+  T is 1.06-1.13 x the real remaining time. x_ds tfield=FILE ranks by race tick + T (tfmode=1).
+  - U-turn 1 window, free: 1252.4-1252.7 at beam 3000 (old ranking 1263-1265), **1248.63 at beam 12000 (1.4 ahead of
+    the incumbent, E 1169 vs 386)**: every kick 3-7 ticks earlier (1139, 1166, 1216, 1245 vs 1145, 1169, 1223, 1251).
+  - Climb window (1250 -> 1420): 1446 at beam 3000 and 12000 (old free 1475; incumbent 1420): the field rates the
+    incumbent's states better (t + T 2683.5 vs 2712.6 at rt 1340) but the free beam never contains its dip line
+    (turning kick 1251 at the top of the descent, block kick 1285, climb kick 1308).
+  - Full free run from rt 1007 with the field (beam 3000): 113 behind at rt 1927 (most of it in 1287-1530). Not a
+    replacement for the incumbent-tracking variants; with them (rf variant + field) windows are within +-0.3 of
+    the variant without the field, except U-turn 1 (+1.25 vs +0.66).
+  - tfmode 2 (field value of v vs the incumbent's v at the same place) and 3 (penalty only): NOGATE (rewards braking).
+- Teero's U-turn 1 (his kicks vs ours, our rt): pre-fire exploding at the end wall at the apex, point-blank exit
+  kick ~1150 (ours 1169), then every kick ~18 ticks earlier than ours to rt 1250 (his gain there: 4 ticks in the exit,
+  5 more by 1250). Forced reproduction: our 1108 shot stripped, lobscan pre-fires (fired 1118-1132, exploding at
+  x 9504-9536, y 1966-2140 at 1143-1150), x_ds rf + field from each: best fired 1127 -> 1145 + point-blank 1152:
+  **1247.78 at the rt-1250 gate (2.2 ahead, E 1585)**, but it is 3.5 behind at the apex (no approach kick) and its
+  lead comes from a 1233 kick that takes the slot of the incumbent's 1251 turning kick into the dip: continued to rt
+  1420 it is 10-15 behind (7 lost in the dip at 1252-1290); with that slot kept free (nokick 1222-1245) it ties the
+  incumbent at 1250 and ends 4.8 behind at 1420. Every local re-timing of the kick phase meets the next section's
+  critical kick (the 25-tick reload couples all sections) - the same wall as the shaft double kick and the planner.

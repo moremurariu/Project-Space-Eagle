@@ -22,3 +22,7 @@ tas-work/runs/tig_*.out
 tas-work/runs/sb/
 fast/ddnet/
 fast/kog.map
+tas-work/runs/tf/
+tas-work/runs/sp/
+tas-work/runs/pf/
+tas-work/sp/__pycache__/
