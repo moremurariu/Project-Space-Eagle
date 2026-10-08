@@ -44,6 +44,30 @@ def leads(best, files):
 	return r
 
 
+def track(path):
+	out = subprocess.run([REPLAY, MAP, path, '1'], capture_output=True, text=True).stdout
+	pts = []
+	start = 0
+	for l in out.splitlines():
+		m = re.match(r't (\d+) pos ([-\d.]+) ([-\d.]+) .* start (-?\d+)', l)
+		if m:
+			pts.append((int(m[1]), float(m[2]), float(m[3])))
+			start = int(m[4])
+	return [(t - start, x, y) for t, x, y in pts]
+
+
+def aligned_ref(btrack, prefix, path):
+	# BEST's track shifted so that it is level with the end of PREFIX (time offset at the nearest point)
+	rt, x, y = track(prefix)[-1]
+	cand = [q for q in btrack if abs(q[0] - rt) <= 40]
+	gt = min(cand, key=lambda q: (q[1] - x) ** 2 + (q[2] - y) ** 2)
+	shift = rt - gt[0]
+	with open(path, 'w') as f:
+		for t, gx, gy in btrack:
+			f.write(f'{t + shift} {gx} {gy}\n')
+	return shift
+
+
 def pickup(f):
 	out = subprocess.run([REPLAY, MAP, f], capture_output=True, text=True).stdout
 	m = re.search(r'race tick (\d+)\)', out)
@@ -57,6 +81,7 @@ def main():
 	keep = int(o.get('keep', 2))
 	teero = o.get('teero')
 	aims = o.get('aims')
+	distpen = float(o.get('distpen', 0.03))
 	os.makedirs(d, exist_ok=True)
 	logf = open(os.path.join(d, 'pipe.log'), 'a')
 
@@ -65,6 +90,7 @@ def main():
 		logf.write(m + '\n')
 		logf.flush()
 
+	btrack = track(best)
 	kept = [prefix]
 	for si, st in enumerate(steps.split(',')):
 		parts = st.split(':')
@@ -91,6 +117,10 @@ def main():
 				args = [TOOL, MAP, f'best={best}', f'prefix={p}', 'threads=1', 'rothook=2', 'abort=100000', f'out={out}'] + v.split()
 				if kind == 'c1':
 					args += [f'ref={teero}'] + ([f'aimfile={aims}', 'aimwin=3'] if aims else [])
+				if kind == 'exit':
+					rf = os.path.join(d, f'ref{si}_{n}.txt')
+					sh = aligned_ref(btrack, p, rf)
+					args += [f'ref={rf}']
 				if kind == 'done':
 					args += ['slack=30', 'incumbent=0']
 				if h != 'end':
@@ -115,7 +145,8 @@ def main():
 			for rt, q in sorted(res):
 				log(f'complete: {q} pickup {rt}')
 			break
-		r = sorted(leads(best, files), reverse=True)
+		# rank by lead, penalising distance from BEST's line (a lead on another line rarely survives following)
+		r = sorted(leads(best, files), key=lambda q: q[0] - distpen * max(0, q[2] - 20), reverse=True)
 		for ld, f, dist, v, rv in r:
 			log(f'  {os.path.basename(f)} lead {ld:+.2f} dist {dist} |v| {v} (ref {rv})')
 		if not r:

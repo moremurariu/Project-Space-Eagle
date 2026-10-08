@@ -87,3 +87,12 @@ Drivers (run from a folder next to `ddnet/` and `kog.map`): `tools/splice.py BES
   better upstream can be carried to the pickup with one command.
 - Tools: `tools/leadat.py` / `tools/leadtrace.py` (lead over a reference run by nearest point), `tools/tlag.py` (lead
   against a "race_tick x y" track), `tools/trk.py` (track-then-splice), `replay` now also prints the hook position.
+
+## Far rotation pulses (idea from branch claude/busy-hopper-654m8z)
+- `ddsearch rotfar=1 [rotfartop=3000 rotfarrays=360]`: above 15 px/t a hook pull only applies if |v| does not grow,
+  so a pull just past perpendicular turns the velocity at almost no loss. For anchors beyond the first tick's reach
+  (122-362 px) the pull starts after the hook's flight; with the tee's idle prediction at that tick the search adds,
+  per side, the aim with the strongest accepted turn and the farthest anchor turning >= 80% of it (only for the
+  best-ranked `rotfartop` states, the ray casting is costly). `tools/glns.py` uses it with `GLNS_ROTFAR=p`.
+- On 962 it has not found anything yet (corridor-1 test from cuts 40 / 140: same states with and without it; 210
+  guided-LNS jobs with it in half of them: no gain).

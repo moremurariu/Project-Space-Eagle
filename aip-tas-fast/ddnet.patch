@@ -467,10 +467,10 @@ index 0000000..5f893e8
 +}
 diff --git a/src/tas/ddsearch.cpp b/src/tas/ddsearch.cpp
 new file mode 100644
-index 0000000..6bd1118
+index 0000000..63f8ff6
 --- /dev/null
 +++ b/src/tas/ddsearch.cpp
-@@ -0,0 +1,1249 @@
+@@ -0,0 +1,1383 @@
 +// ddsearch: beam search to the grenade pickup on the exact fast stepper (CFast).
 +//
 +//   ddsearch MAP best=FILE cut=RT [key=value ...]
@@ -550,6 +550,9 @@ index 0000000..6bd1118
 +static float gs_Jw = 0.0f; // energy credit for an unused air jump (jw=144 ~ its impulse)
 +static float gs_LatDz = 24.0f;
 +static float gs_LatQ = 0.0f; // latq: + latq * lateral distance^2 (follow the reference's path closely)
++static int gs_RotFar = 0; // rotfar=1: far rotation pulses (anchors 122..362 px, grabbed after the hook's flight)
++static int gs_RotFarTop = 3000; // rotfar: only for the best-ranked states of the beam (ray casting is costly)
++static int gs_RotFarRays = 360;
 +static int gs_Shadow = 0; // shadow=N: add the best run's inputs at the matched reference index (offsets 1-N .. N)
 +static std::vector<STasInput> gs_vShadowIn;
 +static int gs_ShadowShift = 0; // shadowfile=FILE shadowshift=S: shadow inputs from another run whose track is shifted by S ticks in ref=
@@ -610,6 +613,122 @@ index 0000000..6bd1118
 +{
 +	int k = std::clamp(Rt + 100, 0, (int)gs_vTrack.size() - 1);
 +	return gs_vTrack[k];
++}
++
++// hook acceleration towards an anchor (DDNet's CCharacterCore: down pulls x0.3, x x0.95 along the direction key else x0.75)
++static vec2 HookPullVec(vec2 To, int Dir)
++{
++	vec2 H = normalize(To) * 3.0f;
++	if(H.y > 0)
++		H.y *= 0.3f;
++	H.x *= ((H.x < 0 && Dir < 0) || (H.x > 0 && Dir > 0)) ? 0.95f : 0.75f;
++	return H;
++}
++
++// Far rotation pulses (the idea of the busy-hopper branch's x_ds rotfar=1): above the hook speed limit a pull only
++// applies if |v| does not grow, so a pull just past perpendicular turns the velocity at almost no loss. For anchors
++// beyond the first tick's reach the pull starts after the hook's flight; with the tee's idle prediction at that
++// tick, keep per side the aim with the strongest accepted turn and the farthest anchor turning >= 80% of it.
++static void RotFarAims(const CFast &F0, std::vector<std::pair<int, int>> &vOut)
++{
++	const CCollision *pCol = CTasGame::Collision();
++	const vec2 P0 = F0.m_Core.m_Pos;
++	if(length(F0.m_Core.m_Vel) < 15.0f || !pCol->FastAnySolid(P0.x - 380, P0.y - 380, P0.x + 380, P0.y + 380))
++		return;
++	const int N = gs_RotFarRays;
++	std::vector<float> vR(N, 0.0f);
++	for(int i = 0; i < N; i++)
++	{
++		const float Ang = 2 * pi * i / N;
++		const vec2 Dv(std::cos(Ang), std::sin(Ang));
++		for(float r = 42.0f; r <= 362.0f; r += 4.0f)
++		{
++			vec2 Q = P0 + Dv * r;
++			if(pCol->FastSolidAt(round_to_int(Q.x), round_to_int(Q.y)))
++			{
++				vR[i] = r;
++				break;
++			}
++		}
++	}
++	for(int Dir = -1; Dir <= 1; Dir++)
++	{
++		vec2 aP[5], aV[5];
++		CFast F = F0;
++		STasInput In;
++		In.m_Dir = Dir;
++		In.m_Jump = 0;
++		In.m_Hook = 0;
++		In.m_Fire = 0;
++		In.m_Weapon = -1;
++		In.m_TX = 0;
++		In.m_TY = -1;
++		aP[0] = F.m_Core.m_Pos;
++		aV[0] = F.m_Core.m_Vel;
++		for(int k = 1; k < 5; k++)
++		{
++			F.Step(In);
++			aP[k] = F.m_Core.m_Pos;
++			aV[k] = F.m_Core.m_Vel;
++		}
++		for(int Side = -1; Side <= 1; Side += 2)
++		{
++			float Best = 0.0f, BestR = 0.0f;
++			int BestI = -1;
++			std::vector<std::pair<float, int>> vOk;
++			for(int i = 0; i < N; i++)
++			{
++				const float R = vR[i];
++				if(R <= 122.0f)
++					continue; // same-tick grabs: rothook=2
++				const int k = std::min(4, (int)std::ceil((R - 42.0f) / 80.0f));
++				const float Ang = 2 * pi * i / N;
++				const vec2 A = P0 + vec2(std::cos(Ang), std::sin(Ang)) * R;
++				const vec2 P = aP[k - 1];
++				const float Dist = distance(P, A);
++				if(Dist > 380.0f || Dist < 46.0f)
++					continue;
++				vec2 V = aV[k - 1];
++				V.y += 0.5f;
++				const float L0 = length(V);
++				if(L0 < 15.0f)
++					continue;
++				const vec2 Nv = V + HookPullVec(A - P, Dir);
++				const float Ln = length(Nv);
++				if(!(Ln < L0 - 0.004f))
++					continue;
++				const float Rot = Side * (V.x * Nv.y - V.y * Nv.x) / (L0 * Ln);
++				if(Rot <= 0)
++					continue;
++				vOk.push_back({Rot, i});
++				if(Rot > Best)
++				{
++					Best = Rot;
++					BestI = i;
++					BestR = R;
++				}
++			}
++			if(BestI < 0)
++				continue;
++			int FarI = -1;
++			float FarR = BestR;
++			for(auto &O : vOk)
++				if(O.first >= 0.8f * Best && vR[O.second] > FarR + 32.0f)
++				{
++					FarR = vR[O.second];
++					FarI = O.second;
++				}
++			for(int i : {BestI, FarI})
++			{
++				if(i < 0)
++					continue;
++				const float Ang = 2 * pi * i / N;
++				std::pair<int, int> Aim((int)std::lround(std::cos(Ang) * 10000), (int)std::lround(std::sin(Ang) * 10000));
++				if(std::find(vOut.begin(), vOut.end(), Aim) == vOut.end())
++					vOut.push_back(Aim);
++			}
++		}
++	}
 +}
 +
 +static float Score(SState &S, std::mt19937 *pRng)
@@ -905,6 +1024,12 @@ index 0000000..6bd1118
 +			gs_LatQ = atof(v);
 +		else if(K == "shadow")
 +			gs_Shadow = atoi(v);
++		else if(K == "rotfar")
++			gs_RotFar = atoi(v);
++		else if(K == "rotfartop")
++			gs_RotFarTop = atoi(v);
++		else if(K == "rotfarrays")
++			gs_RotFarRays = atoi(v);
 +		else if(K == "shadowfile")
 +			ShadowFile = V;
 +		else if(K == "shadowshift")
@@ -1315,6 +1440,9 @@ index 0000000..6bd1118
 +				bool Grounded = CTasGame::Collision()->IsOnGround(C.m_Pos, CCharacterCore::PhysicalSize());
 +				bool CanJump = !(C.m_Jumped & 1) && (Grounded || !(C.m_Jumped & 2));
 +				vIn.clear();
++				std::vector<std::pair<int, int>> vFar;
++				if(gs_RotFar && i < gs_RotFarTop && !S.m_LastHook)
++					RotFarAims(S.m_F, vFar);
 +				for(int Dir = -1; Dir <= 1; Dir++)
 +					for(int J = 0; J <= (CanJump ? 1 : 0); J++)
 +					{
@@ -1338,6 +1466,12 @@ index 0000000..6bd1118
 +							vIn.push_back(In);
 +							In.m_Hook = 1;
 +							for(auto &A : vAims)
++							{
++								In.m_TX = A.first;
++								In.m_TY = A.second;
++								vIn.push_back(In);
++							}
++							for(auto &A : vFar)
 +							{
 +								In.m_TX = A.first;
 +								In.m_TY = A.second;

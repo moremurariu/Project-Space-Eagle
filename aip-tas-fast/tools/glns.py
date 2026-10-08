@@ -126,6 +126,8 @@ def main():
 			if len(open(gname).readline().split()) != 3 and rng.random() < float(os.environ.get('GLNS_SHADOW', '0')):
 				# offer the guide's own inputs at the matched point (its track is shifted by `shift` in ref=)
 				extra += ['shadowfile=' + gname, f'shadowshift={shift}', f'shadow={rng.choice([2, 3])}']
+			if rng.random() < float(os.environ.get('GLNS_ROTFAR', '0')):
+				extra.append('rotfar=1')
 			out = os.path.join(d, f'out_{w}.txt')
 			if os.path.exists(out):
 				os.remove(out)
