@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""autosweep.py DIR [cores=4] [sections=a:b,c:d,...]: endless xsweep cycles on tas-work/kog_full_best.txt.
+"""autosweep.py DIR [cores=4] [sections=a:b,c:d,...] [vsets=f1,f2] [xs="allcuts=1 ..."] [cycle0=N]: endless xsweep cycles on tas-work/kog_full_best.txt.
 Each cycle runs one xsweep round per variant set (dschain_variants_rf, _rf_hr, _rf2) with a new seed offset over all
 sections; a better server-checked run is copied to tas-work/kog_full_<ticks>.txt and kog_full_best.txt and logged
 ('NEW <ticks>' in DIR/auto.log). Stop it with kill."""
@@ -11,7 +11,9 @@ kw = dict(a.split('=', 1) for a in sys.argv[2:])
 CORES = kw.get('cores', '4')
 SECS = kw.get('sections', '1007:1095,1095:1270,1270:1445,1420:1560,1590:1765,1700:1875,1825:2000,2000:2175,'
               '2175:2350,2350:2525,2430:2570').split(',')
-VSETS = ['dschain_variants_rf.txt', 'dschain_variants_rf_hr.txt', 'dschain_variants_rf2.txt']
+VSETS = kw.get('vsets', 'dschain_variants_rf.txt,dschain_variants_rf_hr.txt,dschain_variants_rf2.txt').split(',')
+XS = kw.get('xs', '').split()  # extra xsweep args, e.g. xs="allcuts=1 cutsp=4"
+
 os.makedirs(d, exist_ok=True)
 LOG = open(os.path.join(d, 'auto.log'), 'a')
 
@@ -40,7 +42,7 @@ while True:
         cur = os.path.join(TW, 'kog_full_best.txt')
         log(f'cycle {cycle} {vs} seed0 {seed0} on {best}')
         subprocess.run([sys.executable, os.path.join(HERE, 'xsweep.py'), cur, sd] + SECS +
-                       [f'cores={CORES}', 'rounds=1', f'seed0={seed0}', f'variants={os.path.join(HERE, vs)}'],
+                       [f'cores={CORES}', 'rounds=1', f'seed0={seed0}', f'variants={os.path.join(HERE, vs)}'] + XS,
                        capture_output=True, text=True)
         cands = sorted((int(re.search(r'best_(\d+)', f).group(1)), f) for f in glob.glob(os.path.join(sd, 'best_*.txt')))
         if cands and (best is None or cands[0][0] < best):

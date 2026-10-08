@@ -9,7 +9,9 @@ run's remaining inputs on it. The best finishing graft that passes the server ch
 This is how 2606 -> 2605 was found (U-turn 1, cut 1095 -> 1270, graft D=1 from rt 1250).
 
 usage: xsweep.py RUN DIR CUT:END [CUT:END ...] [cores=4] [off=6] [rounds=1] [seed0=0] [K=6] [look=35] [stage=35]
-       [variants=FILE]
+       [variants=FILE] [allcuts=1 cutsp=4 maxjobs=60]
+allcuts=1: graft at every tick (spaced >= cutsp) where the plan is on the run's line and >= 1 tick ahead, not only the
+two latest (long sections: 2584 came from D=4 at rt 1503 of a 1007-2575 plan, its latest cuts did not graft).
 rounds: repeat the section list with new seeds (xplan seedadd=100*round); a re-plan of a section on a new best run
 usually differs anyway (U-turn 1 gave a tick on three re-plans).
 Writes DIR/sweep.log, DIR/sec<i>/ (xplan), DIR/sec<i>/g_*.txt (grafts) and DIR/best_<ticks>.txt for every gain."""
@@ -29,6 +31,9 @@ ROUNDS = int(kw.get('rounds', 1))
 SEED0 = int(kw.get('seed0', 0))  # seed offset (xplan seedadd = seed0 + 100 * round)
 LOOK = int(kw.get('look', 35))
 OFF = float(kw.get('off', 6))
+ALLCUTS = kw.get('allcuts', '0') == '1'  # graft at every on-line cut (spaced >= cutsp), largest D first, in batches
+CUTSP = int(kw.get('cutsp', 4))
+MAXJOBS = int(kw.get('maxjobs', 60))
 plan_kw = [f'{k}={v}' for k, v in kw.items() if k in ('K', 'look', 'stage', 'beam')]
 plan_kw.append('variants=' + os.path.abspath(kw.get('variants', os.path.join(HERE, 'dschain_variants.txt'))))
 os.makedirs(d, exist_ok=True)
@@ -107,6 +112,8 @@ for i, (rnd, (cut, end)) in enumerate((r, s) for r in range(ROUNDS) for s in sec
         continue
     arr = [(float(a), int(e), f, float(r)) for a, e, f, r in (l.split() for l in open(fin))]
     ahead = [a for a in arr if a[3] - a[0] >= 0.5]
+    if ALLCUTS and not ahead:
+        ahead = arr[:3]  # a long plan that ends behind can still be ahead (and graftable) before its end
     log(f'section {cut}-{end} (round {rnd}): best {arr[0][0]:.2f} (run {arr[0][3]:.0f}), {len(ahead)} ahead ({time.time()-t0:.0f}s)')
     # graft cuts: ticks where the planned line is on the run's line (within OFF px) and ahead by >= 1 tick; the two
     # latest such ticks (spaced >= 10) of each of the best 3 arrivals, D = whole ticks ahead there and one less
@@ -121,17 +128,27 @@ for i, (rnd, (cut, end)) in enumerate((r, s) for r in range(ROUNDS) for s in sec
         ok = [c for c in sorted(L, reverse=True) if c <= endl - 5 and L[c][1] < OFF and L[c][0] >= 1.0]
         cuts = []
         for c in ok:
-            if all(abs(c - c2) >= 10 for c2 in cuts):
+            if all(abs(c - c2) >= (CUTSP if ALLCUTS else 10) for c2 in cuts):
                 cuts.append(c)
-            if len(cuts) == 2:
+            if len(cuts) == 2 and not ALLCUTS:
                 break
         log(f'  arrival {ai} ({t:.2f}): lead ' + ' '.join(f'{c}:{L[c][0]:+.1f}/{L[c][1]:.0f}px' for c in sorted(L)
                                                      if (c - cut) % 15 == 0 or c == max(L)) + f' | graft cuts {cuts}')
         for gc in cuts:
             for D in sorted({int(L[gc][0]), int(L[gc][0]) - 1} - {0}, reverse=True):
                 jobs.append((f, gc, D, os.path.join(sd, f'g_a{ai}_c{gc}_D{D}.txt')))
-    with ThreadPoolExecutor(max(1, CORES // 2)) as ex:
-        res = [r for r in ex.map(lambda j: graft(*j), jobs) if r]
+    if ALLCUTS:
+        # largest D first (then the latest cut); batches of CORES // 2, stop after the first batch that beats the run
+        jobs = sorted(jobs, key=lambda j: (-j[2], -j[1]))[:MAXJOBS]
+        res, nb = [], max(1, CORES // 2)
+        with ThreadPoolExecutor(nb) as ex:
+            for b in range(0, len(jobs), nb):
+                res += [r for r in ex.map(lambda j: graft(*j), jobs[b:b + nb]) if r]
+                if cur is not None and any(r[0] < cur for r in res):
+                    break
+    else:
+        with ThreadPoolExecutor(max(1, CORES // 2)) as ex:
+            res = [r for r in ex.map(lambda j: graft(*j), jobs) if r]
     res.sort()
     log(f'  grafts: {len(res)}/{len(jobs)} finish' + (f', best {res[0][0]}' if res else ''))
     for fn, path in res:
