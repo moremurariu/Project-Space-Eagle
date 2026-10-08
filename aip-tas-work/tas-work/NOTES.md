@@ -1469,3 +1469,6 @@ lead.py), `x_tfield` (new), x_ds `tfield=` / `tfmode=` / `nokickall=` (new).
   the shaft-top line leaves 2575 at 1566 (overlap: that splice froze); shaft top + corner (os1 run to rt 1900, then
   the os2 run's inputs from its rt 1901, both being 2575's state at 1902) -> **2572 (51.44 s)**, server-checked
   (TasReplay finish tick 2640). The left U-turn window is re-run on 2572.
+- Final maze window (x_opt 2380-2480, stage 2 from 2470 to the finish: three variants finish 2571 on the os2 base);
+  spliced onto 2572 (2572's rt 2300 state = the maze line's rt 2301): **2570 (51.40 s)**, server-checked (TasReplay
+  finish tick 2638).
