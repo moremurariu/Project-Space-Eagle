@@ -50,6 +50,29 @@ def xds(prefix, gate, out, var):
     return float(m.group(1)) if m else None
 
 
+def publish(path, ticks, what):
+    """copy a server-checked gain to kog_full_<n>.txt / kog_full_best.txt (if better) and commit + push it"""
+    ROOT = os.path.dirname(TW)
+    BEST = os.path.join(TW, 'kog_full_best.txt')
+    cur = finish(BEST)
+    if cur is not None and ticks >= cur:
+        return
+    dst = os.path.join(TW, 'kog_full_%d.txt' % ticks)
+    subprocess.run(['cp', path, dst])
+    subprocess.run(['cp', path, BEST])
+    with open(os.path.join(TW, 'NOTES.md'), 'a') as nf:
+        nf.write('- %s (%s): **%d (%.2f s)**, server-checked.\n' % (what, os.path.relpath(path, TW), ticks, ticks / 50.0))
+    msg = ('Full run %d (%.2f s): %s (x_opt + x_ds re-search + graft)\n\nServer-checked: TasReplay, no freeze, no double start.\n\n'
+           'Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n'
+           'Claude-Session: https://claude.ai/code/session_01XxupAVqSvwb6MWzmsVwkue') % (ticks, ticks / 50.0, what)
+    subprocess.run(['git', '-C', ROOT, 'add', os.path.relpath(dst, ROOT), 'tas-work/kog_full_best.txt', 'tas-work/NOTES.md'])
+    subprocess.run(['git', '-C', ROOT, 'commit', '-q', '-m', msg])
+    for k in range(4):
+        if subprocess.run(['git', '-C', ROOT, 'push', '-u', 'origin', 'claude/sweet-maxwell-3t11yw']).returncode == 0:
+            break
+        time.sleep(2 ** (k + 1))
+
+
 FIN = finish(run)
 log('optsweep on %s (finish %s), windows %s' % (run, FIN, wins))
 for k, (cut, end, c2, g2) in enumerate(wins):
@@ -89,6 +112,8 @@ for k, (cut, end, c2, g2) in enumerate(wins):
             subprocess.run(['cp', best[1], run])
             FIN = best[0]
             log('window %d-%d: NEW BEST %d (server-checked) from %s' % (cut, end, best[0], best[1]))
+            if '/runs/loop/' in d:
+                publish(best[1], best[0], 'optloop window %d-%d' % (cut, end))
         else:
             log('window %d-%d: graft %d failed the server check: %s' % (cut, end, best[0], chk.strip().replace('\n', ' | ')))
 log('done')

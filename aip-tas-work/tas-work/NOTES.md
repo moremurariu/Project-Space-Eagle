@@ -1480,3 +1480,4 @@ lead.py), `x_tfield` (new), x_ds `tfield=` / `tfmode=` / `nokickall=` (new).
 - optsweep round 4 on 2562 (runs/os5, kv 0.4): left U-turn window (x_opt 1330-1450, stage 2 to 1540: 1535.10) -> graft D=3 at 1477: **2559 (51.18 s)**, server-checked.
 - Same round: shaft exit / channel window (x_opt 1600-1700, stage 2 to 1800: 1795.40) -> graft D=2 at 1746: **2557 (51.14 s)**, server-checked.
 - optloop round 0 (runs/loop/r0): window 1984-2112 (S-bend exit), stage 2 to 2171: 2169.61 -> graft D=1 at 2157: **2556 (51.12 s)**, server-checked.
+- optloop round 0: window 1093-1227 (U-turn 1 exit) -> graft D=1 at 1278: **2555 (51.10 s)**, server-checked.
