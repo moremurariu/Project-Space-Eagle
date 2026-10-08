@@ -1383,3 +1383,6 @@ dir, jump, cursor aim, shots with aim, certainties; best effort, not exact) and 
   D=4 at cut 1400 (their U-turn 1 + our left U-turn + our rest: 2566), then that onto their 2567 with D=4 at cut 1584
   (it is 4.0 ahead of 2567 on its line, 0 px, at 1524-1576): **2563 (51.26 s)**, server-checked (TasReplay finish
   tick 2631; TasServer).
+- optsweep on 2563 (seed 21): U-turn 1 x_opt +0.8 but stage 2 1327.8 (behind); left U-turn +0.1; shaft top +0.4,
+  no on-line cut; rt-1800 U-turn (x_opt 1700-1840, stage 2 1830 -> 1960 1957.22) -> graft D=1 at 1929:
+  **2562 (51.24 s)**, server-checked (TasReplay finish tick 2630; TasServer).
