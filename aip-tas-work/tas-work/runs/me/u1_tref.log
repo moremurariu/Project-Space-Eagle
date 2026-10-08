@@ -1,0 +1,550 @@
+root progress 1106.0 (incumbent path 1095.0), time offset vs reference -11
+x_ds: cut rt 1095 (tick 1163) pos 8058 1587 v 46.7 9.5 geo 45669 | incumbent finish rt 2583, ref time at cut 1095.0 | geo field 0.1s
+gate: progress >= 1272, incumbent reaches it at rt 1272.00 with E -1150
+  retro found 0 emitted 0 | fire aims 0 emitted 0 | pre 0 sel 83 surv 83
+  on-incumbent states: 0
+step    0 rt 1096 beam 83 cand 84 | best lag -12.09 geo 1108 E 686 |v| 47.8 pos 8092 1597 | inc lag -12.09 | 0s
+  retro found 0 emitted 0 | fire aims 0 emitted 0 | pre 0 sel 438 surv 438
+  on-incumbent states: 0
+step    1 rt 1097 beam 438 cand 724 | best lag -12.08 geo 1109 E 686 |v| 47.9 pos 8126 1607 | inc lag -12.08 | 0s
+  retro found 0 emitted 0 | fire aims 0 emitted 0 | pre 0 sel 2013 surv 2013
+  on-incumbent states: 0
+step    2 rt 1098 beam 2013 cand 3205 | best lag -12.06 geo 1110 E 675 |v| 47.9 pos 8161 1615 | inc lag -12.06 | 0s
+  retro found 0 emitted 0 | fire aims 0 emitted 0 | pre 0 sel 9217 surv 9217
+  on-incumbent states: 0
+step    3 rt 1099 beam 9217 cand 25921 | best lag -12.06 geo 1111 E 674 |v| 47.9 pos 8196 1624 | inc lag -12.05 | 0s
+  retro found 0 emitted 0 | fire aims 0 emitted 0 | pre 0 sel 11070 surv 11069
+  on-incumbent states: 0
+step    4 rt 1100 beam 11069 cand 111994 | best lag -12.05 geo 1112 E 674 |v| 48.0 pos 8231 1633 | inc lag -12.03 | 1s
+  retro found 0 emitted 0 | fire aims 0 emitted 0 | pre 0 sel 14575 surv 14342
+  on-incumbent states: 0
+step    5 rt 1101 beam 14342 cand 148335 | best lag -12.05 geo 1113 E 673 |v| 48.1 pos 8266 1643 | inc lag -12.02 | 3s
+  retro found 0 emitted 0 | fire aims 0 emitted 0 | pre 0 sel 15833 surv 15415
+  on-incumbent states: 0
+step    6 rt 1102 beam 15415 cand 257822 | best lag -12.10 geo 1114 E 656 |v| 48.0 pos 8301 1647 | inc lag 0.00 | 5s
+  retro found 0 emitted 0 | fire aims 0 emitted 0 | pre 0 sel 15300 surv 14723
+  on-incumbent states: 0
+step    7 rt 1103 beam 14723 cand 408988 | best lag -12.25 geo 1115 E 685 |v| 48.5 pos 8335 1667 | inc lag 0.00 | 10s
+  retro found 0 emitted 0 | fire aims 0 emitted 0 | pre 0 sel 17487 surv 16787
+  on-incumbent states: 0
+step    8 rt 1104 beam 16787 cand 476697 | best lag -12.39 geo 1116 E 684 |v| 48.6 pos 8370 1678 | inc lag 0.00 | 15s
+  retro found 0 emitted 0 | fire aims 0 emitted 0 | pre 0 sel 19853 surv 18563
+  on-incumbent states: 0
+step    9 rt 1105 beam 18563 cand 387758 | best lag -12.50 geo 1118 E 672 |v| 48.6 pos 8405 1687 | inc lag 0.00 | 19s
+  retro found 0 emitted 0 | fire aims 0 emitted 0 | pre 0 sel 24515 surv 23067
+  on-incumbent states: 0
+step   10 rt 1106 beam 23067 cand 397146 | best lag -12.56 geo 1119 E 671 |v| 48.7 pos 8440 1696 | inc lag 0.00 | 23s
+  retro found 9 emitted 33 | fire aims 1574 emitted 1257 | pre 0 sel 25089 surv 23048
+  on-incumbent states: 0
+step   11 rt 1107 beam 23048 cand 530668 | best lag -12.58 geo 1120 E 671 |v| 48.8 pos 8475 1706 | inc lag 0.00 | 28s
+  retro found 10693 emitted 53997 | fire aims 10412 emitted 23811 | pre 0 sel 26182 surv 23494
+  on-incumbent states: 0
+step   12 rt 1108 beam 23494 cand 655594 | best lag -12.57 geo 1121 E 671 |v| 48.9 pos 8510 1716 | inc lag 0.00 | 34s
+  retro found 18112 emitted 90366 | fire aims 15573 emitted 30513 | pre 0 sel 31488 surv 27984
+  on-incumbent states: 0
+step   13 rt 1109 beam 27984 cand 679610 | best lag -12.57 geo 1122 E 670 |v| 49.0 pos 8545 1727 | inc lag 0.00 | 40s
+  retro found 21068 emitted 104937 | fire aims 17303 emitted 32652 | pre 0 sel 31631 surv 28263
+  on-incumbent states: 0
+step   14 rt 1110 beam 28263 cand 843485 | best lag -12.58 geo 1123 E 670 |v| 49.1 pos 8580 1738 | inc lag 0.00 | 48s
+  retro found 21583 emitted 107499 | fire aims 17490 emitted 32721 | pre 0 sel 30726 surv 27265
+  on-incumbent states: 0
+step   15 rt 1111 beam 27265 cand 846036 | best lag -12.62 geo 1124 E 669 |v| 49.2 pos 8615 1750 | inc lag 0.00 | 55s
+  retro found 21583 emitted 107499 | fire aims 17490 emitted 32721 | pre 0 sel 33032 surv 26732
+  on-incumbent states: 0
+step   16 rt 1112 beam 26732 cand 781255 | best lag -12.66 geo 1125 E 1143 |v| 53.6 pos 8656 1728 | inc lag 0.00 | 62s
+  retro found 21583 emitted 107499 | fire aims 17490 emitted 32721 | pre 0 sel 30478 surv 22551
+  on-incumbent states: 0
+step   17 rt 1113 beam 22551 cand 1075759 | best lag -12.69 geo 1126 E 1163 |v| 53.6 pos 8697 1709 | inc lag 0.00 | 73s
+  retro found 21583 emitted 107499 | fire aims 17490 emitted 32721 | pre 0 sel 26994 surv 17943
+  on-incumbent states: 0
+step   18 rt 1114 beam 17943 cand 766042 | best lag -12.74 geo 1127 E 1163 |v| 53.7 pos 8734 1721 | inc lag 0.00 | 80s
+  retro found 21583 emitted 107499 | fire aims 17490 emitted 32721 | pre 0 sel 29634 surv 18986
+  on-incumbent states: 0
+step   19 rt 1115 beam 18986 cand 688967 | best lag -12.79 geo 1128 E 1145 |v| 53.7 pos 8769 1743 | inc lag 0.00 | 86s
+  retro found 21583 emitted 107499 | fire aims 17490 emitted 32721 | pre 0 sel 29029 surv 20164
+  on-incumbent states: 0
+step   20 rt 1116 beam 20164 cand 735718 | best lag -12.80 geo 1129 E 1100 |v| 53.2 pos 8808 1732 | inc lag 0.00 | 93s
+  retro found 21583 emitted 107499 | fire aims 17490 emitted 32721 | pre 0 sel 27004 surv 20267
+  on-incumbent states: 0
+step   21 rt 1117 beam 20267 cand 735944 | best lag -12.86 geo 1130 E 1099 |v| 53.3 pos 8845 1743 | inc lag 0.00 | 100s
+  retro found 21583 emitted 107499 | fire aims 17490 emitted 32721 | pre 0 sel 28398 surv 22002
+  on-incumbent states: 0
+step   22 rt 1118 beam 22002 cand 670124 | best lag -12.92 geo 1131 E 1099 |v| 53.4 pos 8882 1754 | inc lag 0.00 | 106s
+  retro found 21583 emitted 107499 | fire aims 17490 emitted 32721 | pre 0 sel 27055 surv 21995
+  on-incumbent states: 0
+step   23 rt 1119 beam 21995 cand 699746 | best lag -12.96 geo 1132 E 1386 |v| 55.8 pos 8924 1727 | inc lag 0.00 | 111s
+  retro found 21583 emitted 107499 | fire aims 17490 emitted 32721 | pre 0 sel 27772 surv 24265
+  on-incumbent states: 0
+step   24 rt 1120 beam 24265 cand 672840 | best lag -13.02 geo 1133 E 1224 |v| 54.4 pos 8961 1739 | inc lag 0.00 | 118s
+  retro found 21583 emitted 107499 | fire aims 17490 emitted 32721 | pre 0 sel 26716 surv 23132
+  on-incumbent states: 0
+step   25 rt 1121 beam 23132 cand 665431 | best lag -13.09 geo 1134 E 1442 |v| 56.4 pos 9000 1742 | inc lag 0.00 | 124s
+  retro found 21583 emitted 107499 | fire aims 17490 emitted 32721 | pre 0 sel 22057 surv 16445
+  on-incumbent states: 0
+step   26 rt 1122 beam 16445 cand 610291 | best lag -13.16 geo 1135 E 1442 |v| 56.5 pos 9038 1754 | inc lag 0.00 | 129s
+  retro found 21583 emitted 107499 | fire aims 17490 emitted 32721 | pre 0 sel 27633 surv 20904
+  on-incumbent states: 0
+step   27 rt 1123 beam 20904 cand 392265 | best lag -13.28 geo 1136 E 1442 |v| 56.6 pos 9076 1767 | inc lag 0.00 | 132s
+  retro found 21583 emitted 107499 | fire aims 17490 emitted 32721 | pre 0 sel 31557 surv 20723
+  on-incumbent states: 0
+step   28 rt 1124 beam 20723 cand 664177 | best lag -13.38 geo 1137 E 1320 |v| 55.6 pos 9114 1775 | inc lag 0.00 | 136s
+  retro found 21583 emitted 107499 | fire aims 17490 emitted 32721 | pre 0 sel 33002 surv 12356
+  on-incumbent states: 0
+step   29 rt 1125 beam 12356 cand 706072 | best lag -13.46 geo 1138 E 1355 |v| 56.0 pos 9152 1782 | inc lag 0.00 | 142s
+  retro found 21583 emitted 107499 | fire aims 17490 emitted 32721 | pre 0 sel 33565 surv 11830
+  on-incumbent states: 0
+step   30 rt 1126 beam 11830 cand 724858 | best lag -13.60 geo 1140 E 1355 |v| 56.1 pos 9190 1793 | inc lag 0.00 | 147s
+  retro found 21583 emitted 107499 | fire aims 17490 emitted 32721 | pre 0 sel 29627 surv 10534
+  on-incumbent states: 0
+step   31 rt 1127 beam 10534 cand 631506 | best lag -13.73 geo 1141 E 915 |v| 52.2 pos 9226 1805 | inc lag 0.00 | 152s
+  retro found 21583 emitted 107499 | fire aims 17490 emitted 32721 | pre 0 sel 28348 surv 10774
+  on-incumbent states: 0
+step   32 rt 1128 beam 10774 cand 392089 | best lag -13.83 geo 1142 E 664 |v| 49.8 pos 9261 1818 | inc lag 0.00 | 156s
+  retro found 21583 emitted 107499 | fire aims 17490 emitted 32721 | pre 0 sel 27542 surv 13168
+  on-incumbent states: 0
+step   33 rt 1129 beam 13168 cand 310218 | best lag -13.92 geo 1143 E 386 |v| 47.1 pos 9294 1832 | inc lag 0.00 | 159s
+  retro found 21583 emitted 107499 | fire aims 17490 emitted 32721 | pre 0 sel 27081 surv 16293
+  on-incumbent states: 0
+step   34 rt 1130 beam 16293 cand 437793 | best lag -14.07 geo 1144 E 48 |v| 43.5 pos 9325 1847 | inc lag 0.00 | 163s
+  retro found 21583 emitted 107499 | fire aims 17512 emitted 32721 | pre 0 sel 25844 surv 16481
+  on-incumbent states: 0
+step   35 rt 1131 beam 16481 cand 271139 | best lag -14.14 geo 1145 E -307 |v| 39.4 pos 9353 1861 | inc lag 0.00 | 166s
+  retro found 25356 emitted 127668 | fire aims 17647 emitted 32721 | pre 0 sel 25749 surv 15068
+  on-incumbent states: 0
+step   36 rt 1132 beam 15068 cand 255351 | best lag -14.28 geo 1146 E -603 |v| 35.7 pos 9379 1878 | inc lag 0.00 | 168s
+  retro found 34802 emitted 181872 | fire aims 17650 emitted 32721 | pre 0 sel 24764 surv 14859
+  on-incumbent states: 0
+step   37 rt 1133 beam 14859 cand 265113 | best lag -14.42 geo 1147 E -867 |v| 32.1 pos 9402 1895 | inc lag 0.00 | 170s
+  retro found 34832 emitted 182019 | fire aims 17650 emitted 32721 | pre 0 sel 21196 surv 15202
+  on-incumbent states: 0
+step   38 rt 1134 beam 15202 cand 181748 | best lag -14.62 geo 1149 E -1068 |v| 29.1 pos 9422 1913 | inc lag 0.00 | 171s
+  retro found 34832 emitted 182019 | fire aims 17650 emitted 32721 | pre 0 sel 22612 surv 15787
+  on-incumbent states: 0
+step   39 rt 1135 beam 15787 cand 188191 | best lag -14.83 geo 1150 E -1180 |v| 27.5 pos 9436 1934 | inc lag 0.00 | 173s
+  retro found 35601 emitted 186396 | fire aims 17686 emitted 32721 | pre 0 sel 25408 surv 17836
+  on-incumbent states: 0
+step   40 rt 1136 beam 17836 cand 215113 | best lag -15.47 geo 1151 E -1003 |v| 30.9 pos 9448 1960 | inc lag 0.00 | 174s
+  retro found 86761 emitted 487655 | fire aims 17775 emitted 32721 | pre 0 sel 29658 surv 22983
+  on-incumbent states: 0
+step   41 rt 1137 beam 22983 cand 574118 | best lag -16.27 geo 1153 E -1052 |v| 30.6 pos 9455 1989 | inc lag 0.00 | 177s
+  retro found 99359 emitted 562607 | fire aims 18375 emitted 32775 | pre 0 sel 33017 surv 26473
+  on-incumbent states: 0
+step   42 rt 1138 beam 26473 cand 545342 | best lag -16.79 geo 1155 E -1269 |v| 27.3 pos 9447 2014 | inc lag 0.00 | 182s
+  retro found 149813 emitted 863240 | fire aims 19507 emitted 34479 | pre 0 sel 35118 surv 31960
+  on-incumbent states: 0
+step   43 rt 1139 beam 31960 cand 860560 | best lag -17.11 geo 1156 E -1351 |v| 26.1 pos 9432 2035 | inc lag 0.00 | 188s
+  retro found 197817 emitted 1151120 | fire aims 19538 emitted 34569 | pre 0 sel 37958 surv 37155
+  on-incumbent states: 0
+step   44 rt 1140 beam 37155 cand 956311 | best lag -17.19 geo 1157 E -1403 |v| 25.6 pos 9425 2060 | inc lag 0.00 | 195s
+  retro found 245713 emitted 1438496 | fire aims 19538 emitted 34569 | pre 0 sel 36841 surv 36835
+  on-incumbent states: 0
+step   45 rt 1141 beam 36835 cand 1141045 | best lag -17.12 geo 1158 E -1452 |v| 25.1 pos 9416 2083 | inc lag 0.00 | 202s
+  retro found 280028 emitted 1638932 | fire aims 19538 emitted 34569 | pre 0 sel 37052 surv 37052
+  on-incumbent states: 0
+step   46 rt 1142 beam 37052 cand 1041240 | best lag -17.02 geo 1159 E -1439 |v| 25.7 pos 9400 2100 | inc lag 0.00 | 208s
+  retro found 280028 emitted 1638932 | fire aims 19538 emitted 34569 | pre 0 sel 30846 surv 30846
+  on-incumbent states: 0
+step   47 rt 1143 beam 30846 cand 1129017 | best lag -16.96 geo 1160 E -1439 |v| 26.1 pos 9388 2123 | inc lag 0.00 | 217s
+  retro found 280028 emitted 1638932 | fire aims 19538 emitted 34569 | pre 0 sel 21549 surv 21518
+  on-incumbent states: 0
+step   48 rt 1144 beam 21518 cand 620558 | best lag -16.75 geo 1161 E -1476 |v| 25.4 pos 9360 2121 | inc lag 0.00 | 221s
+  retro found 280028 emitted 1638932 | fire aims 19538 emitted 34569 | pre 0 sel 18072 surv 17699
+  on-incumbent states: 0
+step   49 rt 1145 beam 17699 cand 719687 | best lag -16.50 geo 1162 E -1738 |v| 19.8 pos 9341 2129 | inc lag 0.00 | 225s
+  retro found 280028 emitted 1638932 | fire aims 19538 emitted 34569 | pre 0 sel 22118 surv 20593
+  on-incumbent states: 0
+step   50 rt 1146 beam 20593 cand 577831 | best lag -16.21 geo 1162 E -1590 |v| 23.3 pos 9322 2134 | inc lag 0.00 | 228s
+  retro found 280028 emitted 1638932 | fire aims 19538 emitted 34569 | pre 0 sel 26882 surv 23544
+  on-incumbent states: 0
+step   51 rt 1147 beam 23544 cand 491538 | best lag -16.00 geo 1163 E -1590 |v| 23.6 pos 9304 2146 | inc lag 0.00 | 230s
+  retro found 280028 emitted 1638932 | fire aims 19538 emitted 34569 | pre 0 sel 29874 surv 25117
+  on-incumbent states: 0
+step   52 rt 1148 beam 25117 cand 583598 | best lag -15.70 geo 1164 E -1613 |v| 23.2 pos 9283 2150 | inc lag 0.00 | 232s
+  retro found 280028 emitted 1638932 | fire aims 19538 emitted 34569 | pre 0 sel 29550 surv 25807
+  on-incumbent states: 0
+step   53 rt 1149 beam 25807 cand 760552 | best lag -15.42 geo 1164 E -1618 |v| 23.2 pos 9262 2154 | inc lag 0.00 | 235s
+  retro found 280028 emitted 1638932 | fire aims 19538 emitted 34569 | pre 0 sel 29021 surv 26535
+  on-incumbent states: 0
+step   54 rt 1150 beam 26535 cand 918249 | best lag -15.15 geo 1165 E -1618 |v| 23.3 pos 9241 2159 | inc lag 0.00 | 239s
+  retro found 280028 emitted 1638932 | fire aims 19538 emitted 34569 | pre 0 sel 26981 surv 25144
+  on-incumbent states: 0
+step   55 rt 1151 beam 25144 cand 1090986 | best lag -14.87 geo 1166 E -1618 |v| 23.4 pos 9220 2164 | inc lag 0.00 | 246s
+  retro found 280028 emitted 1638932 | fire aims 19538 emitted 34569 | pre 0 sel 30687 surv 27692
+  on-incumbent states: 0
+step   56 rt 1152 beam 27692 cand 765444 | best lag -14.54 geo 1167 E -1619 |v| 23.5 pos 9200 2170 | inc lag 0.00 | 251s
+  retro found 280028 emitted 1638932 | fire aims 19538 emitted 34569 | pre 0 sel 29426 surv 25930
+  on-incumbent states: 0
+step   57 rt 1153 beam 25930 cand 1205170 | best lag -14.22 geo 1167 E -1620 |v| 23.8 pos 9181 2185 | inc lag 0.00 | 259s
+  retro found 280028 emitted 1638932 | fire aims 19538 emitted 34569 | pre 0 sel 29092 surv 25150
+  on-incumbent states: 0
+step   58 rt 1154 beam 25150 cand 1089423 | best lag -13.93 geo 1168 E -1621 |v| 23.9 pos 9160 2192 | inc lag 0.00 | 267s
+  retro found 280028 emitted 1638932 | fire aims 19538 emitted 34569 | pre 0 sel 27769 surv 17633
+  on-incumbent states: 0
+step   59 rt 1155 beam 17633 cand 975711 | best lag -13.61 geo 1169 E -1619 |v| 23.5 pos 9136 2172 | inc lag 0.00 | 275s
+  retro found 280028 emitted 1638932 | fire aims 19538 emitted 34569 | pre 0 sel 26185 surv 17620
+  on-incumbent states: 0
+step   60 rt 1156 beam 17620 cand 733548 | best lag -13.31 geo 1169 E -1620 |v| 23.6 pos 9115 2177 | inc lag 0.00 | 281s
+  retro found 280028 emitted 1638932 | fire aims 19538 emitted 34569 | pre 0 sel 27366 surv 17954
+  on-incumbent states: 0
+step   61 rt 1157 beam 17954 cand 710677 | best lag -13.01 geo 1170 E -1619 |v| 23.7 pos 9094 2182 | inc lag 0.00 | 287s
+  retro found 280028 emitted 1638932 | fire aims 19538 emitted 34569 | pre 0 sel 33015 surv 20282
+  on-incumbent states: 0
+step   62 rt 1158 beam 20282 cand 748914 | best lag -12.70 geo 1171 E -1620 |v| 23.8 pos 9073 2188 | inc lag 0.00 | 293s
+  retro found 280028 emitted 1638932 | fire aims 19574 emitted 34569 | pre 0 sel 31757 surv 19532
+  on-incumbent states: 0
+step   63 rt 1159 beam 19532 cand 807412 | best lag -12.37 geo 1171 E -1620 |v| 24.0 pos 9052 2194 | inc lag 0.00 | 300s
+  retro found 280249 emitted 1639652 | fire aims 19589 emitted 34569 | pre 0 sel 33681 surv 21835
+  on-incumbent states: 0
+step   64 rt 1160 beam 21835 cand 774374 | best lag -12.05 geo 1172 E -1624 |v| 23.9 pos 9031 2198 | inc lag 0.00 | 307s
+  retro found 280608 emitted 1640897 | fire aims 19604 emitted 34569 | pre 0 sel 35638 surv 25406
+  on-incumbent states: 0
+step   65 rt 1161 beam 25406 cand 827221 | best lag -11.73 geo 1173 E -1624 |v| 24.0 pos 9010 2199 | inc lag 0.00 | 314s
+  retro found 283383 emitted 1653125 | fire aims 19743 emitted 34737 | pre 0 sel 35744 surv 27695
+  on-incumbent states: 0
+step   66 rt 1162 beam 27695 cand 854743 | best lag -11.43 geo 1173 E -1401 |v| 28.1 pos 8987 2189 | inc lag 0.00 | 320s
+  retro found 290030 emitted 1687199 | fire aims 20276 emitted 35589 | pre 0 sel 40158 surv 31859
+  on-incumbent states: 0
+step   67 rt 1163 beam 31859 cand 936366 | best lag -11.15 geo 1174 E -1358 |v| 28.9 pos 8965 2192 | inc lag 0.00 | 328s
+  retro found 294418 emitted 1707878 | fire aims 20918 emitted 37077 | pre 0 sel 41749 surv 34037
+  on-incumbent states: 0
+step   68 rt 1164 beam 34037 cand 1030076 | best lag -10.88 geo 1175 E -1360 |v| 28.7 pos 8941 2184 | inc lag 0.00 | 337s
+  retro found 305141 emitted 1757972 | fire aims 31979 emitted 66417 | pre 0 sel 38845 surv 33211
+  on-incumbent states: 0
+step   69 rt 1165 beam 33211 cand 1121447 | best lag -10.68 geo 1176 E -1140 |v| 32.3 pos 8916 2186 | inc lag 0.00 | 347s
+  retro found 313621 emitted 1796348 | fire aims 37879 emitted 84630 | pre 0 sel 34541 surv 31344
+  on-incumbent states: 0
+step   70 rt 1166 beam 31344 cand 1032604 | best lag -10.55 geo 1177 E -1140 |v| 32.2 pos 8889 2180 | inc lag 0.00 | 355s
+  retro found 316701 emitted 1810562 | fire aims 39770 emitted 89463 | pre 0 sel 30005 surv 26666
+  on-incumbent states: 0
+step   71 rt 1167 beam 26666 cand 935109 | best lag -10.43 geo 1177 E -1143 |v| 32.1 pos 8862 2176 | inc lag 0.00 | 361s
+  retro found 317030 emitted 1811969 | fire aims 39990 emitted 89994 | pre 0 sel 32693 surv 27945
+  on-incumbent states: 0
+step   72 rt 1168 beam 27945 cand 726147 | best lag -10.31 geo 1178 E -1143 |v| 32.1 pos 8835 2172 | inc lag 0.00 | 366s
+  retro found 317030 emitted 1811969 | fire aims 39990 emitted 89994 | pre 0 sel 35400 surv 31526
+  on-incumbent states: 0
+step   73 rt 1169 beam 31526 cand 821635 | best lag -10.18 geo 1179 E -1141 |v| 32.0 pos 8808 2165 | inc lag 0.00 | 371s
+  retro found 317030 emitted 1811969 | fire aims 39990 emitted 89994 | pre 0 sel 32096 surv 28236
+  on-incumbent states: 0
+step   74 rt 1170 beam 28236 cand 934808 | best lag -10.05 geo 1180 E -1145 |v| 32.0 pos 8781 2167 | inc lag 0.00 | 376s
+  retro found 317030 emitted 1811969 | fire aims 39990 emitted 89994 | pre 0 sel 32227 surv 27454
+  on-incumbent states: 0
+step   75 rt 1171 beam 27454 cand 888756 | best lag -9.91 geo 1181 E -1161 |v| 31.7 pos 8754 2166 | inc lag 0.00 | 382s
+  retro found 317030 emitted 1811969 | fire aims 39990 emitted 89994 | pre 0 sel 30348 surv 24880
+  on-incumbent states: 0
+step   76 rt 1172 beam 24880 cand 887375 | best lag -9.77 geo 1182 E -1162 |v| 31.7 pos 8727 2166 | inc lag 0.00 | 387s
+  retro found 317030 emitted 1811969 | fire aims 39990 emitted 89994 | pre 0 sel 28314 surv 23248
+  on-incumbent states: 0
+step   77 rt 1173 beam 23248 cand 811556 | best lag -9.63 geo 1183 E -1168 |v| 31.6 pos 8700 2167 | inc lag 0.00 | 393s
+  retro found 317030 emitted 1811969 | fire aims 39990 emitted 89994 | pre 0 sel 25988 surv 22319
+  on-incumbent states: 0
+step   78 rt 1174 beam 22319 cand 784889 | best lag -9.49 geo 1183 E -1153 |v| 31.9 pos 8673 2169 | inc lag 0.00 | 399s
+  retro found 317030 emitted 1811969 | fire aims 39990 emitted 89994 | pre 0 sel 25437 surv 22237
+  on-incumbent states: 0
+step   79 rt 1175 beam 22237 cand 732598 | best lag -9.35 geo 1184 E -1153 |v| 31.9 pos 8646 2171 | inc lag 0.00 | 404s
+  retro found 317030 emitted 1811969 | fire aims 39990 emitted 89994 | pre 0 sel 23769 surv 20374
+  on-incumbent states: 0
+step   80 rt 1176 beam 20374 cand 739811 | best lag -9.19 geo 1185 E -1153 |v| 31.9 pos 8619 2174 | inc lag 0.00 | 409s
+  retro found 317030 emitted 1811969 | fire aims 39990 emitted 89994 | pre 0 sel 22412 surv 19101
+  on-incumbent states: 0
+step   81 rt 1177 beam 19101 cand 680365 | best lag -9.08 geo 1186 E -1153 |v| 32.0 pos 8592 2177 | inc lag 0.00 | 414s
+  retro found 317030 emitted 1811969 | fire aims 39990 emitted 89994 | pre 0 sel 22074 surv 18981
+  on-incumbent states: 0
+step   82 rt 1178 beam 18981 cand 643401 | best lag -8.95 geo 1187 E -1154 |v| 32.0 pos 8565 2181 | inc lag 0.00 | 418s
+  retro found 317030 emitted 1811969 | fire aims 39990 emitted 89994 | pre 0 sel 23487 surv 19087
+  on-incumbent states: 0
+step   83 rt 1179 beam 19087 cand 641431 | best lag -8.82 geo 1188 E -1154 |v| 32.1 pos 8538 2185 | inc lag 0.00 | 423s
+  retro found 317030 emitted 1811969 | fire aims 39990 emitted 89994 | pre 0 sel 23066 surv 16871
+  on-incumbent states: 0
+step   84 rt 1180 beam 16871 cand 681661 | best lag -8.65 geo 1189 E -1154 |v| 32.2 pos 8511 2190 | inc lag 0.00 | 428s
+  retro found 317030 emitted 1811969 | fire aims 39990 emitted 89994 | pre 0 sel 22474 surv 16843
+  on-incumbent states: 0
+step   85 rt 1181 beam 16843 cand 546880 | best lag -8.52 geo 1190 E -1145 |v| 31.7 pos 8484 2153 | inc lag 0.00 | 432s
+  retro found 317030 emitted 1811969 | fire aims 39990 emitted 89994 | pre 0 sel 22147 surv 19756
+  on-incumbent states: 0
+step   86 rt 1182 beam 19756 cand 484572 | best lag -8.36 geo 1190 E -1145 |v| 31.8 pos 8457 2155 | inc lag 0.00 | 436s
+  retro found 317030 emitted 1811969 | fire aims 39990 emitted 89994 | pre 0 sel 28941 surv 26234
+  on-incumbent states: 0
+step   87 rt 1183 beam 26234 cand 622170 | best lag -8.15 geo 1191 E -1146 |v| 31.8 pos 8430 2158 | inc lag 0.00 | 440s
+  retro found 317030 emitted 1811969 | fire aims 39990 emitted 89994 | pre 0 sel 24731 surv 22651
+  on-incumbent states: 0
+step   88 rt 1184 beam 22651 cand 867522 | best lag -7.91 geo 1192 E -1146 |v| 31.9 pos 8403 2161 | inc lag 0.00 | 446s
+  retro found 317030 emitted 1811969 | fire aims 39990 emitted 89994 | pre 0 sel 22614 surv 20702
+  on-incumbent states: 0
+step   89 rt 1185 beam 20702 cand 683223 | best lag -7.66 geo 1193 E -1146 |v| 31.9 pos 8376 2165 | inc lag 0.00 | 451s
+  retro found 317030 emitted 1811969 | fire aims 39990 emitted 89994 | pre 0 sel 23852 surv 21446
+  on-incumbent states: 0
+step   90 rt 1186 beam 21446 cand 599609 | best lag -7.42 geo 1193 E -1147 |v| 32.0 pos 8349 2169 | inc lag 0.00 | 455s
+  retro found 317030 emitted 1811969 | fire aims 39990 emitted 89994 | pre 0 sel 25756 surv 23229
+  on-incumbent states: 0
+step   91 rt 1187 beam 23229 cand 652283 | best lag -7.25 geo 1194 E -1017 |v| 33.2 pos 8325 2120 | inc lag 0.00 | 460s
+  retro found 317030 emitted 1811969 | fire aims 40080 emitted 90162 | pre 0 sel 29874 surv 26834
+  on-incumbent states: 0
+step   92 rt 1188 beam 26834 cand 691150 | best lag -7.16 geo 1195 E -1016 |v| 33.2 pos 8297 2120 | inc lag 0.00 | 466s
+  retro found 317112 emitted 1812263 | fire aims 48927 emitted 105513 | pre 0 sel 30742 surv 28463
+  on-incumbent states: 0
+step   93 rt 1189 beam 28463 cand 973875 | best lag -6.94 geo 1196 E -491 |v| 40.4 pos 8268 2126 | inc lag 0.00 | 473s
+  retro found 324324 emitted 1841912 | fire aims 63746 emitted 128844 | pre 0 sel 35931 surv 33779
+  on-incumbent states: 0
+step   94 rt 1190 beam 33779 cand 809913 | best lag -6.83 geo 1197 E -527 |v| 40.1 pos 8237 2135 | inc lag 0.00 | 479s
+  retro found 340869 emitted 1920953 | fire aims 79686 emitted 154458 | pre 0 sel 37892 surv 36803
+  on-incumbent states: 0
+step   95 rt 1191 beam 36803 cand 1126642 | best lag -6.73 geo 1198 E -427 |v| 41.3 pos 8206 2136 | inc lag 0.00 | 487s
+  retro found 354673 emitted 1989137 | fire aims 90943 emitted 174282 | pre 0 sel 36950 surv 35153
+  on-incumbent states: 0
+step   96 rt 1192 beam 35153 cand 1179492 | best lag -6.58 geo 1199 E -428 |v| 41.4 pos 8174 2143 | inc lag 0.00 | 496s
+  retro found 366496 emitted 2048453 | fire aims 99593 emitted 189462 | pre 0 sel 34934 surv 31451
+  on-incumbent states: 0
+step   97 rt 1193 beam 31451 cand 1029319 | best lag -6.40 geo 1199 E -437 |v| 41.4 pos 8142 2147 | inc lag 0.00 | 503s
+  retro found 374632 emitted 2089193 | fire aims 105712 emitted 199248 | pre 0 sel 38806 surv 37485
+  on-incumbent states: 0
+step   98 rt 1194 beam 37485 cand 1495652 | best lag -6.20 geo 1200 E -437 |v| 41.4 pos 8110 2152 | inc lag 0.00 | 514s
+  retro found 378585 emitted 2109101 | fire aims 108745 emitted 202752 | pre 0 sel 32121 surv 31465
+  on-incumbent states: 0
+step   99 rt 1195 beam 31465 cand 1105079 | best lag -6.06 geo 1201 E -440 |v| 41.4 pos 8078 2154 | inc lag 0.00 | 522s
+  retro found 379157 emitted 2111945 | fire aims 109232 emitted 203352 | pre 0 sel 30560 surv 29888
+  on-incumbent states: 0
+step  100 rt 1196 beam 29888 cand 864484 | best lag -5.93 geo 1202 E -508 |v| 40.6 pos 8046 2154 | inc lag 0.00 | 528s
+  retro found 379157 emitted 2111945 | fire aims 109232 emitted 203352 | pre 0 sel 33076 surv 32426
+  on-incumbent states: 0
+step  101 rt 1197 beam 32426 cand 828222 | best lag -5.82 geo 1203 E -509 |v| 40.6 pos 8014 2155 | inc lag 0.00 | 533s
+  retro found 379157 emitted 2111945 | fire aims 109232 emitted 203352 | pre 0 sel 34754 surv 34079
+  on-incumbent states: 0
+step  102 rt 1198 beam 34079 cand 924780 | best lag -5.71 geo 1204 E -510 |v| 40.5 pos 7982 2153 | inc lag 0.00 | 540s
+  retro found 379157 emitted 2111945 | fire aims 109232 emitted 203352 | pre 0 sel 33436 surv 33115
+  on-incumbent states: 0
+step  103 rt 1199 beam 33115 cand 1021913 | best lag -5.62 geo 1205 E -511 |v| 40.5 pos 7950 2152 | inc lag 0.00 | 547s
+  retro found 379157 emitted 2111945 | fire aims 109232 emitted 203352 | pre 0 sel 31670 surv 31335
+  on-incumbent states: 0
+step  104 rt 1200 beam 31335 cand 981786 | best lag -5.55 geo 1206 E -511 |v| 40.5 pos 7918 2151 | inc lag 0.00 | 553s
+  retro found 379157 emitted 2111945 | fire aims 109232 emitted 203352 | pre 0 sel 32904 surv 32306
+  on-incumbent states: 0
+step  105 rt 1201 beam 32306 cand 1019698 | best lag -5.49 geo 1206 E -497 |v| 40.6 pos 7886 2149 | inc lag 0.00 | 560s
+  retro found 379157 emitted 2111945 | fire aims 109232 emitted 203352 | pre 0 sel 29315 surv 27977
+  on-incumbent states: 0
+step  106 rt 1202 beam 27977 cand 976273 | best lag -5.44 geo 1207 E -498 |v| 40.6 pos 7854 2146 | inc lag 0.00 | 567s
+  retro found 379157 emitted 2111945 | fire aims 109232 emitted 203352 | pre 0 sel 28672 surv 26751
+  on-incumbent states: 0
+step  107 rt 1203 beam 26751 cand 887230 | best lag -5.42 geo 1208 E -374 |v| 42.5 pos 7818 2182 | inc lag 0.00 | 574s
+  retro found 379157 emitted 2111945 | fire aims 109232 emitted 203352 | pre 0 sel 29463 surv 27017
+  on-incumbent states: 0
+step  108 rt 1204 beam 27017 cand 863717 | best lag -5.40 geo 1209 E -374 |v| 42.6 pos 7785 2185 | inc lag 0.00 | 580s
+  retro found 379157 emitted 2111945 | fire aims 109232 emitted 203352 | pre 0 sel 29185 surv 26337
+  on-incumbent states: 0
+step  109 rt 1205 beam 26337 cand 878107 | best lag -5.35 geo 1210 E -374 |v| 42.6 pos 7752 2188 | inc lag 0.00 | 586s
+  retro found 379157 emitted 2111945 | fire aims 109232 emitted 203352 | pre 0 sel 29229 surv 26544
+  on-incumbent states: 0
+step  110 rt 1206 beam 26544 cand 764483 | best lag -5.31 geo 1211 E -374 |v| 42.6 pos 7719 2192 | inc lag 0.00 | 591s
+  retro found 379157 emitted 2111945 | fire aims 109232 emitted 203352 | pre 0 sel 33575 surv 31278
+  on-incumbent states: 0
+step  111 rt 1207 beam 31278 cand 626563 | best lag -5.08 geo 1212 E -439 |v| 41.1 pos 7694 2124 | inc lag 0.00 | 596s
+  retro found 379157 emitted 2111945 | fire aims 109232 emitted 203352 | pre 0 sel 16727 surv 15473
+  on-incumbent states: 0
+step  112 rt 1208 beam 15473 cand 677058 | best lag -4.76 geo 1213 E -460 |v| 40.4 pos 7671 2089 | inc lag 0.00 | 602s
+  retro found 379157 emitted 2111945 | fire aims 109232 emitted 203352 | pre 0 sel 13297 surv 11375
+  on-incumbent states: 0
+step  113 rt 1209 beam 11375 cand 390264 | best lag -4.60 geo 1214 E -460 |v| 40.3 pos 7640 2084 | inc lag 0.00 | 604s
+  retro found 379157 emitted 2111945 | fire aims 109232 emitted 203352 | pre 0 sel 13971 surv 12368
+  on-incumbent states: 0
+step  114 rt 1210 beam 12368 cand 247187 | best lag -4.45 geo 1214 E -460 |v| 40.2 pos 7609 2080 | inc lag 0.00 | 606s
+  retro found 379157 emitted 2111945 | fire aims 109232 emitted 203352 | pre 0 sel 15238 surv 14793
+  on-incumbent states: 0
+step  115 rt 1211 beam 14793 cand 342670 | best lag -4.30 geo 1215 E -458 |v| 40.2 pos 7578 2073 | inc lag 0.00 | 607s
+  retro found 379157 emitted 2111945 | fire aims 109232 emitted 203352 | pre 0 sel 23769 surv 21931
+  on-incumbent states: 0
+step  116 rt 1212 beam 21931 cand 492205 | best lag -4.13 geo 1216 E -458 |v| 40.1 pos 7547 2067 | inc lag 0.00 | 610s
+  retro found 379157 emitted 2111945 | fire aims 109232 emitted 203352 | pre 0 sel 25459 surv 22270
+  on-incumbent states: 0
+step  117 rt 1213 beam 22270 cand 960149 | best lag -3.93 geo 1217 E -458 |v| 40.0 pos 7516 2061 | inc lag 0.00 | 615s
+  retro found 379157 emitted 2111945 | fire aims 109232 emitted 203352 | pre 0 sel 18808 surv 16378
+  on-incumbent states: 0
+step  118 rt 1214 beam 16378 cand 716338 | best lag -3.71 geo 1218 E -458 |v| 40.0 pos 7485 2056 | inc lag 0.00 | 620s
+  retro found 379157 emitted 2111945 | fire aims 109232 emitted 203352 | pre 0 sel 18332 surv 15683
+  on-incumbent states: 0
+step  119 rt 1215 beam 15683 cand 527547 | best lag -3.51 geo 1219 E -458 |v| 39.9 pos 7454 2051 | inc lag 0.00 | 624s
+  retro found 379157 emitted 2111945 | fire aims 109232 emitted 203352 | pre 0 sel 18749 surv 15502
+  on-incumbent states: 0
+step  120 rt 1216 beam 15502 cand 459083 | best lag -3.31 geo 1219 E -458 |v| 39.9 pos 7423 2047 | inc lag 0.00 | 628s
+  retro found 379204 emitted 2112128 | fire aims 109751 emitted 204558 | pre 0 sel 22768 surv 19996
+  on-incumbent states: 0
+step  121 rt 1217 beam 19996 cand 530553 | best lag -3.10 geo 1220 E -458 |v| 39.8 pos 7392 2043 | inc lag 0.00 | 632s
+  retro found 386414 emitted 2148737 | fire aims 112212 emitted 212580 | pre 0 sel 28425 surv 23938
+  on-incumbent states: 0
+step  122 rt 1218 beam 23938 cand 662667 | best lag -2.90 geo 1221 E -341 |v| 41.7 pos 7360 2078 | inc lag 0.00 | 637s
+  retro found 393579 emitted 2183717 | fire aims 114852 emitted 218982 | pre 0 sel 29566 surv 24058
+  on-incumbent states: 0
+step  123 rt 1219 beam 24058 cand 981952 | best lag -2.72 geo 1222 E -341 |v| 41.6 pos 7328 2070 | inc lag 0.00 | 643s
+  retro found 395827 emitted 2194583 | fire aims 115151 emitted 219591 | pre 0 sel 23538 surv 20897
+  on-incumbent states: 0
+step  124 rt 1220 beam 20897 cand 1215471 | best lag -2.57 geo 1223 E -215 |v| 43.1 pos 7295 2074 | inc lag 0.00 | 651s
+  retro found 395827 emitted 2194583 | fire aims 115154 emitted 219591 | pre 0 sel 20759 surv 18615
+  on-incumbent states: 0
+step  125 rt 1221 beam 18615 cand 740964 | best lag -2.43 geo 1223 E -82 |v| 44.5 pos 7262 2064 | inc lag 0.00 | 655s
+  retro found 396994 emitted 2200199 | fire aims 115275 emitted 219591 | pre 0 sel 20602 surv 18453
+  on-incumbent states: 0
+step  126 rt 1222 beam 18453 cand 755143 | best lag -2.29 geo 1224 E -216 |v| 43.0 pos 7229 2062 | inc lag 0.00 | 660s
+  retro found 397773 emitted 2204108 | fire aims 115473 emitted 219591 | pre 0 sel 20128 surv 17732
+  on-incumbent states: 0
+step  127 rt 1223 beam 17732 cand 720828 | best lag -2.13 geo 1225 E -216 |v| 42.9 pos 7196 2057 | inc lag 0.00 | 664s
+  retro found 397773 emitted 2204108 | fire aims 115473 emitted 219591 | pre 0 sel 19747 surv 17564
+  on-incumbent states: 0
+step  128 rt 1224 beam 17564 cand 660727 | best lag -2.05 geo 1226 E 558 |v| 51.3 pos 7160 2069 | inc lag 0.00 | 669s
+  retro found 397773 emitted 2204108 | fire aims 115473 emitted 219591 | pre 0 sel 20498 surv 18008
+  on-incumbent states: 0
+step  129 rt 1225 beam 18008 cand 622389 | best lag -1.97 geo 1227 E 557 |v| 51.2 pos 7124 2060 | inc lag 0.00 | 673s
+  retro found 397773 emitted 2204108 | fire aims 115473 emitted 219591 | pre 0 sel 23309 surv 19683
+  on-incumbent states: 0
+step  130 rt 1226 beam 19683 cand 610545 | best lag -1.90 geo 1228 E 557 |v| 51.1 pos 7088 2051 | inc lag 0.00 | 677s
+  retro found 397773 emitted 2204108 | fire aims 115473 emitted 219591 | pre 0 sel 22324 surv 19017
+  on-incumbent states: 0
+step  131 rt 1227 beam 19017 cand 683189 | best lag -1.82 geo 1229 E 322 |v| 50.0 pos 7052 2178 | inc lag 0.00 | 682s
+  retro found 397773 emitted 2204108 | fire aims 115473 emitted 219591 | pre 0 sel 21925 surv 18497
+  on-incumbent states: 0
+step  132 rt 1228 beam 18497 cand 637175 | best lag -1.79 geo 1230 E 321 |v| 50.1 pos 7016 2187 | inc lag 0.00 | 686s
+  retro found 397773 emitted 2204108 | fire aims 115473 emitted 219591 | pre 0 sel 23845 surv 19433
+  on-incumbent states: 0
+step  133 rt 1229 beam 19433 cand 629235 | best lag -1.74 geo 1231 E 409 |v| 51.0 pos 6980 2189 | inc lag 0.00 | 690s
+  retro found 397773 emitted 2204108 | fire aims 115473 emitted 219591 | pre 0 sel 23619 surv 19069
+  on-incumbent states: 0
+step  134 rt 1230 beam 19069 cand 701453 | best lag -1.70 geo 1232 E 409 |v| 51.1 pos 6944 2198 | inc lag 0.00 | 695s
+  retro found 397773 emitted 2204108 | fire aims 115473 emitted 219591 | pre 0 sel 24783 surv 19654
+  on-incumbent states: 0
+step  135 rt 1231 beam 19654 cand 714956 | best lag -1.66 geo 1233 E 437 |v| 51.4 pos 6908 2201 | inc lag 0.00 | 699s
+  retro found 397773 emitted 2204108 | fire aims 115473 emitted 219591 | pre 0 sel 25149 surv 19518
+  on-incumbent states: 0
+step  136 rt 1232 beam 19518 cand 732217 | best lag -1.61 geo 1234 E 329 |v| 50.3 pos 6872 2201 | inc lag 0.00 | 704s
+  retro found 397773 emitted 2204108 | fire aims 115473 emitted 219591 | pre 0 sel 26494 surv 20717
+  on-incumbent states: 0
+step  137 rt 1233 beam 20717 cand 709044 | best lag -1.55 geo 1235 E 357 |v| 50.6 pos 6836 2202 | inc lag 0.00 | 709s
+  retro found 397773 emitted 2204108 | fire aims 115473 emitted 219591 | pre 0 sel 27043 surv 22036
+  on-incumbent states: 0
+step  138 rt 1234 beam 22036 cand 752063 | best lag -1.52 geo 1236 E 357 |v| 50.7 pos 6800 2211 | inc lag 0.00 | 715s
+  retro found 397773 emitted 2204108 | fire aims 115473 emitted 219591 | pre 0 sel 28040 surv 22199
+  on-incumbent states: 0
+step  139 rt 1235 beam 22199 cand 771715 | best lag -1.49 geo 1236 E 356 |v| 50.7 pos 6764 2215 | inc lag 0.00 | 721s
+  retro found 397773 emitted 2204108 | fire aims 115473 emitted 219591 | pre 0 sel 27375 surv 20894
+  on-incumbent states: 0
+step  140 rt 1236 beam 20894 cand 737257 | best lag -1.41 geo 1237 E 427 |v| 51.3 pos 6728 2204 | inc lag 0.00 | 727s
+  retro found 397773 emitted 2204108 | fire aims 115473 emitted 219591 | pre 0 sel 29143 surv 21285
+  on-incumbent states: 0
+step  141 rt 1237 beam 21285 cand 693189 | best lag -1.37 geo 1238 E 325 |v| 50.3 pos 6692 2209 | inc lag 0.00 | 732s
+  retro found 397773 emitted 2204108 | fire aims 115473 emitted 219591 | pre 0 sel 32544 surv 20820
+  on-incumbent states: 0
+step  142 rt 1238 beam 20820 cand 730691 | best lag -1.31 geo 1239 E 264 |v| 49.8 pos 6656 2212 | inc lag 0.00 | 737s
+  retro found 397773 emitted 2204108 | fire aims 116936 emitted 225480 | pre 0 sel 32515 surv 19137
+  on-incumbent states: 0
+step  143 rt 1239 beam 19137 cand 899569 | best lag -1.28 geo 1240 E 315 |v| 50.3 pos 6620 2219 | inc lag 0.00 | 743s
+  retro found 397852 emitted 2204378 | fire aims 116997 emitted 225657 | pre 0 sel 38300 surv 19082
+  on-incumbent states: 0
+step  144 rt 1240 beam 19082 cand 916632 | best lag -1.20 geo 1241 E 250 |v| 49.7 pos 6584 2217 | inc lag 0.00 | 749s
+  retro found 397884 emitted 2204492 | fire aims 116997 emitted 225657 | pre 0 sel 33340 surv 16058
+  on-incumbent states: 0
+step  145 rt 1241 beam 16058 cand 855941 | best lag -1.13 geo 1242 E 250 |v| 49.7 pos 6548 2222 | inc lag 0.00 | 755s
+  retro found 397929 emitted 2204627 | fire aims 116997 emitted 225657 | pre 0 sel 26827 surv 15182
+  on-incumbent states: 0
+step  146 rt 1242 beam 15182 cand 851847 | best lag -1.02 geo 1243 E 255 |v| 49.8 pos 6512 2221 | inc lag 0.00 | 761s
+  retro found 398008 emitted 2204867 | fire aims 116997 emitted 225657 | pre 0 sel 23793 surv 15412
+  on-incumbent states: 0
+step  147 rt 1243 beam 15412 cand 764287 | best lag -0.91 geo 1244 E 256 |v| 49.8 pos 6476 2219 | inc lag 0.00 | 767s
+  retro found 398094 emitted 2205125 | fire aims 116997 emitted 225657 | pre 0 sel 25069 surv 17005
+  on-incumbent states: 0
+step  148 rt 1244 beam 17005 cand 653657 | best lag -0.84 geo 1245 E 246 |v| 49.7 pos 6440 2225 | inc lag 0.00 | 772s
+  retro found 398406 emitted 2206061 | fire aims 116997 emitted 225657 | pre 0 sel 25172 surv 19677
+  on-incumbent states: 0
+step  149 rt 1245 beam 19677 cand 747684 | best lag -0.76 geo 1246 E 1272 |v| 58.6 pos 6388 2160 | inc lag 0.00 | 777s
+  retro found 398843 emitted 2207462 | fire aims 117000 emitted 225657 | pre 0 sel 20843 surv 17704
+  on-incumbent states: 0
+step  150 rt 1246 beam 17704 cand 675851 | best lag -0.78 geo 1247 E 1272 |v| 58.7 pos 6349 2172 | inc lag 0.00 | 781s
+  retro found 398888 emitted 2207606 | fire aims 117001 emitted 225657 | pre 0 sel 23613 surv 21177
+  on-incumbent states: 0
+step  151 rt 1247 beam 21177 cand 466229 | best lag -0.80 geo 1248 E 1261 |v| 58.7 pos 6310 2181 | inc lag 0.00 | 784s
+  retro found 398922 emitted 2207765 | fire aims 117001 emitted 225657 | pre 0 sel 21549 surv 20995
+  on-incumbent states: 0
+step  152 rt 1248 beam 20995 cand 722451 | best lag -0.83 geo 1249 E 1260 |v| 58.7 pos 6271 2191 | inc lag 0.00 | 788s
+  retro found 398922 emitted 2207765 | fire aims 117001 emitted 225657 | pre 0 sel 24097 surv 23029
+  on-incumbent states: 0
+step  153 rt 1249 beam 23029 cand 539715 | best lag -0.82 geo 1250 E 1260 |v| 58.8 pos 6232 2201 | inc lag 0.00 | 791s
+  retro found 398922 emitted 2207765 | fire aims 117001 emitted 225657 | pre 0 sel 26670 surv 26073
+  on-incumbent states: 0
+step  154 rt 1250 beam 26073 cand 688356 | best lag -0.84 geo 1251 E 1291 |v| 59.2 pos 6193 2214 | inc lag 0.00 | 796s
+  retro found 398922 emitted 2207765 | fire aims 117001 emitted 225657 | pre 0 sel 25480 surv 25008
+  on-incumbent states: 0
+step  155 rt 1251 beam 25008 cand 629377 | best lag -0.89 geo 1252 E 1291 |v| 59.3 pos 6154 2227 | inc lag 0.00 | 799s
+  retro found 398922 emitted 2207765 | fire aims 117001 emitted 225657 | pre 0 sel 33108 surv 32655
+  on-incumbent states: 0
+step  156 rt 1252 beam 32655 cand 624950 | best lag -1.07 geo 1253 E 1430 |v| 60.7 pos 6117 2252 | inc lag 0.00 | 803s
+  retro found 398922 emitted 2207765 | fire aims 117001 emitted 225657 | pre 0 sel 33137 surv 32931
+  on-incumbent states: 0
+step  157 rt 1253 beam 32931 cand 841720 | best lag -1.20 geo 1254 E 1252 |v| 59.4 pos 6083 2281 | inc lag 0.00 | 808s
+  retro found 398922 emitted 2207765 | fire aims 117001 emitted 225657 | pre 0 sel 33052 surv 32941
+  on-incumbent states: 0
+step  158 rt 1254 beam 32941 cand 1039576 | best lag -1.35 geo 1255 E 1255 |v| 59.6 pos 6047 2303 | inc lag 0.00 | 814s
+  retro found 398922 emitted 2207765 | fire aims 117001 emitted 225657 | pre 0 sel 36067 surv 34899
+  on-incumbent states: 0
+step  159 rt 1255 beam 34899 cand 989629 | best lag -1.46 geo 1256 E 1054 |v| 58.2 pos 6016 2334 | inc lag 0.00 | 820s
+  retro found 398922 emitted 2207765 | fire aims 117001 emitted 225657 | pre 0 sel 34925 surv 33009
+  on-incumbent states: 0
+step  160 rt 1256 beam 33009 cand 1103268 | best lag -1.55 geo 1258 E 1125 |v| 58.9 pos 5973 2346 | inc lag 0.00 | 828s
+  retro found 398922 emitted 2207765 | fire aims 117001 emitted 225657 | pre 0 sel 31356 surv 22584
+  on-incumbent states: 0
+step  161 rt 1257 beam 22584 cand 1106145 | best lag -1.58 geo 1259 E 1309 |v| 60.5 pos 5931 2357 | inc lag 0.00 | 836s
+  retro found 398922 emitted 2207765 | fire aims 117001 emitted 225657 | pre 0 sel 33438 surv 19620
+  on-incumbent states: 0
+step  162 rt 1258 beam 19620 cand 779998 | best lag -1.63 geo 1260 E 990 |v| 58.0 pos 5894 2378 | inc lag 0.00 | 843s
+  retro found 398922 emitted 2207765 | fire aims 117001 emitted 225657 | pre 0 sel 30486 surv 14184
+  on-incumbent states: 0
+step  163 rt 1259 beam 14184 cand 569269 | best lag -1.60 geo 1261 E 534 |v| 54.1 pos 5858 2394 | inc lag 0.00 | 848s
+  retro found 398922 emitted 2207765 | fire aims 117001 emitted 225657 | pre 0 sel 26370 surv 14897
+  on-incumbent states: 0
+step  164 rt 1260 beam 14897 cand 397868 | best lag -1.60 geo 1262 E 151 |v| 50.7 pos 5826 2416 | inc lag 0.00 | 852s
+  retro found 398922 emitted 2207765 | fire aims 117001 emitted 225657 | pre 0 sel 24280 surv 15200
+  on-incumbent states: 0
+step  165 rt 1261 beam 15200 cand 343445 | best lag -1.59 geo 1263 E -53 |v| 48.8 pos 5794 2438 | inc lag 0.00 | 855s
+  retro found 398922 emitted 2207765 | fire aims 117001 emitted 225657 | pre 0 sel 22795 surv 14549
+  on-incumbent states: 0
+step  166 rt 1262 beam 14549 cand 379541 | best lag -1.53 geo 1264 E -404 |v| 45.4 pos 5765 2461 | inc lag 0.00 | 858s
+  retro found 398922 emitted 2207765 | fire aims 117001 emitted 225657 | pre 0 sel 22238 surv 15423
+  on-incumbent states: 0
+step  167 rt 1263 beam 15423 cand 288879 | best lag -1.46 geo 1264 E -652 |v| 42.8 pos 5738 2485 | inc lag 0.00 | 861s
+  retro found 398922 emitted 2207765 | fire aims 117009 emitted 225657 | pre 0 sel 19887 surv 15213
+  on-incumbent states: 0
+step  168 rt 1264 beam 15213 cand 217723 | best lag -1.41 geo 1265 E -926 |v| 39.8 pos 5714 2511 | inc lag 0.00 | 862s
+  retro found 399062 emitted 2208488 | fire aims 117009 emitted 225657 | pre 0 sel 20127 surv 13225
+  on-incumbent states: 0
+step  169 rt 1265 beam 13225 cand 202458 | best lag -1.31 geo 1266 E -1110 |v| 37.8 pos 5694 2538 | inc lag 0.00 | 864s
+  retro found 399062 emitted 2208488 | fire aims 117009 emitted 225657 | pre 0 sel 17300 surv 5593
+  on-incumbent states: 0
+step  170 rt 1266 beam 5593 cand 475536 | best lag -1.17 geo 1267 E -1374 |v| 34.5 pos 5677 2565 | inc lag 0.00 | 867s
+  retro found 399062 emitted 2208488 | fire aims 117009 emitted 225657 | pre 0 sel 18352 surv 3301
+  on-incumbent states: 0
+step  171 rt 1267 beam 3301 cand 213789 | best lag -0.98 geo 1268 E -1597 |v| 31.5 pos 5662 2591 | inc lag 0.00 | 869s
+  retro found 399062 emitted 2208488 | fire aims 117009 emitted 225657 | pre 0 sel 18184 surv 1986
+  on-incumbent states: 0
+step  172 rt 1268 beam 1986 cand 200064 | best lag -0.75 geo 1269 E -1793 |v| 28.7 pos 5650 2616 | inc lag 0.00 | 871s
+  retro found 399185 emitted 2209226 | fire aims 117009 emitted 225657 | pre 0 sel 18219 surv 3466
+  on-incumbent states: 0
+step  173 rt 1269 beam 3466 cand 56139 | best lag -0.44 geo 1269 E -1728 |v| 30.2 pos 5644 2641 | inc lag 0.00 | 871s
+  retro found 401258 emitted 2220416 | fire aims 117661 emitted 225849 | pre 0 sel 23903 surv 9175
+  on-incumbent states: 12
+step  174 rt 1270 beam 9175 cand 126560 | best lag -0.22 geo 1270 E -1720 |v| 30.8 pos 5638 2670 | inc lag 0.00 | 873s
+  retro found 412016 emitted 2273354 | fire aims 121667 emitted 227643 | pre 0 sel 29779 surv 10801
+  on-incumbent states: 0
+step  175 rt 1271 beam 10801 cand 357353 | best lag 0.00 geo 1271 E -1828 |v| 29.5 pos 5629 2698 | inc lag 0.00 | 876s
+  retro found 441303 emitted 2421060 | fire aims 127872 emitted 228537 | pre 0 sel 23732 surv 10312
+  on-incumbent states: 0
+step  176 rt 1272 beam 10312 cand 449516 | best lag 0.24 geo 1272 E -1592 |v| 33.6 pos 5616 2723 | inc lag 0.00 | 880s
+  retro found 454438 emitted 2488545 | fire aims 127872 emitted 228537 | pre 0 sel 17554 surv 10821
+  on-incumbent states: 0
+step  177 rt 1273 beam 10821 cand 368235 | best lag 1.00 geo 1272 E -2118 |v| 24.9 pos 5620 2736 | inc lag 0.00 | 883s
+  retro found 454438 emitted 2488545 | fire aims 127872 emitted 228537 | pre 0 sel 46 surv 41
+  on-incumbent states: 0
+step  178 rt 1274 beam 41 cand 230696 | best lag 2.00 geo 1272 E -2445 |v| 17.4 pos 5636 2746 | inc lag 0.00 | 884s
+  retro found 454438 emitted 2488545 | fire aims 127872 emitted 228537 | pre 0 sel 0 surv 0
+  on-incumbent states: 0
+step  179 rt -1 beam 0 cand 246 | best lag 1000000000.00 geo 0 E 0 |v| 0.0 pos 0 0 | inc lag 0.00 | 884s
+verify (CTasGame): gate rt 1274 end rt 1274 geo 39908 finish -1 dead 0 |v| 34.4 E -1577
+stacks: tried 0 emitted 0 | retro found 454438 emitted 2488545 | canpb 709983 with pb aims 27458 with old retro 0
+GATE t 1273.009 (incumbent 1272.000) E -1577 retro patches 6 -> runs/me/u1_tref.txt (884s)
+
+real	14m44.534s
+user	24m33.687s
+sys	0m57.629s

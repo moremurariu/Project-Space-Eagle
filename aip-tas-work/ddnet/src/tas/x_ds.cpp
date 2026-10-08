@@ -2263,25 +2263,35 @@ int main(int argc, const char **argv)
 		}
 		const int NL = (int)gs_P.m_vLam.size();
 		std::vector<std::vector<int>> vOrder(NL);
-		for(int l = 0; l < NL; l++)
 		{
-			const float Lam = gs_P.m_vLam[l];
-			std::vector<std::pair<float, int>> v;
-			v.reserve(vAll.size());
-			for(size_t k = 0; k < vAll.size(); k++)
-			{
-				const SCand &c = vAll[k];
-				if(c.m_Gate)
-					continue;
-				float Eref = gs_Line.EnergyAt(c.m_G);
-				float S = c.m_Lag + c.m_Jit - Lam * (gs_Line.EWeight(c.m_G) * (c.m_E - Eref) + c.m_Opt);
-				v.push_back({S, (int)k});
-			}
-			int Want = std::min((int)v.size(), gs_P.m_Beam * 20 / NL + 256);
-			std::partial_sort(v.begin(), v.begin() + Want, v.end());
-			v.resize(Want);
-			for(auto &p : v)
-				vOrder[l].push_back(p.second);
+			// one thread per energy weight; nth_element + sort of the kept part (same order as a partial sort)
+			auto Rank = [&](int l) {
+				const float Lam = gs_P.m_vLam[l];
+				std::vector<std::pair<float, int>> v;
+				v.reserve(vAll.size());
+				for(size_t k = 0; k < vAll.size(); k++)
+				{
+					const SCand &c = vAll[k];
+					if(c.m_Gate)
+						continue;
+					float Eref = gs_Line.EnergyAt(c.m_G);
+					float S = c.m_Lag + c.m_Jit - Lam * (gs_Line.EWeight(c.m_G) * (c.m_E - Eref) + c.m_Opt);
+					v.push_back({S, (int)k});
+				}
+				int Want = std::min((int)v.size(), gs_P.m_Beam * 20 / NL + 256);
+				if(Want < (int)v.size())
+					std::nth_element(v.begin(), v.begin() + Want, v.end());
+				v.resize(Want);
+				std::sort(v.begin(), v.end());
+				vOrder[l].reserve(v.size());
+				for(auto &p : v)
+					vOrder[l].push_back(p.second);
+			};
+			std::vector<std::thread> vRT;
+			for(int l = 0; l < NL; l++)
+				vRT.emplace_back(Rank, l);
+			for(auto &T : vRT)
+				T.join();
 		}
 		// rollout lookahead: re-score the preselected candidates by where short rollouts get them
 		if(gs_P.m_RollH > 0 || gs_P.m_ShH > 0)

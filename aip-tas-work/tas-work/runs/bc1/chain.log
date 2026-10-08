@@ -1,0 +1,10 @@
+06:03:54 bigchain inc=/home/user/Project-Space-Eagle/aip-tas-work/tas-work/kog_full_best.txt (finish 2583) cut=1007 W=150 C=75 beam=40000 cellpos=5 cellvel=0.6 threads=4 var: seed=21 lam=0,0.004,0.01,0.02 kickmin=10 shadow=2 surv=12 trackfrac=0.3 shh=40 rollpre=4 shmode=1 kcred=0.5 kready=3 retro=4 egain=0.004 rotfar=1 brakew=0.3
+06:09:25 window 0 1007->rt1157: GATE 1155.911 (incumbent 1157.000) E -1220 finish -1 [331s]
+06:15:26 window 1 1082->rt1232: GATE 1230.760 (incumbent 1232.000) E 1039 finish -1 [361s]
+06:21:41 window 2 1157->rt1307: GATE 1305.474 (incumbent 1307.000) E 362 finish -1 [376s]
+06:28:47 window 3 1232->rt1382: GATE 1378.562 (incumbent 1382.000) E 1996 finish -1 [426s]
+06:34:59 window 4 1307->rt1457: GATE 1454.236 (incumbent 1457.000) E -2050 finish -1 [371s]
+06:39:01 window 5 1382->rt1532: GATE 1531.571 (incumbent 1532.000) E -910 finish -1 [243s]
+06:43:07 window 6 1457->rt1607: GATE 1608.205 (incumbent 1607.000) E -2124 finish -1 [245s]
+06:46:48 window 7 1532->rt1682: GATE 1682.759 (incumbent 1682.000) E -893 finish -1 [222s]
+06:50:57 window 8 1607->rt1757: GATE 1757.690 (incumbent 1757.000) E 887 finish -1 [249s]
