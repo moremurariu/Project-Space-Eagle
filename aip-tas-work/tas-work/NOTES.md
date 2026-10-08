@@ -1462,3 +1462,10 @@ lead.py), `x_tfield` (new), x_ds `tfield=` / `tfmode=` / `nokickall=` (new).
   of a new structure (its window end must be followed by an x_ds re-search through the next turn).
 - Polish sweep (xsweep rf, allcuts) on 2576: 1095-1270 +0.8 (no graft cuts), 1200-1380 +1.3 at 1414 (graft 0/2; the
   line continued through the left U-turn ends 4-15 behind at 1500).
+- **optsweep (plan/optsweep.py) on 2575**, two sweeps in parallel on copies: left U-turn window (x_opt 1330-1460,
+  stage 2 1450 -> 1540: 1537.93) -> graft D=1 at 1486: **2574**; shaft top (x_opt 1560-1660: +1.28 lead, |v| 44.4
+  vs 38.6; stage 2 1645 -> 1760: 1757.05) -> graft D=2 at 1700: 2573; top-left corner (x_opt 2030-2140, stage 2 to
+  2230) -> graft D=1 at 2149: 2573 (on 2574). Splices: the left U-turn graft only rejoins 2575 (+1) at its rt 1574,
+  the shaft-top line leaves 2575 at 1566 (overlap: that splice froze); shaft top + corner (os1 run to rt 1900, then
+  the os2 run's inputs from its rt 1901, both being 2575's state at 1902) -> **2572 (51.44 s)**, server-checked
+  (TasReplay finish tick 2640). The left U-turn window is re-run on 2572.
