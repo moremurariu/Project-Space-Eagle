@@ -1304,3 +1304,5 @@ dir, jump, cursor aim, shots with aim, certainties; best effort, not exact) and 
   that line): fired 1129-1131 they land on the outer wall at 1145 with |f| 12 but cos ~0 (pure redirect); x_ds from
   them 1229.74 (+0.26, lower energy) to 1233. Lobs fired 1120-1125 land at 1145-1149 ~100 px from the tee.
 - Teero tracker (x_tig, vw=1.5) from 2589 at rt 1612 / 1640, 2 seeds each: best +0.9 at 1752, others -2..-5.
+- autosweep pass 2 (dschain_variants_rf2, seeds 31-34) on 2589: 1700-1875 again +1.0 at rt 1880 -> x_graft D=1 from
+  cut 1892: **2588 (51.76 s)**, server-checked (TasReplay finish tick 2656; TasServer).
