@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """multigraft.py LINE RUN OUTDIR RT0 RT1 [off=6] [spacing=5] [par=2]: x_graft LINE onto RUN at every tick in RT0..RT1
 where LINE is on RUN's line (within off px) and >= 1 tick ahead (projection), D = whole ticks ahead and one less,
-largest D first. Prints each graft's simulated finish (server-check the best with srvfin.sh)."""
+largest D first. Prints each graft's simulated finish (server-check the best with srvfin.sh). x_graft beam 5000
+(MG_BEAM=): finds all five recent grafts (2554-2549) that beam 20000 found, 3.5-4x faster."""
 # try x_graft of a line onto the run at many on-line cuts (lead >= 1, off < OFF px), latest / largest D first
 import math, os, re, subprocess, sys
 from concurrent.futures import ThreadPoolExecutor
@@ -41,7 +42,7 @@ jobs.sort(key=lambda j:(-j[1],-j[0]))
 print('cuts', [(c, round(res[c][0],2), round(res[c][1],1)) for c in cuts], flush=True)
 def g(j):
     c,D=j; out=f'{D0}/g_c{c}_D{D}.txt'
-    r=subprocess.run([BIN+'x_graft',MAP,f'prefix={os.path.abspath(line)}',f'cut={c}',f'run={run}',f'D={D}','horizon=45','beam=20000','threads=2','test=300',f'out={out}'],capture_output=True,text=True).stdout
+    r=subprocess.run([BIN+'x_graft',MAP,f'prefix={os.path.abspath(line)}',f'cut={c}',f'run={run}',f'D={D}','horizon=45','beam='+os.environ.get('MG_BEAM','5000'),'threads=2','test=300',f'out={out}'],capture_output=True,text=True).stdout
     mm=re.search(r'RESULT graft finish (\d+)',r)
     return (c,D,int(mm.group(1)) if mm else None,out)
 with ThreadPoolExecutor(PAR) as ex:
