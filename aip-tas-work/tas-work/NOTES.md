@@ -1625,3 +1625,5 @@ approach shot, x_pfscan pre-fires, point-blank) and evaluates each with the two-
 - optloop round 5 on 2542: no gain. Final-maze sweep on 2542 (runs/maze: x_ds rf_mix, beam 8000, cuts 2400 / 2420 /
   2440 / 2460 / 2480 / 2500 straight to the finish): all 24 searches 2542 (converged for this search).
 - optloop window 2163-2280 (runs/loop/mix/r6/w2163_2280_v3_mg/g_c2439_D1.txt): **2541 (50.82 s)**, server-checked.
+- optloop round 6: 2542 -> **2541 (50.82 s)** (window 2163-2280, the hop: stage 2 2466.01 at the rt-2467 gate, graft
+  D=1 at 2439 just before the final maze).
