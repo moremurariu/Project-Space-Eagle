@@ -17,6 +17,7 @@ kw = dict(a.split('=', 1) for a in sys.argv[2:] if '=' in a)
 ROUNDS, SEED = int(kw.get('rounds', 99)), int(kw.get('seed', 1000))
 ITERS, TH = kw.get('iters', '6000000'), kw.get('threads', '4')
 KVS = kw.get('kv', '0.1,0.3').split(',')  # the lead-only archive gave both gains after it was added
+MODES = [int(x) for x in kw.get('modes', '0,1').split(',')]
 EXT = int(kw.get('ext', 2))  # extra stages (turns) for a stage-2 lead that does not graft
 VSETS = kw.get('vsets', 'dschain_variants_rf_s0.txt,dschain_variants_rf2_s0.txt').split(',')  # stage-2 x_ds variants (survival check off), alternating every 3 rounds
 BEST = os.path.join(TW, 'kog_full_best.txt')
@@ -66,7 +67,9 @@ for r in range(R0, R0 + ROUNDS):
     T = trace(os.path.join(rd, 'run.txt'))
     ap, fin = apexes(T)
     rng = random.Random(SEED + r)
-    mode = r % 3  # 0: a window on each turn, 1: over two turns (joint optimization), 2: on the straights between turns
+    # 0: a window on each turn, 1: over two turns (joint optimization); 2 (on the straights between turns, modes=0,1,2)
+    # gave nothing in two rounds: the window end lies just before the next turn
+    mode = MODES[r % len(MODES)]
     span = 2 if mode == 1 else 1
     wins = []
     for i, a in enumerate(ap):
