@@ -181,11 +181,14 @@ def try_turn(A):
     for f, aim, e, along in cands[:K]:
         ctag = '%s_f%d_%d' % (tag, f, int(aim * 10))
         L = line_at(base, f)
+        hk = L[2]
         if int(L[2]) and not int(line_at(base, f - 1)[2]):
-            log('  pre-fire %d: hook press on that tick, skipped' % f)
-            continue
+            # a hook pressed on the fire tick would fly along the grenade's aim: the press is dropped there and the
+            # stage-1 search decides the hook again from the next tick
+            log('  pre-fire %d: hook press on that tick dropped' % f)
+            hk = '0'
         a = math.radians(aim)
-        head(base, f - 1, ctag + '_p.txt', '%s %s %s 1 %d %d %s' % (L[0], L[1], L[2], round(math.cos(a) * 10000), round(math.sin(a) * 10000), L[6]))
+        head(base, f - 1, ctag + '_p.txt', '%s %s %s 1 %d %d %s' % (L[0], L[1], hk, round(math.cos(a) * 10000), round(math.sin(a) * 10000), L[6]))
         r1 = stage(run, ctag + '_p.txt', A + 55, ctag + '_s1', NEW)
         if not r1:
             log('  pre-fire %d/%.1f: stage 1 NOGATE' % (f, aim))

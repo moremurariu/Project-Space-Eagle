@@ -22,6 +22,9 @@
 //     hrefhard=0]: a state is matched to his track by position; hooking where he has no hook within hrefwin of his
 //     ticks, or not hooking where he hooks throughout, costs hrefw ticks per tick (lineage total; hrefhard=1 drops
 //     such children instead); where he hooks, aims at his anchor are added
+//   surv=N survsoft=F: survival check (a state must outlive N ticks of some constant input: direction, hook held /
+//     released / pressed at one of the hook aims, no shots); survsoft=F lets the best failing states fill the beam up
+//     to F x beam when too few pass (the check has false negatives where survival needs a hook sequence or a kick)
 //   rotfar=1: low-loss turning hooks at anchors up to the hook length (flight time included): per side the aim whose
 //     pull at the grab is the strongest turn that does not raise |v|, and the farthest anchor turning >= 80% of that
 #define private public
@@ -108,6 +111,7 @@ struct SPar
 	float m_CellPos = 4, m_CellVel = 0.5f;
 	int m_Surv = 16; // survival check horizon (0 = off)
 	float m_Over = 1.4f; // overselect factor before the survival check
+	float m_SurvSoft = 0; // failing states fill the beam up to this fraction of it (0 = hard survival filter)
 	int m_Verbose = 1;
 	int m_DirAll = 1;
 	float m_KickMin = 0; // drop retro / fire kicks weaker than this
@@ -1513,6 +1517,7 @@ int main(int argc, const char **argv)
 		else if(K == "dirall") gs_P.m_DirAll = std::stoi(V);
 		else if(K == "kickmin") gs_P.m_KickMin = std::stof(V);
 		else if(K == "surv") gs_P.m_Surv = std::stoi(V);
+		else if(K == "survsoft") gs_P.m_SurvSoft = std::stof(V);
 		else if(K == "rot") gs_P.m_Rot = std::stoi(V);
 		else if(K == "jitter") gs_P.m_Jitter = std::stof(V);
 		else if(K == "seed") gs_P.m_Seed = std::stoi(V);
@@ -2591,6 +2596,16 @@ int main(int argc, const char **argv)
 			vKeep.reserve(gs_P.m_Beam);
 			for(size_t j = 0; j < vNew.size() && (int)vKeep.size() < gs_P.m_Beam; j++)
 				if(vOk[j])
+				{
+					vKeep.push_back(std::move(vNew[j]));
+					vOk[j] = 2;
+				}
+			// soft survival: where too few states pass (the constant-input rollouts cannot weave through a tight
+			// section that needs a hook sequence or a kick, e.g. the shaft at rt 1584, where it kept 1 of 1083
+			// states and lost the run's own line), the best failing states fill the beam up to survsoft x beam
+			const int Floor = (int)(gs_P.m_SurvSoft * gs_P.m_Beam);
+			for(size_t j = 0; j < vNew.size() && (int)vKeep.size() < Floor; j++)
+				if(!vOk[j])
 					vKeep.push_back(std::move(vNew[j]));
 			if(vKeep.empty() && !vNew.empty())
 				vKeep.push_back(std::move(vNew[0]));

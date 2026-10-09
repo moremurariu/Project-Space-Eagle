@@ -1515,3 +1515,24 @@ Result on the benchmark: still 2580's structure from 1082 (1319.97), and from th
 reaches 1316 (1322-1323 new, 1321-1331 old): the stack forms, the dip after it is not found in one search (the forced
 version also needed a re-search from 1165). Next: a structure layer that generates the alternatives (skip the
 approach shot, x_pfscan pre-fires, point-blank) and evaluates each with the two-stage search.
+- **structsearch (plan/structsearch.py) on 2551 (runs/ss3): no gain.** Turns (speed minima with a >= 60 deg heading
+  change) with an approach shot: 1275 / 1417 / 2266 / 2446 lose; 1469: x_opt +1.96 but stage 2 1601.86 vs 1597;
+  top-left corner 2089 (pre-fire 2080 aim 224.5 -> 2090): stage 2 2167.12 vs gate 2167 (level); 2513: 2553. No
+  pre-fire reaches the exit at 1597 / 1783 / 1965 / 2473. Pre-fires on a hook-press tick are now kept (the press is
+  dropped; it used to skip 1267 / 1409 / 2250 / 2502); re-run on those turns (runs/ss4): 1275 stage 1 18 behind,
+  1417 65 behind (stopped there, see below).
+
+## Why x_ds cannot use speed: the survival check (Oct 9)
+- Our 2551 vs Teero, same places: the lines are the same (rendered 1800 U-turn, S-bend, corner, hop), his kicks are
+  not better (our 53 kicks average dv2 687, his ~725, same count and spacing), but we pull a braking hook (> 100 deg
+  behind v, |v| >= 15) on ~476 ticks after the pickup and he on ~227 (teero/hooks timeline, per section 2-3x).
+- Benchmark (x_ds from 2551's own state at rt 1570, rf variant seed 21, gate rt 1720 = where 2551 is at 1720.0):
+  surv=12 (the variant's setting) 1735.9, with a free +12 px/t boost 1758.2; surv=6 1730.0 / 1733.0; **surv=0
+  1719.8 (0.2 ahead) / 1716.5 (3.5 ahead)**. At rt 1584 the survival check kept 1 of 1083 selected states (and the
+  run's own continuation failed it a tick later): in the shaft a state only survives with a hook sequence plus a kick,
+  and the check only tries constant inputs without shots. So the search could not follow its own incumbent there
+  (NOTES above: "the shaft double kick is not reproducible by x_ds from any other cut") and a faster state was
+  rated doomed (the "value of speed" boost tests that cost 12-33 ticks at the vertical sections).
+- x_ds survsoft=F (new): the best failing states fill the beam up to F x beam when too few pass.
+- plan/xdsbench.py (new): search-quality benchmark, x_ds from a run's own states at several cuts to cut + 150, every
+  variant, per setting; a search that cannot follow its incumbent ends behind it.

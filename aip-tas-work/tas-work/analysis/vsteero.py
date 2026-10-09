@@ -47,6 +47,8 @@ for t in sorted(A):
             if best is None or d < best[0]:
                 best = (d, r + u)
     if best is None:
+        if m is None:
+            continue
         break
     m = best[1]
     lag[t] = (t - m, m)
