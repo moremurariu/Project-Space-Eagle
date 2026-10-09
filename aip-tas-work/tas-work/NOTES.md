@@ -1460,3 +1460,7 @@ dir, jump, cursor aim, shots with aim, certainties; best effort, not exact) and 
   direction key through the braking episode dies within 2 ticks (no later braking possible there); rt-1800 U-turn
   1988.92 / S-bend 2036.80 / top-left corner 2160.67 at their gates (+0.1..+0.3, no graft; the corner lead chained to
   2465.00, no graft); 2132 / 2437 / 2464 far behind. No gain: our line already brakes late where it can.
+- optloop rounds 16-23 on 2541 (rf_s0 / rf2_s0 / rf_mix, wider window jitter, ext 4 with cuts 15 / 28 before the
+  gate, talt tail-lead archive, keepjump): no gain. sweet-maxwell 2543 (window 1718-1888) is 1.1-1.5 ahead of our
+  2541 on our line at 1915-1950 -> multigraft D=1 at 1915-1925: **2540 (50.80 s)**, server-checked (TasReplay finish
+  tick 2608; TasServer).
