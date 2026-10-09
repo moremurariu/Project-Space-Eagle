@@ -1566,3 +1566,9 @@ approach shot, x_pfscan pre-fires, point-blank) and evaluates each with the two-
   at the rt-1846 gate (1.0 ahead of the run and of x_ds from the run's own state, 1845.97). Teero's later braking is
   faster; our search lost it by spending the air jump early. x_ds jumpfrac=F (new): a beam share for lineages that
   still have their air jump, ranked among themselves (the freefrac mechanism, shared code).
+- **2550 (51.00 s):** 2551's inputs to rt 1743, direction held forward over 1744-1752 (no early braking before the
+  1800 U-turn), x_ds from 1752 to the rt-1846 gate with jumps forbidden over 1752-1795 (rf_mix variant seed 23,
+  celljump=1 nojump=1752,1795: runs/lb/nj_v3.txt, 1844.97): the ceiling kick at 1761 without a jump (cos 0.60 vs
+  0.48), the floor-hook + air-jump redirect at 1800, and from rt 1818 2551's exact state at 1819; spliced there onto
+  2551's inputs (kog_full_2550.txt), server-checked (TasReplay finish tick 2618, no freeze). Teero's late braking +
+  a saved air jump. (jumpfrac=0.2 alone did not find it: those lines still jump at 1759, 1866-1872.)
