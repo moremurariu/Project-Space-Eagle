@@ -20,7 +20,7 @@ kw = dict(a.split('=', 1) for a in sys.argv[3:] if '=' in a)
 ITERS, TH, PAR = kw.get('iters', '4000000'), kw.get('threads', '2'), int(kw.get('par', 2))
 KV, SEED = kw.get('kv', '0.3'), int(kw.get('seed', 1))
 T0 = kw.get('t0', '0.4')
-KVALT = kw.get('kvalt', '0')  # x_opt also keeps its best plan by these kv (0: lead only); each gets a stage 2
+KVALT = kw.get('kvalt', '0,0.15')  # x_opt also keeps its best plan by these kv (0: lead only); each gets a stage 2
 VARS = kw.get('vars', 'dschain_variants_rf.txt')  # x_ds variant set for stage 2+
 VAR = [l.strip() for l in open(os.path.join(HERE, VARS)) if l.strip() and not l.startswith('#')]
 os.makedirs(d, exist_ok=True)
