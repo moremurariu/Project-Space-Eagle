@@ -1562,3 +1562,7 @@ approach shot, x_pfscan pre-fires, point-blank) and evaluates each with the two-
   the floor + its AIR JUMP at 1801 (vy +14.6 -> -11.1, vx kept); the jump came back at 1733 and is saved for it. The
   late line's search spent the air jump at 1759 (it looks as good until 1803), and the dedup cell had no jump state,
   so the saver was replaced. x_ds celljump=1 (new): air-jump availability in the cell.
+- **Jump saving:** the same late-braking prefix with jumps forbidden over 1752-1795 (x_ds nojump=, new): **1844.97**
+  at the rt-1846 gate (1.0 ahead of the run and of x_ds from the run's own state, 1845.97). Teero's later braking is
+  faster; our search lost it by spending the air jump early. x_ds jumpfrac=F (new): a beam share for lineages that
+  still have their air jump, ranked among themselves (the freefrac mechanism, shared code).

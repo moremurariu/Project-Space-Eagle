@@ -25,6 +25,8 @@
 //   surv=N survsoft=F: survival check (a state must outlive N ticks of some constant input: direction, hook held /
 //     released / pressed at one of the hook aims, no shots); survsoft=F lets the best failing states fill the beam up
 //     to F x beam when too few pass (the check has false negatives where survival needs a hook sequence or a kick)
+//   jumpfrac=F: a share of the beam for lineages that still have their air jump, ranked among themselves by the raw
+//     score (like freefrac for grenades)
 //   celljump=1: the air jump's availability is part of the dedup cell (a lineage that saves the jump for a later
 //     redirect is not replaced by one at the same place and speed that spent it)
 //   rotfar=1: low-loss turning hooks at anchors up to the hook length (flight time included): per side the aim whose
@@ -144,6 +146,7 @@ struct SPar
 	float m_TrackFrac = 0, m_TrackV = 3, m_TrackLag = 2;
 	int m_ShLate = 0; // shadow rollouts fire a shot the lineage's reload blocked up to this many ticks late
 	int m_CellReload = 0; // shot phase in the dedup cell (reload bucket, grenades in flight, saved slots)
+	float m_JumpFrac = 0; // share of the beam reserved for lineages that keep their air jump
 	float m_FreeFrac = 0; // share of the beam reserved for lineages that keep their grenade (no shot for >= freemin ticks)
 	int m_FreeMin = 20;
 	int m_Shadow = 0; // add the incumbent's inputs at the matched progress point (this many, from the next one)
@@ -436,6 +439,7 @@ struct SCand
 	SRetroShot m_aR[2];
 	float m_G; // geodesic distance after the step
 	float m_Lag; // ticks behind the incumbent (lower better)
+	bool m_JumpAv = false; // the air jump is still available after this step
 	float m_Lag0 = 0; // m_Lag before the rollout / shadow re-scoring (the savers' ranking: rollouts replay the run's own
 	                  // shots, so they under-rate a lineage that kept its grenade for a later stack)
 	float m_E;
@@ -1559,6 +1563,7 @@ int main(int argc, const char **argv)
 		else if(K == "shnofire") gs_P.m_ShNoFire = std::stoi(V);
 		else if(K == "trackfrac") gs_P.m_TrackFrac = std::stof(V);
 		else if(K == "freefrac") gs_P.m_FreeFrac = std::stof(V);
+		else if(K == "jumpfrac") gs_P.m_JumpFrac = std::stof(V);
 		else if(K == "cellreload") gs_P.m_CellReload = std::stoi(V);
 		else if(K == "shlate") gs_P.m_ShLate = std::stoi(V);
 		else if(K == "freemin") gs_P.m_FreeMin = std::stoi(V);
@@ -2031,6 +2036,7 @@ int main(int argc, const char **argv)
 						int64_t qvx = (int64_t)std::floor(Co.m_Vel.x / gs_P.m_QVel), qvy = (int64_t)std::floor(Co.m_Vel.y / gs_P.m_QVel);
 						C.m_QCell = ((qx * 1024 + qy) * 64 + (qvx & 63)) * 64 + (qvy & 63);
 					}
+					C.m_JumpAv = !(Co.m_Jumped & 2);
 					C.m_Inc = IsInc;
 					if(GateG >= 0)
 					{
@@ -2356,6 +2362,25 @@ int main(int argc, const char **argv)
 			for(int r = 0; r < Want; r++)
 				vSaver.push_back(v[r].second);
 		}
+		// jump savers: the same for lineages that still have their air jump
+		std::vector<int> vJSaver;
+		if(gs_P.m_JumpFrac > 0 && NL > 0)
+		{
+			const float Lam = gs_P.m_vLam[0];
+			std::vector<std::pair<float, int>> v;
+			for(size_t k = 0; k < vAll.size(); k++)
+			{
+				const SCand &c = vAll[k];
+				if(c.m_Gate || !c.m_JumpAv)
+					continue;
+				float Eref = gs_Line.EnergyAt(c.m_G);
+				v.push_back({c.m_Lag0 + c.m_Jit - Lam * (gs_Line.EWeight(c.m_G) * (c.m_E - Eref) + c.m_Opt), (int)k});
+			}
+			int Want = std::min((int)v.size(), (int)(gs_P.m_Beam * gs_P.m_JumpFrac * 2) + 32);
+			std::partial_sort(v.begin(), v.begin() + Want, v.end());
+			for(int r = 0; r < Want; r++)
+				vJSaver.push_back(v[r].second);
+		}
 		// rollout lookahead: re-score the preselected candidates by where short rollouts get them
 		if(gs_P.m_RollH > 0 || gs_P.m_ShH > 0)
 		{
@@ -2374,12 +2399,13 @@ int main(int argc, const char **argv)
 				}
 			if(IncSel >= 0 && !vIn[IncSel])
 				vP.push_back(IncSel);
-			for(int k : vSaver)
-				if(!vIn[k])
-				{
-					vIn[k] = 1;
-					vP.push_back(k);
-				}
+			for(const auto *pV : {&vSaver, &vJSaver})
+				for(int k : *pV)
+					if(!vIn[k])
+					{
+						vIn[k] = 1;
+						vP.push_back(k);
+					}
 			gs_NPre = (long)vP.size();
 			std::atomic<int> Nx{0};
 			auto RW = [&]() {
@@ -2466,18 +2492,19 @@ int main(int argc, const char **argv)
 		// themselves. Their saved grenade is a retro lob from any of those ticks later (a pre-fire landing at the next
 		// turn exit, stacked with a point-blank), which the ranking cannot see before it explodes; without the reserve
 		// the lineages that spent it on an approach kick (braked away at the turn) crowd them out
-		if(gs_P.m_FreeFrac > 0 && !vSaver.empty())
-		{
+		auto Reserve = [&](const std::vector<int> &vS, float Frac) {
+			if(Frac <= 0 || vS.empty())
+				return;
 			const float Lam = gs_P.m_vLam[0];
 			std::vector<std::pair<float, int>> v;
-			for(int k : vSaver)
+			for(int k : vS)
 			{
 				const SCand &c = vAll[k];
 				float Eref = gs_Line.EnergyAt(c.m_G);
 				v.push_back({c.m_Lag0 + c.m_Jit - Lam * (gs_Line.EWeight(c.m_G) * (c.m_E0 - Eref) + c.m_Opt), k});
 			}
 			std::sort(v.begin(), v.end());
-			const int Want = (int)(gs_P.m_Beam * gs_P.m_FreeFrac);
+			const int Want = (int)(gs_P.m_Beam * Frac);
 			int Got = 0;
 			for(size_t q = 0; q < v.size() && Got < Want; q++)
 			{
@@ -2493,7 +2520,13 @@ int main(int argc, const char **argv)
 				vSel.push_back(k);
 				Got++;
 			}
-		}
+		};
+		Reserve(vSaver, gs_P.m_FreeFrac);
+		// jump savers (jumpfrac): a lineage that keeps its air jump for a later redirect (2551 keeps it from rt 1733 for
+		// the floor-hook jump at the 1800 U-turn's bottom) looks no better until then, and the ones that spent it on
+		// the approach crowded it out: a late-braking approach found 1844.97 at the rt-1846 gate with jumps forbidden
+		// over 1752-1795 and 1871.6-1874 without (it spent the jump at 1758 and hit the wall at 1803)
+		Reserve(vJSaver, gs_P.m_JumpFrac);
 		// round robin over the weights
 		std::vector<size_t> vPos(NL, 0);
 		bool Any = true;
