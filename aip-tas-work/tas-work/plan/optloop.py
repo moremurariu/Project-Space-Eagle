@@ -19,7 +19,7 @@ ITERS, TH = kw.get('iters', '6000000'), kw.get('threads', '4')
 KVS = kw.get('kv', '0.1,0.3').split(',')  # the lead-only archive gave both gains after it was added
 MODES = [int(x) for x in kw.get('modes', '0,1').split(',')]
 EXT = int(kw.get('ext', 4))  # extra stages (turns) for a stage-2 lead that does not graft
-VSETS = kw.get('vsets', 'dschain_variants_rf_s0.txt,dschain_variants_rf2_s0.txt').split(',')  # stage-2 x_ds variants (survival check off), alternating every 3 rounds
+VSETS = kw.get('vsets', 'dschain_variants_rf_s0.txt,dschain_variants_rf2_s0.txt,dschain_variants_rf_mix.txt').split(',')  # stage-2 x_ds variants (survival check off), alternating every 3 rounds
 BEST = os.path.join(TW, 'kog_full_best.txt')
 # commits go to the checked-out branch, with this session's link (session=URL overrides)
 BRANCH = subprocess.run(['git', '-C', ROOT, 'rev-parse', '--abbrev-ref', 'HEAD'], capture_output=True, text=True).stdout.strip()
@@ -85,8 +85,8 @@ for r in range(R0, R0 + ROUNDS):
             if end - cut < 40 or cut < 1000 or end >= fin - 15:
                 continue
         else:
-            cut = a - rng.randint(90, 110)
-            end = b + rng.randint(20, 35)
+            cut = a - rng.randint(70, 140)  # wider jitter than sweet-maxwell's 90-110 / 20-35 (more window placements)
+            end = b + rng.randint(15, 45)
         if cut < 1000 or end >= fin - 15:
             continue
         nxt = ap[i + span] + 30 if i + span < len(ap) else fin + 20
