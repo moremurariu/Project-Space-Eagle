@@ -113,11 +113,16 @@ for k, w in enumerate(wins):
     for si, gn in enumerate(w[4:]):
         if (best and best[0] < FIN) or gp >= FIN - 3 or not okp or okp[0][0] > gpe - 0.9:
             break
-        cn = gp - 8
-        head(okp[0][1], cn, '%s_c%d.txt' % (tag, si + 3))
-        okn = stage('%s_c%d.txt' % (tag, si + 3), gn, '%s_s%d' % (tag, si + 3))
+        # two cuts: just before the gate, and 25 ticks before it (room for a stack grenade fired ~25 ticks before its
+        # explosion, e.g. the shaft double kick: from 8 before 33 behind, from 30 before 6.5 behind)
+        okn = []
+        for cn in (gp - 8, gp - 25):
+            head(okp[0][1], cn, '%s_c%d_%d.txt' % (tag, si + 3, cn))
+            okn += stage('%s_c%d_%d.txt' % (tag, si + 3, cn), gn, '%s_s%d_%d' % (tag, si + 3, cn))
+        okn.sort()
+        cn = gp - 25
         gne = min(gn, FIN)
-        log('window %d-%d: stage %d from %d to %d: %s' % (cut, end, si + 3, cn, gne, ' '.join('%.2f' % r[0] for r in okn) or 'NOGATE'))
+        log('window %d-%d: stage %d from %d / %d to %d: %s' % (cut, end, si + 3, gp - 8, gp - 25, gne, ' '.join('%.2f' % r[0] for r in okn) or 'NOGATE'))
         best = grafts(okn, cn, gn, gne)
         gp, gpe, okp = gn, gne, okn
     if best and best[0] < FIN:
