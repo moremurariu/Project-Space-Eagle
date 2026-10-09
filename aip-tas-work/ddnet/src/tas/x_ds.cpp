@@ -139,6 +139,7 @@ struct SPar
 	int m_NoFire0 = -1, m_NoFire1 = -1;
 	int m_NoKickAll = 0; // nokick applies to the incumbent's own lineage too
 	int m_ShNoFire = 0; // shadow inputs without their shots
+	int m_NoJump0 = -1, m_NoJump1 = -1; // no jump presses in these race ticks (keeps the air jump for later)
 	int m_NoKick0 = -1, m_NoKick1 = -1; // no explosions at all in these race ticks (keeps the slots for later stacks) // no shots fired in these race ticks (shadow / point-blank); retro slots there stay usable
 	float m_TrackFrac = 0, m_TrackV = 3, m_TrackLag = 2;
 	int m_ShLate = 0; // shadow rollouts fire a shot the lineage's reload blocked up to this many ticks late
@@ -1553,6 +1554,7 @@ int main(int argc, const char **argv)
 		else if(K == "sinkmin") gs_Line.m_SinkMin = std::stof(V);
 		else if(K == "nofire") std::sscanf(V.c_str(), "%d,%d", &gs_P.m_NoFire0, &gs_P.m_NoFire1);
 		else if(K == "nokick") std::sscanf(V.c_str(), "%d,%d", &gs_P.m_NoKick0, &gs_P.m_NoKick1);
+		else if(K == "nojump") std::sscanf(V.c_str(), "%d,%d", &gs_P.m_NoJump0, &gs_P.m_NoJump1);
 		else if(K == "nokickall") gs_P.m_NoKickAll = std::stoi(V);
 		else if(K == "shnofire") gs_P.m_ShNoFire = std::stoi(V);
 		else if(K == "trackfrac") gs_P.m_TrackFrac = std::stof(V);
@@ -1917,6 +1919,8 @@ int main(int argc, const char **argv)
 					if(In.m_Fire && G.RaceTick() + 1 >= gs_P.m_NoFire0 && G.RaceTick() + 1 <= gs_P.m_NoFire1 && !IsInc)
 						return;
 					if((In.m_Fire || pR1) && G.RaceTick() + 1 >= gs_P.m_NoKick0 && G.RaceTick() + 1 <= gs_P.m_NoKick1 && (!IsInc || gs_P.m_NoKickAll))
+						return;
+					if(In.m_Jump && !Prev.m_Jump && G.RaceTick() + 1 >= gs_P.m_NoJump0 && G.RaceTick() + 1 <= gs_P.m_NoJump1 && !IsInc)
 						return;
 					Tmp = S;
 					if(pR1)
