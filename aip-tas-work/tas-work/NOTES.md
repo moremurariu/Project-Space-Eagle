@@ -1428,3 +1428,6 @@ dir, jump, cursor aim, shots with aim, certainties; best effort, not exact) and 
   are all found again, 18-21 s instead of 62-85 s each (beam 5000 with 32 angles misses one).
 - Final maze (rt 2410-2549, ~22 px/t): no shortcut (the finish room is closed on the left; Teero's line = ours within
   a few px); the time there is tight turns.
+- sweet-maxwell 2551 (its optloop window 1210-1360) vs our 2547: same line to 1340, theirs +1.0 at 1400-1570 (0-3 px),
+  -1.8 from 1600 (our 1705 / 1756 gains). multigraft of theirs onto ours, cuts 1496-1571: D=1 finishes at 1496-1516 and
+  1546: **2546 (50.92 s)**, server-checked (TasReplay finish tick 2614; TasServer).
