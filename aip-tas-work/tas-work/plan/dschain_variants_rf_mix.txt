@@ -1,5 +1,5 @@
-# rf variants, survival check off (seeds 21, 23) or soft (22, 24: survsoft=1 keeps the check where enough states pass, failing states fill the beam otherwise); NOTES Oct 9
-seed=21 lam=0,0.004,0.01,0.02 kickmin=10 cellpos=16 cellvel=2 shadow=2 surv=0 trackfrac=0.3 shh=40 rollpre=4 shmode=1 kcred=0.5 kready=3 retro=4 egain=0.004 rotfar=1 brakew=0.3
-seed=22 lam=0,0.004,0.01 kickmin=0 cellpos=12 cellvel=1.5 jitter=0.3 shadow=3 surv=8 trackfrac=0.15 shh=30 rollpre=4 shmode=2 kcred=0 kready=6 retro=3 egain=0.004 rotfar=1 brakew=0.3 survsoft=1
-seed=23 lam=0,0.002,0.006,0.012 kickmin=11 cellpos=16 cellvel=2 shadow=2 surv=0 credw=0.3 trackfrac=0.45 shh=60 rollpre=4 shmode=1 kcred=1 kready=0 sinkh=40 retro=4 egain=0.004 rotfar=1 brakew=0.3
-seed=24 lam=0,0.004,0.01,0.02 kickmin=10 cellpos=20 cellvel=2.5 jitter=0.3 shadow=2 surv=12 trackfrac=0.3 shh=40 rollpre=4 shmode=2 kcred=0.5 kready=3 retro=3 egain=0.004 rotfar=1 brakew=0.3 survsoft=1
+# rf variants, survival check off (seeds 21, 23) or soft (22, 24: survsoft=1 keeps the check where enough states pass, failing states fill the beam otherwise); NOTES Oct 9; celljump=1 (the 1800 U-turn keeps its air jump from 1733 for the turn bottom)
+seed=21 lam=0,0.004,0.01,0.02 kickmin=10 cellpos=16 cellvel=2 shadow=2 surv=0 trackfrac=0.3 shh=40 rollpre=4 shmode=1 kcred=0.5 kready=3 retro=4 egain=0.004 rotfar=1 brakew=0.3 celljump=1
+seed=22 lam=0,0.004,0.01 kickmin=0 cellpos=12 cellvel=1.5 jitter=0.3 shadow=3 surv=8 trackfrac=0.15 shh=30 rollpre=4 shmode=2 kcred=0 kready=6 retro=3 egain=0.004 rotfar=1 brakew=0.3 survsoft=1 celljump=1
+seed=23 lam=0,0.002,0.006,0.012 kickmin=11 cellpos=16 cellvel=2 shadow=2 surv=0 credw=0.3 trackfrac=0.45 shh=60 rollpre=4 shmode=1 kcred=1 kready=0 sinkh=40 retro=4 egain=0.004 rotfar=1 brakew=0.3 celljump=1
+seed=24 lam=0,0.004,0.01,0.02 kickmin=10 cellpos=20 cellvel=2.5 jitter=0.3 shadow=2 surv=12 trackfrac=0.3 shh=40 rollpre=4 shmode=2 kcred=0.5 kready=3 retro=3 egain=0.004 rotfar=1 brakew=0.3 survsoft=1 celljump=1
