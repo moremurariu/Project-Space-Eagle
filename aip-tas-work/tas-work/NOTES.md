@@ -1417,3 +1417,14 @@ dir, jump, cursor aim, shots with aim, certainties; best effort, not exact) and 
   **2549 (50.98 s)**, server-checked (TasReplay finish tick 2617; TasServer).
 - optloop now runs sweet-maxwell's latest variant too (odd rounds: windows over two turns, 2x iters; t0 0.6 every
   third round).
+- x_opt kvalt=0 (archive of the best plan by lead alone, written as a second output; optsweep runs stage 2 on both):
+  x_opt lines scored with kv 0.3-0.4 often leave a turn 7-15 px/t faster and lose 10-15 ticks in the next turn (r1-r2:
+  every window with |v| +7 or more ended 7-15 behind at the stage-2 gate). Optloop round 4 (seed 5400, kv 0.3), channel
+  window 1640-1756: speed-scored plan lead 2.31 |v| 63.5 vs 49.7, lead-only plan 2.32 |v| 61.3; stage 2 to rt 1812:
+  1810.12 from the lead-only plan (the other ties at best) -> x_graft D=2 at cut 1756: **2547 (50.94 s)**,
+  server-checked (TasReplay finish tick 2615; TasServer).
+- Search cost: x_opt prefix checkpoints (every 8 ticks; a candidate is simulated from its first changed tick):
+  identical annealing, 1.9x faster. multigraft x_graft beam 20000 -> 5000: the five recent finishing grafts (2554-2549)
+  are all found again, 18-21 s instead of 62-85 s each (beam 5000 with 32 angles misses one).
+- Final maze (rt 2410-2549, ~22 px/t): no shortcut (the finish room is closed on the left; Teero's line = ours within
+  a few px); the time there is tight turns.
