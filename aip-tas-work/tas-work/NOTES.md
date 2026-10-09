@@ -1495,3 +1495,4 @@ lead.py), `x_tfield` (new), x_ds `tfield=` / `tfmode=` / `nokickall=` (new).
   stage 2 tracks Teero's line, tref=teero_track.txt latpen 0.05: 13-33). Teero carries his extra speed through
   those turns; our searches (tracking our own slower line, or free) cannot. A high-speed turn solver is the missing
   piece for < 2500.
+- optloop window 1210-1360 (runs/loop/r5/w1210_1360_v3_mg/g_c1396_D1.txt): **2551 (51.02 s)**, server-checked.
