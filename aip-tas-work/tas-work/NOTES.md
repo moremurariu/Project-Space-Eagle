@@ -1484,3 +1484,14 @@ lead.py), `x_tfield` (new), x_ds `tfield=` / `tfmode=` / `nokickall=` (new).
 - optloop round 0: window 1374-1492 (left U-turn) -> graft D=1 at 1489: **2554 (51.08 s)**, server-checked.
 - optloop round 0: window 2385-2503 (maze entrance) -> graft D=1 at 2512: **2553 (51.06 s)**, server-checked.
 - optloop window 2118-2238 (runs/loop/r1/w2118_2238_v1_mg/g_c2255_D1.txt): **2552 (51.04 s)**, server-checked.
+- optloop (plan/optloop.py, rounds of optsweep windows placed on the run's turns, auto commit / push via optsweep's
+  publish): round 0 2557 -> 2553, round 1 -> 2552, rounds 2-4 (incl. two-turn windows, t0 0.6) no gain: converged.
+- Lag vs Teero on 2552 (his labels): -17.7 at rt 1000 -> +10 at 2540, i.e. ~34 ticks behind him after the pickup
+  (61 on 2580). Remaining by section: shaft 1480-1640 ~12, 2300-2440 ~7, 1960-2060 ~5, 2100-2160 ~3, 1000-1100 ~3.
+- What blocks the rest: every faster state we make (x_opt window ends +1..+3 px/t, the shaft windows 1440-1630 /
+  1460-1660 with 16M iters, a beam-12000 stage 2 that reaches 1740 level with the run with E +200, the top-left
+  corner with Teero's stack: no approach shot, lob + point-blank both at 2099, x_opt-polished to +11 px/t at 2130)
+  is lost at the NEXT turn (rt-1800 U-turn: 10-33 behind at 1860; bottom-left turn: 10-27 behind at 2220, also when
+  stage 2 tracks Teero's line, tref=teero_track.txt latpen 0.05: 13-33). Teero carries his extra speed through
+  those turns; our searches (tracking our own slower line, or free) cannot. A high-speed turn solver is the missing
+  piece for < 2500.
