@@ -187,10 +187,93 @@ static void Project(vec2 P, int k, float &Label, float &Lat, float &IncSp, vec2 
 	Lat = Best;
 }
 
-static void Eval(const SPlan &P, SRes &Res, bool Keep)
+// checkpoints of an evaluation (every CK window ticks): a candidate that differs from its parent plan only from
+// tick f on is simulated from the parent's last checkpoint <= f (inputs before f are the same function of the same
+// states), ~2x fewer simulated ticks per candidate
+enum { CK = 8 };
+struct SCkpt
+{
+	CFastG m_S;
+	size_t m_Hi, m_Si;
+	float m_Win, m_Lead, m_Lat, m_Sp, m_IncSp;
+};
+
+// first window tick where plans A and B can behave differently (g.m_NT if they are the same)
+static int FirstDiff(const SPlan &A, const SPlan &B)
+{
+	int f = g.m_NT;
+	for(int k = 0; k < g.m_NT && k < f; k++)
+		if(A.m_D[k] != B.m_D[k] || A.m_J[k] != B.m_J[k])
+		{
+			f = k;
+			break;
+		}
+	const size_t nh = std::max(A.m_H.size(), B.m_H.size());
+	for(size_t i = 0; i < nh; i++)
+	{
+		if(i >= A.m_H.size() || i >= B.m_H.size())
+		{
+			const SHookSeg &H = i < A.m_H.size() ? A.m_H[i] : B.m_H[i];
+			f = std::min(f, std::max(0, H.m_P));
+			break;
+		}
+		const SHookSeg &a = A.m_H[i], &b = B.m_H[i];
+		const bool SamePress = a.m_P == b.m_P && a.m_Anch == b.m_Anch && a.m_A == b.m_A && a.m_Ang == b.m_Ang && a.m_Orig == b.m_Orig &&
+				       a.m_TX == b.m_TX && a.m_TY == b.m_TY && a.m_Ref == b.m_Ref;
+		if(!SamePress)
+		{
+			f = std::min(f, std::max(0, std::min(a.m_P, b.m_P)));
+			break;
+		}
+		if(a.m_R != b.m_R)
+		{
+			f = std::min(f, std::max(0, std::min(a.m_R, b.m_R)));
+			break;
+		}
+	}
+	const size_t ns = std::max(A.m_S.size(), B.m_S.size());
+	for(size_t i = 0; i < ns; i++)
+	{
+		if(i >= A.m_S.size() || i >= B.m_S.size())
+		{
+			f = std::min(f, std::max(0, (i < A.m_S.size() ? A.m_S[i] : B.m_S[i]).m_F));
+			break;
+		}
+		const SShot &a = A.m_S[i], &b = B.m_S[i];
+		if(!(a.m_F == b.m_F && a.m_HasX == b.m_HasX && a.m_X == b.m_X && a.m_Ang == b.m_Ang && a.m_Orig == b.m_Orig && a.m_TX == b.m_TX &&
+			   a.m_TY == b.m_TY && a.m_Ref == b.m_Ref && a.m_RefTick == b.m_RefTick))
+		{
+			f = std::min(f, std::max(0, std::min(a.m_F, b.m_F)));
+			break;
+		}
+	}
+	return f;
+}
+
+static void Eval(const SPlan &P, SRes &Res, bool Keep, const std::vector<SCkpt> *pFrom = nullptr, int From = 0, std::vector<SCkpt> *pRec = nullptr)
 {
 	CFastG S = g.m_Cut;
 	size_t hi = 0, si = 0;
+	int k0 = 0;
+	float WinScore = 0;
+	if(pRec)
+		pRec->clear();
+	if(pFrom && !Keep && From >= CK && !pFrom->empty())
+	{
+		const int c = std::min(From / CK, (int)pFrom->size() - 1);
+		const SCkpt &C = (*pFrom)[c];
+		S = C.m_S;
+		hi = C.m_Hi;
+		si = C.m_Si;
+		WinScore = C.m_Win;
+		Res.m_Lead = C.m_Lead;
+		Res.m_Lat = C.m_Lat;
+		Res.m_Sp = C.m_Sp;
+		Res.m_IncSp = C.m_IncSp;
+		k0 = c * CK;
+		if(pRec)
+			pRec->assign(pFrom->begin(), pFrom->begin() + c);
+	}
 	if(Keep)
 	{
 		Res.m_vIn.clear();
@@ -198,9 +281,10 @@ static void Eval(const SPlan &P, SRes &Res, bool Keep)
 	}
 	Res.m_Dead = false;
 	Res.m_Fin = -1;
-	float WinScore = 0;
-	for(int k = 0; k < g.m_NT; k++)
+	for(int k = k0; k < g.m_NT; k++)
 	{
+		if(pRec && k % CK == 0)
+			pRec->push_back({S, hi, si, WinScore, Res.m_Lead, Res.m_Lat, Res.m_Sp, Res.m_IncSp});
 		STasInput In = g.m_vBase[k];
 		In.m_Dir = P.m_D[k];
 		In.m_Jump = P.m_J[k];
@@ -607,6 +691,7 @@ int main(int argc, const char **argv)
 	long long Iters = 200000;
 	float T0 = 0.3f;
 	float KickR = 45;
+	bool UseCk = true;
 	int CloseW = 3;
 	for(int i = 2; i < argc; i++)
 	{
@@ -647,6 +732,7 @@ int main(int argc, const char **argv)
 			}
 		}
 		else if(K == "outalt") OutAlt = V;
+		else if(K == "ck") UseCk = std::atoi(V.c_str()) != 0;
 		else if(K == "kickr") KickR = std::atof(V.c_str());
 		else if(K == "closew") CloseW = std::atoi(V.c_str());
 		else if(K == "v") Verbose = std::atoi(V.c_str());
@@ -932,7 +1018,8 @@ int main(int argc, const char **argv)
 		std::uniform_real_distribution<float> U(0, 1);
 		SPlan Cur = P0;
 		SRes Rs;
-		Eval(Cur, Rs, false);
+		std::vector<SCkpt> vCkCur, vCkC;
+		Eval(Cur, Rs, false, nullptr, 0, UseCk ? &vCkCur : nullptr);
 		float Sc = Rs.m_Score;
 		long long PerThread = Iters / Threads;
 		for(long long it = 0; it < PerThread; it++)
@@ -946,7 +1033,10 @@ int main(int argc, const char **argv)
 			if(!Ok || !Valid(C))
 				continue;
 			SRes Rc;
-			Eval(C, Rc, false);
+			if(UseCk)
+				Eval(C, Rc, false, &vCkCur, FirstDiff(Cur, C), &vCkC);
+			else
+				Eval(C, Rc, false);
 			Done++;
 			for(int a = 0; a < NA; a++)
 			{
@@ -961,6 +1051,8 @@ int main(int argc, const char **argv)
 			{
 				Cur = std::move(C);
 				Sc = Rc.m_Score;
+				if(UseCk)
+					vCkCur.swap(vCkC);
 				if(Sc > BestScore)
 				{
 					std::lock_guard<std::mutex> L(Mu);
@@ -981,6 +1073,11 @@ int main(int argc, const char **argv)
 				{
 					Cur = Best;
 					Sc = BestScore;
+					if(UseCk)
+					{
+						SRes Rr;
+						Eval(Cur, Rr, false, nullptr, 0, &vCkCur);
+					}
 				}
 				if(Tid == 0)
 				{
