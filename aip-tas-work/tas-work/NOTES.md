@@ -1576,3 +1576,9 @@ approach shot, x_pfscan pre-fires, point-blank) and evaluates each with the two-
   2295.08 at the rt-2296 gate, 0.92 ahead) spliced onto 2550 (2550's inputs to the state at rt 2043 = 2551's 2044, then
   the line's inputs from the one producing its rt 2045) and grafted back with multigraft (D=1 at cut 2281):
   kog_full_2549.txt, server-checked (TasReplay finish tick 2617, no freeze). Disjoint from the 1800 U-turn change.
+- **2548 (50.96 s):** latebrake.py (runs/lbk) on 2549, S-bend (turn 1964): direction held along vx over 1906-1907
+  (the first braking tick pair of the approach), x_ds (rf_mix seed 22, celljump) from 1907 to the rt-2118 gate:
+  2116.56 (1.44 ahead), multigraft D=1 at every cut 2018-2093: kog_full_2548.txt (cut 2093), server-checked (TasReplay
+  finish tick 2616, no freeze). Earlier pass results: U-turn 1 level (1304.97 / 1305), dip 1275 and left U-turn 1417 /
+  1469 doomed (the hold runs the tee into freeze within 1-9 ticks), shaft top 1811.89 / 1812, 1800 U-turn 1994.98 /
+  1994 on 2549.
