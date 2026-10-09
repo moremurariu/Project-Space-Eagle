@@ -1547,3 +1547,18 @@ approach shot, x_pfscan pre-fires, point-blank) and evaluates each with the two-
   stack; it makes the re-searches after a plan change follow the run (shaft, 1800 U-turn, S-bend).
 - plan/dschain_variants_rf_s0.txt (rf with surv=0); optsweep / optloop / structsearch take vars=FILE. optloop on
   2551 with it: runs/loop/s0.
+- Speeds at the same place (sp/teerov.py on 2551, Teero's implied |v|): he is faster at the left U-turn exit (rt
+  1490-1550, +4..+5), before the 1800 U-turn (1750-1760, +12..+14), before the S-bend (1910-1920, +10), at the corner
+  exit (2100-2130, +6.5), at the hop exit (2270-2300, +10) and before the final maze (2330-2390, +7..+10).
+- Teero's fire spots on our path (rt 1385-1660) all match ours within a few ticks except one at our rt-1479 place
+  (our gun idles 1462 -> 1506; reload frees it at 1487). extrashot.py (new) 1487-1500 -> 1488-1520, s0 variants:
+  the kicks at the small block (1824, 2591) kill the tee within 3 ticks; fired 1500 -> 1512: 19 behind at 1640.
+- Teero time-tracking (tref=teero_track.txt ttrack=1 toff=-22.8, s0) from 1490: 45-70 behind at 1720 (he gains ~12
+  ticks over 1490-1640, so the offset targets are 150-400 px ahead of anything reachable).
+- **Late braking before the 1800 U-turn:** 2551 drops dir at 1744-1746 (air friction x0.95) and counter-steers at
+  1750: -10.6 px/t at 61 px/t, 25 ticks before the turn (Teero is at 64 there). Forced dir=1 over 1744-1752 + x_ds
+  (s0) to the rt-1846 gate: 1872.5-1874 vs 1845.97 from the run's own state. The late line stays ~1 tick ahead at the
+  same speed until 1800, then hits the wall at (8910, 3326) at 1803: 2551 redirects at the turn bottom with a hook into
+  the floor + its AIR JUMP at 1801 (vy +14.6 -> -11.1, vx kept); the jump came back at 1733 and is saved for it. The
+  late line's search spent the air jump at 1759 (it looks as good until 1803), and the dedup cell had no jump state,
+  so the saver was replaced. x_ds celljump=1 (new): air-jump availability in the cell.

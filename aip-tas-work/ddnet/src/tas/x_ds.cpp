@@ -25,6 +25,8 @@
 //   surv=N survsoft=F: survival check (a state must outlive N ticks of some constant input: direction, hook held /
 //     released / pressed at one of the hook aims, no shots); survsoft=F lets the best failing states fill the beam up
 //     to F x beam when too few pass (the check has false negatives where survival needs a hook sequence or a kick)
+//   celljump=1: the air jump's availability is part of the dedup cell (a lineage that saves the jump for a later
+//     redirect is not replaced by one at the same place and speed that spent it)
 //   rotfar=1: low-loss turning hooks at anchors up to the hook length (flight time included): per side the aim whose
 //     pull at the grab is the strongest turn that does not raise |v|, and the farthest anchor turning >= 80% of that
 #define private public
@@ -111,6 +113,7 @@ struct SPar
 	float m_CellPos = 4, m_CellVel = 0.5f;
 	int m_Surv = 16; // survival check horizon (0 = off)
 	float m_Over = 1.4f; // overselect factor before the survival check
+	int m_CellJump = 0; // air-jump availability in the dedup cell
 	float m_SurvSoft = 0; // failing states fill the beam up to this fraction of it (0 = hard survival filter)
 	int m_Verbose = 1;
 	int m_DirAll = 1;
@@ -1518,6 +1521,7 @@ int main(int argc, const char **argv)
 		else if(K == "kickmin") gs_P.m_KickMin = std::stof(V);
 		else if(K == "surv") gs_P.m_Surv = std::stoi(V);
 		else if(K == "survsoft") gs_P.m_SurvSoft = std::stof(V);
+		else if(K == "celljump") gs_P.m_CellJump = std::stoi(V);
 		else if(K == "rot") gs_P.m_Rot = std::stoi(V);
 		else if(K == "jitter") gs_P.m_Jitter = std::stof(V);
 		else if(K == "seed") gs_P.m_Seed = std::stoi(V);
@@ -2010,6 +2014,13 @@ int main(int argc, const char **argv)
 							Last = Tk;
 						int Fb = std::min(Tmp.m_G.m_Tick - Last, 50) / 25; // 0..2 free retro slots
 						C.m_Cell = C.m_Cell * 64 + Rb * 12 + Np * 3 + Fb;
+					}
+					if(gs_P.m_CellJump)
+					{
+						// air jump still available in the cell: our run keeps it from rt 1733 for the floor-hook jump at
+						// the 1800 U-turn's bottom (1801); a lineage that spends it at 1759 looks as good until it hits the
+						// wall at 1803, and with the jump state outside the cell it replaced the saver
+						C.m_Cell = C.m_Cell * 2 + ((Co.m_Jumped & 2) ? 0 : 1);
 					}
 					{
 						int64_t qx = (int64_t)std::floor(Co.m_Pos.x / gs_P.m_QPos), qy = (int64_t)std::floor(Co.m_Pos.y / gs_P.m_QPos);
