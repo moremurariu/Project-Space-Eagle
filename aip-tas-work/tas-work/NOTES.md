@@ -1596,3 +1596,7 @@ approach shot, x_pfscan pre-fires, point-blank) and evaluates each with the two-
   constant-input gate survival check rejected every arrival, as the beam check did in the shaft); the best failing
   arrival is now used when none passes. optsweep chain cuts 15 ticks before the gate (10 cut into doomed approaches)
   and runs up to 6 stages. rf_mix variants get celljump=1.
+- x_ds incjump=1 (new): no jump presses over the race ticks where the incumbent keeps its air jump >= 15 ticks for a
+  later redirect (up to 3 ticks before its use). 2547: 1030-1057 1203-1312 1410-1433 1569-1589 1733-1797 1817-1858
+  1907-1922 2163-2175 2216-2228 2282-2352 2408-2435 2520-2543. Chains that cross the 1800 U-turn ended 11 behind there
+  (the re-search spent the jump). rf_mix: incjump=1 for seeds 22 / 23.

@@ -25,6 +25,9 @@
 //   surv=N survsoft=F: survival check (a state must outlive N ticks of some constant input: direction, hook held /
 //     released / pressed at one of the hook aims, no shots); survsoft=F lets the best failing states fill the beam up
 //     to F x beam when too few pass (the check has false negatives where survival needs a hook sequence or a kick)
+//   incjump=1: no jump presses over the race ticks where the incumbent keeps its air jump (>= 15 ticks) for a later
+//     redirect, up to 3 ticks before it uses it (2551 keeps it 1733 -> 1801 for the 1800 U-turn's bottom; a re-search
+//     that spends it on the approach loses ~25 ticks there)
 //   jumpfrac=F: a share of the beam for lineages that still have their air jump, ranked among themselves by the raw
 //     score (like freefrac for grenades)
 //   celljump=1: the air jump's availability is part of the dedup cell (a lineage that saves the jump for a later
@@ -116,6 +119,7 @@ struct SPar
 	int m_Surv = 16; // survival check horizon (0 = off)
 	float m_Over = 1.4f; // overselect factor before the survival check
 	int m_CellJump = 0; // air-jump availability in the dedup cell
+	int m_IncJump = 0; // no jump presses where the incumbent keeps its air jump for a later redirect
 	float m_SurvSoft = 0; // failing states fill the beam up to this fraction of it (0 = hard survival filter)
 	int m_Verbose = 1;
 	int m_DirAll = 1;
@@ -376,6 +380,15 @@ static std::vector<vec2> gs_vHkA; // anchor of 'G' ticks
 static int gs_HkK0 = 0;
 static char HkAt(int k) { int i = k - gs_HkK0; return i >= 0 && i < (int)gs_vHkS.size() ? gs_vHkS[i] : 0; }
 static SRefLine gs_IncLine; // the incumbent's own path (shadow inputs are indexed on it)
+// incjump: race ticks over which the incumbent keeps its air jump for a later redirect (no jump presses there)
+static std::vector<std::pair<int, int>> gs_vIncJumpKeep;
+static bool IncJumpKept(int Rt)
+{
+	for(auto &[A, B] : gs_vIncJumpKeep)
+		if(Rt >= A && Rt <= B)
+			return true;
+	return false;
+}
 static bool gs_TRef = false;
 
 // ------------------------------------------------------------------------------------------------ search state
@@ -1527,6 +1540,7 @@ int main(int argc, const char **argv)
 		else if(K == "surv") gs_P.m_Surv = std::stoi(V);
 		else if(K == "survsoft") gs_P.m_SurvSoft = std::stof(V);
 		else if(K == "celljump") gs_P.m_CellJump = std::stoi(V);
+		else if(K == "incjump") gs_P.m_IncJump = std::stoi(V);
 		else if(K == "rot") gs_P.m_Rot = std::stoi(V);
 		else if(K == "jitter") gs_P.m_Jitter = std::stof(V);
 		else if(K == "seed") gs_P.m_Seed = std::stoi(V);
@@ -1631,6 +1645,7 @@ int main(int argc, const char **argv)
 		gs_Ref.m_Rt0 = F.RaceTick();
 		gs_IncStart = F.m_StartTick;
 		bool CutDone = !gs_P.m_Prefix.empty();
+		int IncJumpFrom = !(F.m_Core.m_Jumped & 2) ? F.RaceTick() : -1;
 		for(; i < vInc.size(); i++)
 		{
 			if(!CutDone && F.RaceTick() >= gs_P.m_Cut)
@@ -1647,9 +1662,19 @@ int main(int argc, const char **argv)
 			if(!vInc[i].m_Hook)
 				PendPress = -1;
 			std::vector<SExplLog> vL;
+			const bool JAv0 = !(F.m_Core.m_Jumped & 2);
 			CFastG::ms_pLog = &vL;
 			F.Step(vInc[i]);
 			CFastG::ms_pLog = nullptr;
+			{
+				const bool JAv1 = !(F.m_Core.m_Jumped & 2);
+				if(JAv1 && !JAv0)
+					IncJumpFrom = F.RaceTick();
+				if(JAv0 && !JAv1 && IncJumpFrom >= 0 && F.RaceTick() - IncJumpFrom >= 15)
+					gs_vIncJumpKeep.push_back({IncJumpFrom + 1, F.RaceTick() - 3}); // the air jump used here was kept since IncJumpFrom
+				if(!JAv1)
+					IncJumpFrom = -1;
+			}
 			if(PendPress >= 0 && F.m_Core.m_HookState == HOOK_GRABBED)
 			{
 				gs_vAnchor[PendPress] = F.m_Core.m_HookPos;
@@ -1855,6 +1880,13 @@ int main(int argc, const char **argv)
 		std::chrono::duration<double>(std::chrono::steady_clock::now() - t0).count());
 	if(GateG >= 0)
 		std::printf("gate: progress >= %.0f, incumbent reaches it at rt %.2f with E %.0f\n", GateG, GateG, gs_Line.EnergyAt(GateG));
+	if(gs_P.m_IncJump)
+	{
+		std::printf("incjump: kept-jump windows");
+		for(auto &[A, B] : gs_vIncJumpKeep)
+			std::printf(" %d-%d", A, B);
+		std::printf("\n");
+	}
 	std::fflush(stdout);
 
 	std::vector<SState> vBeam;
@@ -1926,6 +1958,8 @@ int main(int argc, const char **argv)
 					if((In.m_Fire || pR1) && G.RaceTick() + 1 >= gs_P.m_NoKick0 && G.RaceTick() + 1 <= gs_P.m_NoKick1 && (!IsInc || gs_P.m_NoKickAll))
 						return;
 					if(In.m_Jump && !Prev.m_Jump && G.RaceTick() + 1 >= gs_P.m_NoJump0 && G.RaceTick() + 1 <= gs_P.m_NoJump1 && !IsInc)
+						return;
+					if(gs_P.m_IncJump && In.m_Jump && !Prev.m_Jump && !IsInc && IncJumpKept(G.RaceTick() + 1))
 						return;
 					Tmp = S;
 					if(pR1)
