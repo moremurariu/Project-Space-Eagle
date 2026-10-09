@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""optsweep.py RUN DIR WIN [WIN ...] [iters=4000000] [threads=2] [par=2] [kv=0.3] [seed=1] [vars=FILE in plan/] [chain=4]
+"""optsweep.py RUN DIR WIN [WIN ...] [iters=4000000] [threads=2] [par=2] [kv=0.3] [seed=1] [vars=FILE in plan/] [chain=6]
 WIN = CUT:END:C2:G2 - x_opt polishes RUN's window CUT..END (END right after a turn exit, where speed is worth time);
 its line is cut at C2 (after the exit) and re-searched by x_ds (rf variants, tracking RUN) to G2 (after the next turn);
 the best stage-2 line is grafted back onto RUN (multigraft.py, every on-line cut >= 1 tick ahead, largest D first); a
@@ -75,7 +75,7 @@ def publish(path, ticks, what):
         time.sleep(2 ** (k + 1))
 
 
-CHAIN = int(kw.get('chain', 4))
+CHAIN = int(kw.get('chain', 6))
 
 
 def apexes(path):
@@ -112,7 +112,7 @@ def graft(l2, c0, g, tag):
 
 def chain(line, gate, tag):
     """a line ahead of the run by a fraction of a tick at its gate is not graftable (a graft needs a whole tick): it is
-    re-searched on from gate - 10 to the gate after the next turn, stage by stage, until its lead makes a graft (or
+    re-searched on from gate - 15 to the gate after the next turn, stage by stage, until its lead makes a graft (or
     the finish) faster, or the lead falls below 0.2 (NOTES: chained leads)"""
     ap = apexes(run)
     for k in range(CHAIN):
@@ -120,7 +120,7 @@ def chain(line, gate, tag):
         g = min(nx[0] + 30 if nx else FIN, FIN)
         if g - gate < 40:
             g = min(gate + 80, FIN)
-        cut = gate - 10
+        cut = gate - 15  # (gate - 10 sometimes cut in a doomed approach: chain stages NOGATE)
         ctag = '%s_ch%d' % (tag, k)
         head(line, cut, ctag + '_c.txt')
         with ThreadPoolExecutor(PAR) as ex:
