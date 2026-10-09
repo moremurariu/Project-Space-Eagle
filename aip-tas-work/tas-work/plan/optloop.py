@@ -82,12 +82,12 @@ for r in range(R0, R0 + ROUNDS):
                 break
             cut = a + rng.randint(5, 15)
             end = ap[i + 1] - rng.randint(5, 15)
-            if end - cut < 40 or cut < 1000 or end >= fin - 15:
+            if end - cut < 40 or cut < 972 or end >= fin - 15:
                 continue
         else:
             cut = a - rng.randint(70, 140)  # wider jitter than sweet-maxwell's 90-110 / 20-35 (more window placements)
             end = b + rng.randint(15, 45)
-        if cut < 1000 or end >= fin - 15:
+        if cut < 972 or end >= fin - 15:
             continue
         nxt = ap[i + span] + 30 if i + span < len(ap) else fin + 20
         g2 = min(nxt, fin + 20)
