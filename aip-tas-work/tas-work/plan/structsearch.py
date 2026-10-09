@@ -82,13 +82,17 @@ def stage(run, prefix, gate, tag, extra=()):
 
 
 def apexes(T):
+    # turns: speed minima where the heading turns >= 60 deg between apex - 20 and apex + 20
     ts = sorted(t for t in T if t > 1000)
     fin = min([t for t in ts if T[t]['fin']] or [max(ts)])
     out = []
     for t in ts:
         w = [T[k]['s'] for k in range(t - 15, t + 16) if k in T]
-        if T[t]['s'] == min(w) and T[t]['s'] < 0.85 * max(w) and (not out or t - out[-1] > 20):
-            out.append(t)
+        if T[t]['s'] == min(w) and T[t]['s'] < 0.85 * max(w) and (not out or t - out[-1] > 20) and t - 20 in T and t + 20 in T:
+            (ax, ay), (bx, by) = T[t - 20]['v'], T[t + 20]['v']
+            c = (ax * bx + ay * by) / ((math.hypot(ax, ay) * math.hypot(bx, by)) or 1)
+            if c < 0.5:
+                out.append(t)
     return out, fin
 
 
@@ -123,7 +127,7 @@ def try_turn(A):
     run = os.path.join(d, 'run_%d.txt' % A)
     subprocess.run(['cp', BEST, run])
     FIN = finish(run)
-    T, _ = trace(run)
+    T, EX = trace(run)
     ap, fin = apexes(T)
     if A not in ap:
         A = min(ap, key=lambda a: abs(a - A))
@@ -131,7 +135,12 @@ def try_turn(A):
     G2 = min((nxt[0] + 30) if nxt else FIN, FIN)
     fires = [t for t in sorted(T) if T[t]['fire'] and t - 1 in T and T[t - 1]['rl'] == 0 and T[t]['rl'] > 0 and t > 1000]
     # the approach shot: last shot fired before the apex (its explosion lands in the approach)
-    app = [f for f in fires if A - 45 <= f <= A - 4]
+    # its kick lands before the apex (a shot whose explosion is at / after the apex is an exit kick or a pre-fire)
+    def expl(f):
+        nx = [g for g in fires if g > f]
+        ks = [e for e in sorted(EX) if e >= f and (not nx or e < nx[0] + 2)]
+        return ks[0] if ks else None
+    app = [f for f in fires if A - 45 <= f <= A - 4 and expl(f) is not None and expl(f) <= A - 3]
     if not app:
         log('turn %d: no approach shot' % A)
         return
