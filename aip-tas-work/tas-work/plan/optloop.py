@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""optloop.py DIR [rounds=99] [seed=1000] [iters=6000000] [kv=0.3,0.4] [threads=4]
+"""optloop.py DIR [rounds=99] [seed=1000] [iters=6000000] [kv=0.3,0.4] [threads=4] [vars=FILE in plan/]
 Endless optsweep rounds on tas-work/kog_full_best.txt. Each round places its windows on the current run's turns (speed
 minima from x_trace): x_opt cut = apex - 90..110, end = apex + 20..35 (after the exit), stage 2 from end - 10 to the
 next apex + 30 (or the finish), with per-round jitter and a new seed; the round's run is a copy (DIR/r<k>/run.txt),
@@ -82,7 +82,7 @@ for r in range(R0, R0 + ROUNDS):
     log('round %d on %d: apexes %s, windows %s, kv %s' % (r, f0, ap, wins, kv))
     subprocess.run(['python3', os.path.join(HERE, 'optsweep.py'), os.path.join(rd, 'run.txt'), rd] + wins +
                    ['threads=' + TH, 'par=' + TH, 'seed=%d' % (SEED + 100 * r), 'iters=%d' % (int(ITERS) * span), 'kv=' + kv,
-                    't0=%s' % ('0.6' if r % 3 == 2 else '0.4')])
+                    't0=%s' % ('0.6' if r % 3 == 2 else '0.4')] + (['vars=' + kw['vars']] if 'vars' in kw else []))
     f1 = finish(os.path.join(rd, 'run.txt'))
     cur = finish(BEST)
     log('round %d: %s -> %s (best file %s)' % (r, f0, f1, cur))

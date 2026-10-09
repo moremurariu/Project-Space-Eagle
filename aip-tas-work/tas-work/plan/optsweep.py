@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""optsweep.py RUN DIR WIN [WIN ...] [iters=4000000] [threads=2] [par=2] [kv=0.3] [seed=1]
+"""optsweep.py RUN DIR WIN [WIN ...] [iters=4000000] [threads=2] [par=2] [kv=0.3] [seed=1] [vars=FILE in plan/]
 WIN = CUT:END:C2:G2 - x_opt polishes RUN's window CUT..END (END right after a turn exit, where speed is worth time);
 its line is cut at C2 (after the exit) and re-searched by x_ds (rf variants, tracking RUN) to G2 (after the next turn);
 the best stage-2 line is grafted back onto RUN (multigraft.py, every on-line cut >= 1 tick ahead, largest D first). A
@@ -18,7 +18,7 @@ kw = dict(a.split('=', 1) for a in sys.argv[3:] if '=' in a)
 ITERS, TH, PAR = kw.get('iters', '4000000'), kw.get('threads', '2'), int(kw.get('par', 2))
 KV, SEED = kw.get('kv', '0.3'), int(kw.get('seed', 1))
 T0 = kw.get('t0', '0.4')
-VAR = [l.strip() for l in open(os.path.join(HERE, 'dschain_variants_rf.txt')) if l.strip() and not l.startswith('#')]
+VAR = [l.strip() for l in open(os.path.join(HERE, kw.get('vars', 'dschain_variants_rf.txt'))) if l.strip() and not l.startswith('#')]
 os.makedirs(d, exist_ok=True)
 LOG = open(os.path.join(d, 'sweep.log'), 'a')
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""structsearch.py DIR [turns=A1,A2,...] [k=3] [beam=4000] [cores=4] [seed=1]
+"""structsearch.py DIR [turns=A1,A2,...] [k=3] [beam=4000] [cores=4] [seed=1] [vars=FILE in plan/]
 Structure layer over x_ds: for every turn of tas-work/kog_full_best.txt (speed minimum A) whose approach has a shot
 (fired F0, exploding in A-40..A-2), the alternative plan Teero uses at U-turn 1 is generated and evaluated, and kept
 when it is faster (nothing is forbidden by hand: our plan and the alternative compete on the same long-horizon test).
@@ -21,7 +21,7 @@ BEST = os.path.join(TW, 'kog_full_best.txt')
 d = os.path.abspath(sys.argv[1])
 kw = dict(a.split('=', 1) for a in sys.argv[2:] if '=' in a)
 K, BEAM, CORES, SEED = int(kw.get('k', 3)), kw.get('beam', '4000'), int(kw.get('cores', 4)), int(kw.get('seed', 1))
-VAR = [l.strip() for l in open(os.path.join(HERE, 'dschain_variants_rf.txt')) if l.strip() and not l.startswith('#')]
+VAR = [l.strip() for l in open(os.path.join(HERE, kw.get('vars', 'dschain_variants_rf.txt'))) if l.strip() and not l.startswith('#')]
 NEW = ['cellreload=1', 'shlate=12']
 os.makedirs(d, exist_ok=True)
 LOG = open(os.path.join(d, 'log'), 'a')
