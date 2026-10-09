@@ -1405,3 +1405,15 @@ dir, jump, cursor aim, shots with aim, certainties; best effort, not exact) and 
 - 2551 checked on TasServer too. sweet-maxwell is at 2552 with gains in the same windows (left U-turn 1489, maze
   entrance 2512, 2118-2238): our 2551 and their 2552 are the same line to rt 2170 (0 px, +0.0), ours 1 ahead from
   2185 (our 2097-2224 window). Nothing to combine this time: the two loops converge on the same polish.
+- Close-kick mutation in x_opt (closew=, default 3; kickr= 45): a shot aimed a little inside the solid tile that the
+  window's path passes nearest (within kickr px), fired 1-18 ticks before. A/B on 1422-1557 (3M iters, 2 seeds):
+  scores 2.9 / 9.5 without, 9.3 / 9.7 with (noise-level); its seed-11 line has a full-strength kick at 40 px
+  (rt 1550, aim 168 deg) where the other has one at 65 px and leaves at |v| 44.6 vs 37.4, but loses it in the next
+  turn (stage 2 1600.7 vs 1598): x_opt's kv term rewards speed right before a tight turn.
+- optsweep stage 3 (WIN = CUT:END:C2:G2:G3; optloop passes G3 = the turn after): stage-2 lines ahead by >= 0.9 often
+  graft nowhere because their lead is off the run's path at the gate (r2 window 1508-1619: 1693.45 at the rt-1696
+  gate, energy -74, grafts at 1618-1622 fail). Re-searching that line once more from G2 - 8 through the next turn
+  (rt 1738, rf variants): 1735.00 / 1735.81 with energy +174 / +1175, back on the path -> x_graft D=2 at cut 1705:
+  **2549 (50.98 s)**, server-checked (TasReplay finish tick 2617; TasServer).
+- optloop now runs sweet-maxwell's latest variant too (odd rounds: windows over two turns, 2x iters; t0 0.6 every
+  third round).
