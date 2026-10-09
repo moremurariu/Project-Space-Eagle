@@ -20,6 +20,7 @@ kw = dict(a.split('=', 1) for a in sys.argv[3:] if '=' in a)
 ITERS, TH, PAR = kw.get('iters', '4000000'), kw.get('threads', '2'), int(kw.get('par', 2))
 KV, SEED = kw.get('kv', '0.3'), int(kw.get('seed', 1))
 T0 = kw.get('t0', '0.4')
+KVALT = kw.get('kvalt', '0')  # x_opt also keeps its best plan by these kv (0: lead only); each gets a stage 2
 VAR = [l.strip() for l in open(os.path.join(HERE, 'dschain_variants_rf.txt')) if l.strip() and not l.startswith('#')]
 os.makedirs(d, exist_ok=True)
 LOG = open(os.path.join(d, 'sweep.log'), 'a')
@@ -84,13 +85,24 @@ for k, w in enumerate(wins):
     cut, end, c2, g2 = w[:4]
     tag = os.path.join(d, 'w%d_%d' % (cut, end))
     out = subprocess.run([os.path.join(BIN, 'x_opt'), MAP, 'run=' + run, 'cut=%d' % cut, 'end=%d' % end, 'tail=20', 'iters=' + ITERS,
-                          'threads=' + TH, 'seed=%d' % (SEED + k), 't0=' + T0, 'kv=' + KV, 'out=' + tag + '_o.txt'], capture_output=True, text=True).stdout
+                          'threads=' + TH, 'seed=%d' % (SEED + k), 't0=' + T0, 'kv=' + KV, 'out=' + tag + '_o.txt'] +
+                         (['kvalt=' + KVALT, 'outalt=' + tag] if KVALT else []), capture_output=True, text=True).stdout
     m = re.search(r'RESULT score ([-0-9.]+) lead ([-0-9.]+) lat ([0-9.]+) \|v\| ([0-9.]+) \(run ([0-9.]+)\)', out)
     log('window %d-%d: x_opt %s' % (cut, end, m.group(0) if m else 'no result'))
-    if not m or float(m.group(1)) < 0.3:
+    alts = []
+    for j, ma in enumerate(re.finditer(r'ALT kv ([0-9.]+) score ([-0-9.]+) lead ([-0-9.]+) .*', out)):
+        log('window %d-%d: x_opt %s' % (cut, end, ma.group(0)))
+        if float(ma.group(3)) >= 0.3 and os.path.exists('%s_k%d.txt' % (tag, j)):
+            alts.append('%s_k%d.txt' % (tag, j))
+    srcs = ([tag + '_o.txt'] if m and float(m.group(1)) >= 0.3 else []) + alts
+    if not srcs:
         continue
-    head(tag + '_o.txt', c2, tag + '_c.txt')
-    ok = stage(tag + '_c.txt', g2, tag)
+    ok = []
+    for j, o in enumerate(srcs):
+        cj = '%s_c%s.txt' % (tag, 'a%d' % j if j else '')
+        head(o, c2, cj)
+        ok += stage(cj, g2, tag + ('_a%d' % j if j else ''))
+    ok.sort()
     g2e = min(g2, FIN)
     log('window %d-%d: stage 2 from %d to %d: %s' % (cut, end, c2, g2e, ' '.join('%.2f' % r[0] for r in ok) or 'NOGATE'))
     best = grafts(ok, c2, g2, g2e)

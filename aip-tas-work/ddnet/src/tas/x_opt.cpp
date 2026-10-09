@@ -17,6 +17,8 @@
 //   lw, lat0: penalty lw x (distance to the run's path - lat0) at the end
 //   field=FILE: score by the time-to-go field instead (fw x (T_run - T_ours) at the end tick)
 //   out: prefix (the run's inputs before A + the best plan) for x_ds / x_graft continuations
+//   kvalt=K1,K2 outalt=P: also keep the best plan seen for each other kv (e.g. 0 = lead only) and write it to P_k<i>.txt
+//     (a high exit speed often cannot be kept through the next turn)
 #define private public
 #define protected public
 #include <game/client/prediction/entities/character.h>
@@ -148,6 +150,14 @@ struct SRes
 	std::vector<STasInput> m_vIn;
 	std::vector<float> m_vLead; // every 10 ticks
 };
+
+// the window score with another kv (archive of best plans for kv values other than the chain's)
+static float AltScore(const SRes &R, float Kv)
+{
+	if(R.m_Dead || R.m_Fin >= 0 || g.m_pField)
+		return R.m_Score;
+	return R.m_Lead + Kv * (R.m_Sp - R.m_IncSp) - g.m_Lw * std::max(0.0f, R.m_Lat - g.m_Lat0);
+}
 
 // projection of P on the run's path near window tick k: (label race tick, lateral distance)
 static void Project(vec2 P, int k, float &Label, float &Lat, float &IncSp, vec2 *pIncV = nullptr)
@@ -591,7 +601,8 @@ int main(int argc, const char **argv)
 		return 1;
 	}
 	CFastG::Init();
-	std::string Run, Out, Field, WStr, Ref, Prefix, Shots;
+	std::string Run, Out, Field, WStr, Ref, Prefix, Shots, OutAlt;
+	std::vector<float> vKvAlt;
 	int Cut = -1, End = -1, Threads = 3, Seed = 1, Verbose = 0, Tail = 30, Shift = 0;
 	long long Iters = 200000;
 	float T0 = 0.3f;
@@ -624,6 +635,18 @@ int main(int argc, const char **argv)
 		else if(K == "fw") g.m_Fw = std::atof(V.c_str());
 		else if(K == "out") Out = V;
 		else if(K == "w") WStr = V;
+		else if(K == "kvalt")
+		{
+			for(size_t a = 0; a < V.size();)
+			{
+				size_t b = V.find(',', a);
+				if(b == std::string::npos)
+					b = V.size();
+				vKvAlt.push_back(std::atof(V.substr(a, b - a).c_str()));
+				a = b + 1;
+			}
+		}
+		else if(K == "outalt") OutAlt = V;
 		else if(K == "kickr") KickR = std::atof(V.c_str());
 		else if(K == "closew") CloseW = std::atoi(V.c_str());
 		else if(K == "v") Verbose = std::atoi(V.c_str());
@@ -897,7 +920,14 @@ int main(int argc, const char **argv)
 	SPlan Best = P0;
 	float BestScore = Res0.m_Score;
 	std::atomic<long long> Done{0};
+	const int NA = (int)vKvAlt.size();
+	std::vector<SPlan> vAltBest(NA, P0);
+	std::vector<float> vAltScore(NA);
+	for(int a = 0; a < NA; a++)
+		vAltScore[a] = AltScore(Res0, vKvAlt[a]);
 	auto Work = [&](int Tid) {
+		std::vector<SPlan> vMyAlt(NA, P0);
+		std::vector<float> vMyAltSc(vAltScore);
 		std::mt19937 Rng(Seed * 1000 + Tid);
 		std::uniform_real_distribution<float> U(0, 1);
 		SPlan Cur = P0;
@@ -918,6 +948,15 @@ int main(int argc, const char **argv)
 			SRes Rc;
 			Eval(C, Rc, false);
 			Done++;
+			for(int a = 0; a < NA; a++)
+			{
+				const float As = AltScore(Rc, vKvAlt[a]);
+				if(As > vMyAltSc[a])
+				{
+					vMyAltSc[a] = As;
+					vMyAlt[a] = C;
+				}
+			}
 			if(Rc.m_Score >= Sc || (T > 0 && U(Rng) < std::exp((Rc.m_Score - Sc) / T)))
 			{
 				Cur = std::move(C);
@@ -950,6 +989,13 @@ int main(int argc, const char **argv)
 				}
 			}
 		}
+		std::lock_guard<std::mutex> L(Mu);
+		for(int a = 0; a < NA; a++)
+			if(vMyAltSc[a] > vAltScore[a])
+			{
+				vAltScore[a] = vMyAltSc[a];
+				vAltBest[a] = vMyAlt[a];
+			}
 	};
 	std::vector<std::thread> vT;
 	for(int t = 0; t < Threads; t++)
@@ -977,6 +1023,24 @@ int main(int argc, const char **argv)
 		vO.insert(vO.end(), Rb.m_vIn.begin(), Rb.m_vIn.begin() + std::min((int)Rb.m_vIn.size(), g.m_N));
 		WriteInputs(Out.c_str(), vO);
 		std::printf("wrote %s (%zu inputs, ends at rt %d)\n", Out.c_str(), vO.size(), g.m_RtA + g.m_N);
+	}
+	for(int a = 0; a < NA; a++)
+	{
+		SRes Ra;
+		Eval(vAltBest[a], Ra, true);
+		const bool Same = Ra.m_vIn.size() == Rb.m_vIn.size() && std::equal(Ra.m_vIn.begin(), Ra.m_vIn.begin() + std::min((int)Ra.m_vIn.size(), g.m_N), Rb.m_vIn.begin(),
+			[](const STasInput &x, const STasInput &y) { return std::memcmp(&x, &y, sizeof(STasInput)) == 0; });
+		std::printf("ALT kv %.2f score %.3f lead %.3f lat %.1f |v| %.2f (run %.2f)%s%s\n", vKvAlt[a], AltScore(Ra, vKvAlt[a]), Ra.m_Lead, Ra.m_Lat, Ra.m_Sp, Ra.m_IncSp,
+			Ra.m_Dead ? " DEAD" : "", Same ? " same" : "");
+		if(!OutAlt.empty() && !Same && !Ra.m_Dead)
+		{
+			char aBuf[512];
+			std::snprintf(aBuf, sizeof(aBuf), "%s_k%d.txt", OutAlt.c_str(), a);
+			std::vector<STasInput> vO = vPre;
+			vO.insert(vO.end(), Ra.m_vIn.begin(), Ra.m_vIn.begin() + std::min((int)Ra.m_vIn.size(), g.m_N));
+			WriteInputs(aBuf, vO);
+			std::printf("wrote %s\n", aBuf);
+		}
 	}
 	return 0;
 }
