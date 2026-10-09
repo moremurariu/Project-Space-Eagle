@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""optloop.py DIR [rounds=99] [seed=1000] [iters=6000000] [kv=0.3,0.4] [threads=4]
+"""optloop.py DIR [rounds=99] [seed=1000] [iters=6000000] [kv=0.3,0.4] [threads=4] [ext=2] [r0=0]
 Endless optsweep rounds on tas-work/kog_full_best.txt. Each round places its windows on the current run's turns (speed
 minima from x_trace): x_opt cut = apex - 90..110, end = apex + 20..35 (after the exit), stage 2 from end - 10 to the
 next apex + 30 (or the finish), with per-round jitter and a new seed; the round's run is a copy (DIR/r<k>/run.txt),
@@ -17,6 +17,7 @@ kw = dict(a.split('=', 1) for a in sys.argv[2:] if '=' in a)
 ROUNDS, SEED = int(kw.get('rounds', 99)), int(kw.get('seed', 1000))
 ITERS, TH = kw.get('iters', '6000000'), kw.get('threads', '4')
 KVS = kw.get('kv', '0.3,0.4').split(',')
+EXT = int(kw.get('ext', 2))  # extra stages (turns) for a stage-2 lead that does not graft
 BEST = os.path.join(TW, 'kog_full_best.txt')
 # commits go to the checked-out branch, with this session's link (session=URL overrides)
 BRANCH = subprocess.run(['git', '-C', ROOT, 'rev-parse', '--abbrev-ref', 'HEAD'], capture_output=True, text=True).stdout.strip()
@@ -79,10 +80,15 @@ for r in range(R0, R0 + ROUNDS):
         if g2 - end < 40:
             g2 = min(end + 80, fin + 20)
         # G3: one more turn for a stage-2 lead that does not graft (optsweep stage 3)
-        g3 = min(ap[i + span + 1] + 30 if i + span + 1 < len(ap) else fin + 20, fin + 20)
-        if g3 - g2 < 40:
-            g3 = min(g2 + 80, fin + 20)
-        wins.append('%d:%d:%d:%d:%d' % (cut, end, end - 10, g2, g3))
+        gs = [g2]
+        for e in range(1, EXT + 1):
+            gn = min(ap[i + span + e] + 30 if i + span + e < len(ap) else fin + 20, fin + 20)
+            if gn - gs[-1] < 40:
+                gn = min(gs[-1] + 80, fin + 20)
+            if gn <= gs[-1]:
+                break
+            gs.append(gn)
+        wins.append(':'.join(str(x) for x in [cut, end, end - 10] + gs))
     rng.shuffle(wins)
     kv = KVS[r % len(KVS)]
     f0 = finish(os.path.join(rd, 'run.txt'))

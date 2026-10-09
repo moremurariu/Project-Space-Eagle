@@ -3,8 +3,8 @@
 WIN = CUT:END:C2:G2 - x_opt polishes RUN's window CUT..END (END right after a turn exit, where speed is worth time);
 its line is cut at C2 (after the exit) and re-searched by x_ds (rf variants, tracking RUN) to G2 (after the next turn);
 the best stage-2 line is grafted back onto RUN (multigraft.py, every on-line cut >= 1 tick ahead, largest D first). With
-WIN = CUT:END:C2:G2:G3, a stage-2 line >= 0.9 ahead that grafts nowhere is re-searched once more from G2 - 8 to G3 (the
-next turn: its lead is often off the run's path at G2) and grafted again. A
+WIN = CUT:END:C2:G2:G3[:G4...], a stage-2 line >= 0.9 ahead that grafts nowhere is re-searched from G2 - 8 to G3 (the
+next turn: its lead is often off the run's path at G2) and grafted again, and so on through G4... while it stays ahead. A
 finishing graft that passes the server check replaces RUN (DIR/best_<ticks>.txt) and the next windows use it.
 This is the recipe that gave 2576 -> 2575 (NOTES "x_opt on the restructured U-turn 1"). Writes DIR/sweep.log."""
 import os, re, subprocess, sys, time
@@ -15,7 +15,7 @@ TW = os.path.dirname(HERE)
 BIN = os.path.join(TW, '..', 'ddnet', 'build-sim')
 MAP = os.path.join(TW, 'AiP-Gores.map')
 run, d = os.path.abspath(sys.argv[1]), os.path.abspath(sys.argv[2])
-wins = [tuple(map(int, a.split(':'))) for a in sys.argv[3:] if a.count(':') in (3, 4)]
+wins = [tuple(map(int, a.split(':'))) for a in sys.argv[3:] if a.count(':') >= 3]
 kw = dict(a.split('=', 1) for a in sys.argv[3:] if '=' in a)
 ITERS, TH, PAR = kw.get('iters', '4000000'), kw.get('threads', '2'), int(kw.get('par', 2))
 KV, SEED = kw.get('kv', '0.3'), int(kw.get('seed', 1))
@@ -82,7 +82,6 @@ def grafts(ok, c, g, ge):
 
 for k, w in enumerate(wins):
     cut, end, c2, g2 = w[:4]
-    g3 = w[4] if len(w) > 4 else None
     tag = os.path.join(d, 'w%d_%d' % (cut, end))
     out = subprocess.run([os.path.join(BIN, 'x_opt'), MAP, 'run=' + run, 'cut=%d' % cut, 'end=%d' % end, 'tail=20', 'iters=' + ITERS,
                           'threads=' + TH, 'seed=%d' % (SEED + k), 't0=' + T0, 'kv=' + KV, 'out=' + tag + '_o.txt'], capture_output=True, text=True).stdout
@@ -95,13 +94,18 @@ for k, w in enumerate(wins):
     g2e = min(g2, FIN)
     log('window %d-%d: stage 2 from %d to %d: %s' % (cut, end, c2, g2e, ' '.join('%.2f' % r[0] for r in ok) or 'NOGATE'))
     best = grafts(ok, c2, g2, g2e)
-    if not (best and best[0] < FIN) and g3 and g2 < FIN - 3 and ok and ok[0][0] <= g2e - 0.9:
-        c3 = g2 - 8
-        head(ok[0][1], c3, tag + '_c3.txt')
-        ok3 = stage(tag + '_c3.txt', g3, tag + '_s3')
-        g3e = min(g3, FIN)
-        log('window %d-%d: stage 3 from %d to %d: %s' % (cut, end, c3, g3e, ' '.join('%.2f' % r[0] for r in ok3) or 'NOGATE'))
-        best = grafts(ok3, c3, g3, g3e)
+    # further stages: while the lead holds (>= 0.9) but grafts nowhere, re-search through the next turn
+    gp, gpe, okp = g2, g2e, ok
+    for si, gn in enumerate(w[4:]):
+        if (best and best[0] < FIN) or gp >= FIN - 3 or not okp or okp[0][0] > gpe - 0.9:
+            break
+        cn = gp - 8
+        head(okp[0][1], cn, '%s_c%d.txt' % (tag, si + 3))
+        okn = stage('%s_c%d.txt' % (tag, si + 3), gn, '%s_s%d' % (tag, si + 3))
+        gne = min(gn, FIN)
+        log('window %d-%d: stage %d from %d to %d: %s' % (cut, end, si + 3, cn, gne, ' '.join('%.2f' % r[0] for r in okn) or 'NOGATE'))
+        best = grafts(okn, cn, gn, gne)
+        gp, gpe, okp = gn, gne, okn
     if best and best[0] < FIN:
         chk = subprocess.run([os.path.join(TW, 'srvfin.sh'), best[1]], capture_output=True, text=True).stdout
         mm = re.search(r'-> (\d+) ticks', chk)
