@@ -1627,3 +1627,25 @@ approach shot, x_pfscan pre-fires, point-blank) and evaluates each with the two-
 - optloop window 2163-2280 (runs/loop/mix/r6/w2163_2280_v3_mg/g_c2439_D1.txt): **2541 (50.82 s)**, server-checked.
 - optloop round 6: 2542 -> **2541 (50.82 s)** (window 2163-2280, the hop: stage 2 2466.01 at the rt-2467 gate, graft
   D=1 at 2439 just before the final maze).
+
+## Teero-guided sections and resource-aware gates (Oct 9, night)
+- Stretches where Teero gains on 2541 (analysis/lagat.py, lag rising, matched points only): 1005-1055 1.6,
+  1060-1090 1.2, 1105-1135 1.1, 1155-1260 3.3, **1490-1590 8.3**, 1595-1685 1.9, **1945-1970 5.2** (S-bend top),
+  2010-2065 2.7, 2100-2170 3.2, **2270-2470 ~9.5** (hop exit, straight, maze entry), 2500-2535 1.9: **42.6 in total**
+  (we gain it back elsewhere; best of both everywhere would be ~2498). Same line and shot count, so it is execution.
+- Energy budget of 2541 after the pickup (eacct.py): kicks +34.8k (v^2 units), hooks -29.9k, dir0 -2.1k, walls -1.7k,
+  jump -1.0k: 86% of the kick energy is braked away by hooks; the S-bend alone (75 -> 8 px/t) takes ~4.9k.
+- **S-bend top:** x_ds from 2541 at rt 1915 tracking Teero's track in time (tref=teero_track.txt ttrack=1 toff=-14):
+  his line climbs the passage slower (1.8 ticks behind 2541 at 1950) and crosses the pillar top ~33 px lower and
+  faster (|v| ~15 vs 8.8): **3.7 ahead at 1965** (runs/stop/tr21.txt). Untracked x_ds never keeps it (it is behind
+  with less energy until the top). Re-searched untracked from its 1958 state: 1.8 ahead 1985-2035; chained through the
+  top-left corner: 0.91 ahead at the rt-2165 gate (ch_2020_21) but no graft (multigraft cuts 1976-2100 all fail) and
+  every chain into the hop died at ~2192 / ~2260.
+- x_ds linefrac=F linemin=D (new): a beam share for lineages >= D px off the incumbent's path. Did not keep the S-bend
+  line (its passage differs by speed, not position: off 5-8 px).
+- Why the chains die: (1) the chained line spent the air jump at 2156 and missed the block touch that refreshes the
+  run's jump at 2160, so it reached the hop (air jump at 2247) without it; (2) it replaced the run's 2148 + 2160
+  kicks with one at 2147 (the S-bend line's reload phase), 12 px/t slower at 2165. x_ds gateres=J,R (new): gate
+  arrivals without the air jump the incumbent has there and uses within 100 ticks cost J ticks, R per tick the gun is
+  still loading when the incumbent next fires. With gateres=5,0.3 the corner arrivals keep the jump; the hop chains
+  still die (the missing 2160 kick).

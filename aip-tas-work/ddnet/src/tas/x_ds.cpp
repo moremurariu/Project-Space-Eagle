@@ -30,6 +30,10 @@
 //     that spends it on the approach loses ~25 ticks there)
 //   jumpfrac=F: a share of the beam for lineages that still have their air jump, ranked among themselves by the raw
 //     score (like freefrac for grenades)
+//   gateres=J,R: window gate arrivals without the air jump the incumbent has there and uses within 100 ticks cost J
+//     ticks, R ticks per tick their gun is still loading when the incumbent fires next (chain / stage-2 compatibility)
+//   linefrac=F [linemin=20]: a share of the beam for lineages >= linemin px off the incumbent's path, ranked among
+//     themselves (another line through a turn that pays off only after it: Teero's lower S-bend arc)
 //   celljump=1: the air jump's availability is part of the dedup cell (a lineage that saves the jump for a later
 //     redirect is not replaced by one at the same place and speed that spent it)
 //   rotfar=1: low-loss turning hooks at anchors up to the hook length (flight time included): per side the aim whose
@@ -151,6 +155,8 @@ struct SPar
 	int m_ShLate = 0; // shadow rollouts fire a shot the lineage's reload blocked up to this many ticks late
 	int m_CellReload = 0; // shot phase in the dedup cell (reload bucket, grenades in flight, saved slots)
 	float m_JumpFrac = 0; // share of the beam reserved for lineages that keep their air jump
+	float m_LineFrac = 0, m_LineMin = 20; // share of the beam for lineages >= linemin px off the incumbent's path
+	float m_GateResJ = 0, m_GateResR = 0; // gate arrivals: cost of a missing air jump / per tick of a late gun (gateres)
 	float m_FreeFrac = 0; // share of the beam reserved for lineages that keep their grenade (no shot for >= freemin ticks)
 	int m_FreeMin = 20;
 	int m_Shadow = 0; // add the incumbent's inputs at the matched progress point (this many, from the next one)
@@ -382,6 +388,11 @@ static char HkAt(int k) { int i = k - gs_HkK0; return i >= 0 && i < (int)gs_vHkS
 static SRefLine gs_IncLine; // the incumbent's own path (shadow inputs are indexed on it)
 // incjump: race ticks over which the incumbent keeps its air jump for a later redirect (no jump presses there)
 static std::vector<std::pair<int, int>> gs_vIncJumpKeep;
+// incumbent resources per race tick (gateres): air jump available after the step, race ticks of its air-jump uses and
+// of its shots (the state produced by the firing input)
+static std::vector<char> gs_vIncJAv;
+static int gs_IncJAvRt0 = 0;
+static std::vector<int> gs_vIncJUse, gs_vIncFireRt;
 static bool IncJumpKept(int Rt)
 {
 	for(auto &[A, B] : gs_vIncJumpKeep)
@@ -460,6 +471,7 @@ struct SCand
 	float m_Opt;
 	float m_Jit = 0;
 	float m_Track = 0; // distance to the incumbent's state at the same progress
+	float m_Lat = 0; // distance to the incumbent's path at the same progress
 	int m_G0Rt = 0; // race tick after the step
 	float m_KInc = 0;
 	float m_TCost = 0;
@@ -1222,6 +1234,7 @@ static void Score(const CFastG &G, SCand &C, const SState &Par)
 	float Lat = 0;
 	C.m_G = gs_Line.Project(G.m_Core.m_Pos, Par.m_G0, &Lat);
 	C.m_Track = Lat + gs_P.m_TrackV * distance(G.m_Core.m_Vel, gs_Line.VelAt(C.m_G));
+	C.m_Lat = Lat;
 	C.m_KInc = gs_TRef ? gs_IncLine.Project(G.m_Core.m_Pos, Par.m_KInc) : C.m_G;
 	C.m_G0Rt = G.RaceTick();
 	float Rt = (float)G.RaceTick();
@@ -1492,6 +1505,40 @@ static void ShadowEval(const CFastG &G0, float K0, float KI0, int H, int NOff, f
 }
 
 // ------------------------------------------------------------------------------------------------ main
+// gateres: an arrival at a window gate that lacks a resource the incumbent still has there costs extra (the window's
+// line is re-searched on from the gate; one that spent the air jump the incumbent keeps for a later redirect, or fired
+// so late that its gun is still loading when the incumbent fires next, dies or loses ticks there: the S-bend line of
+// Oct 9 was 1.8 ahead at rt 2035, then spent the jump the hop at 2247 needs and every chain died in the hop)
+static float GateResPen(const SState &Par, const SCand &c, int GateRt)
+{
+	SState S = Par;
+	for(int r = 0; r < c.m_NR; r++)
+		ApplyRetro(S, c.m_aR[r]);
+	S.m_G.Step(c.m_In);
+	float Pen = 0;
+	const int i = GateRt - gs_IncJAvRt0;
+	if(gs_P.m_GateResJ > 0 && i >= 0 && i < (int)gs_vIncJAv.size() && gs_vIncJAv[i] && (S.m_G.m_Core.m_Jumped & 2))
+	{
+		// only if the incumbent uses that jump within 100 ticks (otherwise it is refreshed or unused)
+		for(int u : gs_vIncJUse)
+			if(u > GateRt && u <= GateRt + 100)
+			{
+				Pen += gs_P.m_GateResJ;
+				break;
+			}
+	}
+	if(gs_P.m_GateResR > 0)
+		for(int f : gs_vIncFireRt)
+			if(f > GateRt - 3)
+			{
+				// the gun must be loaded at the state before the incumbent's next firing input
+				int Free = S.m_G.RaceTick() + S.m_G.m_ReloadTimer;
+				Pen += gs_P.m_GateResR * std::max(0, Free - (f - 1));
+				break;
+			}
+	return Pen;
+}
+
 int main(int argc, const char **argv)
 {
 	if(argc < 2 || !CTasGame::LoadMap(argv[1]))
@@ -1578,6 +1625,9 @@ int main(int argc, const char **argv)
 		else if(K == "trackfrac") gs_P.m_TrackFrac = std::stof(V);
 		else if(K == "freefrac") gs_P.m_FreeFrac = std::stof(V);
 		else if(K == "jumpfrac") gs_P.m_JumpFrac = std::stof(V);
+		else if(K == "linefrac") gs_P.m_LineFrac = std::stof(V);
+		else if(K == "gateres") std::sscanf(V.c_str(), "%f,%f", &gs_P.m_GateResJ, &gs_P.m_GateResR);
+		else if(K == "linemin") gs_P.m_LineMin = std::stof(V);
 		else if(K == "cellreload") gs_P.m_CellReload = std::stoi(V);
 		else if(K == "shlate") gs_P.m_ShLate = std::stoi(V);
 		else if(K == "freemin") gs_P.m_FreeMin = std::stoi(V);
@@ -1646,6 +1696,7 @@ int main(int argc, const char **argv)
 		gs_IncStart = F.m_StartTick;
 		bool CutDone = !gs_P.m_Prefix.empty();
 		int IncJumpFrom = !(F.m_Core.m_Jumped & 2) ? F.RaceTick() : -1;
+		gs_IncJAvRt0 = F.RaceTick() + 1;
 		for(; i < vInc.size(); i++)
 		{
 			if(!CutDone && F.RaceTick() >= gs_P.m_Cut)
@@ -1674,6 +1725,9 @@ int main(int argc, const char **argv)
 					gs_vIncJumpKeep.push_back({IncJumpFrom + 1, F.RaceTick() - 3}); // the air jump used here was kept since IncJumpFrom
 				if(!JAv1)
 					IncJumpFrom = -1;
+				gs_vIncJAv.push_back(JAv1);
+				if(JAv0 && !JAv1)
+					gs_vIncJUse.push_back(F.RaceTick());
 			}
 			if(PendPress >= 0 && F.m_Core.m_HookState == HOOK_GRABBED)
 			{
@@ -1683,6 +1737,7 @@ int main(int argc, const char **argv)
 			if(F.m_ReloadTimer > Rl)
 			{
 				vIncFires.push_back(Tick);
+				gs_vIncFireRt.push_back(F.RaceTick());
 				// where does this shot explode? in flight: fly it; gone already: this step's explosion
 				int k = -1;
 				for(int q = 0; q < F.m_NumProj; q++)
@@ -2294,6 +2349,8 @@ int main(int argc, const char **argv)
 				{
 					const SCand &c = vAll[k];
 					float Val = GateG >= 0 ? c.m_GateT - gs_P.m_EGain * (c.m_E - gs_Line.EnergyAt(GateG)) : c.m_GateT;
+					if(GateG >= 0 && (gs_P.m_GateResJ > 0 || gs_P.m_GateResR > 0))
+						Val += GateResPen(vBeam[c.m_Parent], c, (int)std::lround(GateG));
 					vG.push_back({Val, (int)k});
 				}
 			std::sort(vG.begin(), vG.end());
@@ -2427,6 +2484,27 @@ int main(int argc, const char **argv)
 			for(int r = 0; r < Want; r++)
 				vJSaver.push_back(v[r].second);
 		}
+		// off-line lineages: the same for states >= linemin px off the incumbent's path (another line through a
+		// turn, e.g. Teero's lower arc over the S-bend top: 1.8 ticks behind the run at rt 1950 after a slower climb,
+		// 3.7 ahead at 1965; the run's own line fills the beam before that)
+		std::vector<int> vLine;
+		if(gs_P.m_LineFrac > 0 && NL > 0)
+		{
+			const float Lam = gs_P.m_vLam[0];
+			std::vector<std::pair<float, int>> v;
+			for(size_t k = 0; k < vAll.size(); k++)
+			{
+				const SCand &c = vAll[k];
+				if(c.m_Gate || c.m_Lat < gs_P.m_LineMin)
+					continue;
+				float Eref = gs_Line.EnergyAt(c.m_G);
+				v.push_back({c.m_Lag0 + c.m_Jit - Lam * (gs_Line.EWeight(c.m_G) * (c.m_E - Eref) + c.m_Opt), (int)k});
+			}
+			int Want = std::min((int)v.size(), (int)(gs_P.m_Beam * gs_P.m_LineFrac * 2) + 32);
+			std::partial_sort(v.begin(), v.begin() + Want, v.end());
+			for(int r = 0; r < Want; r++)
+				vLine.push_back(v[r].second);
+		}
 		// rollout lookahead: re-score the preselected candidates by where short rollouts get them
 		if(gs_P.m_RollH > 0 || gs_P.m_ShH > 0)
 		{
@@ -2445,7 +2523,7 @@ int main(int argc, const char **argv)
 				}
 			if(IncSel >= 0 && !vIn[IncSel])
 				vP.push_back(IncSel);
-			for(const auto *pV : {&vSaver, &vJSaver})
+			for(const auto *pV : {&vSaver, &vJSaver, &vLine})
 				for(int k : *pV)
 					if(!vIn[k])
 					{
@@ -2573,6 +2651,7 @@ int main(int argc, const char **argv)
 		// the approach crowded it out: a late-braking approach found 1844.97 at the rt-1846 gate with jumps forbidden
 		// over 1752-1795 and 1871.6-1874 without (it spent the jump at 1758 and hit the wall at 1803)
 		Reserve(vJSaver, gs_P.m_JumpFrac);
+		Reserve(vLine, gs_P.m_LineFrac);
 		// round robin over the weights
 		std::vector<size_t> vPos(NL, 0);
 		bool Any = true;
