@@ -132,6 +132,10 @@ struct SCtx
 	float m_Kv = 0.3f, m_Lw = 0.05f, m_Lat0 = 12, m_Fw = 0, m_LatMax = 100;
 	const STField *m_pField = nullptr;
 	float m_IncTEnd = 0;
+	// close-kick spots (mutation 16): window ticks where the run passes within kickr px of a solid tile, and the
+	// nearest point of that tile (Teero's kicks: 44 of 49 within 48 px, many pushing sideways to turn)
+	std::vector<int> m_vOppK;
+	std::vector<vec2> m_vOppW;
 };
 static SCtx g;
 
@@ -543,6 +547,28 @@ static bool Mutate(SPlan &P, std::mt19937 &R, const std::vector<int> &vW)
 		}
 		return true;
 	}
+	case 16: // close kick: a shot aimed at a wall point the run passes within kickr px of, fired 1-18 ticks before
+	{
+		if(g.m_vOppK.empty())
+			return false;
+		const int o = (int)(U(R) * g.m_vOppK.size()) % (int)g.m_vOppK.size();
+		const int F = std::max(0, g.m_vOppK[o] - 1 - (int)(U(R) * 18));
+		if(F >= N)
+			return false;
+		// free the reload around it: drop shots fired within 12 ticks of F
+		for(size_t j = 0; j < P.m_S.size();)
+			if(std::abs(P.m_S[j].m_F - F) < 12 && P.m_S[j].m_F < N)
+				P.m_S.erase(P.m_S.begin() + j);
+			else
+				j++;
+		SShot S;
+		S.m_F = F;
+		S.m_HasX = true;
+		S.m_X = g.m_vOppW[o] + vec2(Gauss(R), Gauss(R)) * 3.0f;
+		auto It = std::lower_bound(P.m_S.begin(), P.m_S.end(), S, [](const SShot &a, const SShot &b) { return a.m_F < b.m_F; });
+		P.m_S.insert(It, S);
+		return true;
+	}
 	case 15: // add a shot (absolute angle)
 	{
 		SShot S;
@@ -569,6 +595,8 @@ int main(int argc, const char **argv)
 	int Cut = -1, End = -1, Threads = 3, Seed = 1, Verbose = 0, Tail = 30, Shift = 0;
 	long long Iters = 200000;
 	float T0 = 0.3f;
+	float KickR = 45;
+	int CloseW = 3;
 	for(int i = 2; i < argc; i++)
 	{
 		std::string A = argv[i];
@@ -596,6 +624,8 @@ int main(int argc, const char **argv)
 		else if(K == "fw") g.m_Fw = std::atof(V.c_str());
 		else if(K == "out") Out = V;
 		else if(K == "w") WStr = V;
+		else if(K == "kickr") KickR = std::atof(V.c_str());
+		else if(K == "closew") CloseW = std::atoi(V.c_str());
 		else if(K == "v") Verbose = std::atoi(V.c_str());
 	}
 	std::vector<STasInput> vIn = ReadInputs(Run.c_str());
@@ -816,11 +846,40 @@ int main(int argc, const char **argv)
 			g.m_Fw = 1;
 		g.m_IncTEnd = Fld.Value(g.m_vIncP[g.m_N - 1], g.m_vIncV[g.m_N - 1]);
 	}
+	{
+		// close-kick spots along the run's path in the window
+		const SMapInfo &Mi = CTasGame::Map();
+		for(int k = 0; k < g.m_N && k < (int)g.m_vIncP.size(); k++)
+		{
+			const vec2 Q = g.m_vIncP[k];
+			float Bd = KickR;
+			vec2 Bw(0, 0);
+			for(int ty = (int)std::floor((Q.y - KickR) / 32); ty <= (int)std::floor((Q.y + KickR) / 32); ty++)
+				for(int tx = (int)std::floor((Q.x - KickR) / 32); tx <= (int)std::floor((Q.x + KickR) / 32); tx++)
+				{
+					if(Mi.Tile(tx, ty) != TILE_SOLID)
+						continue;
+					const vec2 C(std::clamp(Q.x, tx * 32.0f, tx * 32.0f + 32.0f), std::clamp(Q.y, ty * 32.0f, ty * 32.0f + 32.0f));
+					const float d = distance(Q, C);
+					if(d < Bd && d > 0.5f)
+					{
+						Bd = d;
+						Bw = C;
+					}
+				}
+			if(Bd < KickR)
+			{
+				g.m_vOppK.push_back(k);
+				g.m_vOppW.push_back(Bw + normalize(Bw - Q) * 4.0f); // a bit inside the tile
+			}
+		}
+		std::printf("close-kick spots: %zu window ticks within %.0f px of a solid tile\n", g.m_vOppK.size(), KickR);
+	}
 	SRes Res0;
 	Eval(P0, Res0, true);
 	std::printf("plan: %zu hook holds, %zu shots; replay: score %.3f lead %.3f lat %.1f |v| %.2f (run %.2f)%s\n", P0.m_H.size(), P0.m_S.size(),
 		Res0.m_Score, Res0.m_Lead, Res0.m_Lat, Res0.m_Sp, Res0.m_IncSp, Res0.m_Dead ? " DEAD" : "");
-	std::vector<int> vW = {10, 10, 12, 3, 3, 3, 2, 8, 10, 6, 3, 1, 2, 2, 2, 1};
+	std::vector<int> vW = {10, 10, 12, 3, 3, 3, 2, 8, 10, 6, 3, 1, 2, 2, 2, 1, CloseW};
 	if(!WStr.empty())
 	{
 		vW.clear();
