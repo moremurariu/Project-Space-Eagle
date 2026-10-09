@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""optloop.py DIR [rounds=99] [seed=1000] [iters=6000000] [kv=0.3,0.4] [threads=4] [ext=2] [r0=0]
+"""optloop.py DIR [rounds=99] [seed=1000] [iters=6000000] [kv=0.3,0.4] [threads=4] [ext=4] [r0=0]
 Endless optsweep rounds on tas-work/kog_full_best.txt. Each round places its windows on the current run's turns (speed
 minima from x_trace): x_opt cut = apex - 90..110, end = apex + 20..35 (after the exit), stage 2 from end - 10 to the
 next apex + 30 (or the finish), with per-round jitter and a new seed; the round's run is a copy (DIR/r<k>/run.txt),
@@ -18,7 +18,7 @@ ROUNDS, SEED = int(kw.get('rounds', 99)), int(kw.get('seed', 1000))
 ITERS, TH = kw.get('iters', '6000000'), kw.get('threads', '4')
 KVS = kw.get('kv', '0.1,0.3').split(',')  # the lead-only archive gave both gains after it was added
 MODES = [int(x) for x in kw.get('modes', '0,1').split(',')]
-EXT = int(kw.get('ext', 2))  # extra stages (turns) for a stage-2 lead that does not graft
+EXT = int(kw.get('ext', 4))  # extra stages (turns) for a stage-2 lead that does not graft
 VSETS = kw.get('vsets', 'dschain_variants_rf_s0.txt,dschain_variants_rf2_s0.txt').split(',')  # stage-2 x_ds variants (survival check off), alternating every 3 rounds
 BEST = os.path.join(TW, 'kog_full_best.txt')
 # commits go to the checked-out branch, with this session's link (session=URL overrides)
