@@ -1622,3 +1622,5 @@ approach shot, x_pfscan pre-fires, point-blank) and evaluates each with the two-
   at 1967) -> **2542** (window 2109-2235, bottom-left turn -> hop). Recurring dead ends: gates at rt ~1553 (before
   the shaft double kick: 1-3 "ahead" that are 10-25 behind after it), chains into rt 2241-2244 / the hop (beams die
   at ~2199 where the run's 2193 kick is needed) and the final maze (level at best).
+- optloop round 5 on 2542: no gain. Final-maze sweep on 2542 (runs/maze: x_ds rf_mix, beam 8000, cuts 2400 / 2420 /
+  2440 / 2460 / 2480 / 2500 straight to the finish): all 24 searches 2542 (converged for this search).
