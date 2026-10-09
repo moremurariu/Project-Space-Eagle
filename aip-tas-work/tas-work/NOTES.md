@@ -1464,3 +1464,6 @@ dir, jump, cursor aim, shots with aim, certainties; best effort, not exact) and 
   gate, talt tail-lead archive, keepjump): no gain. sweet-maxwell 2543 (window 1718-1888) is 1.1-1.5 ahead of our
   2541 on our line at 1915-1950 -> multigraft D=1 at 1915-1925: **2540 (50.80 s)**, server-checked (TasReplay finish
   tick 2608; TasServer).
+- optloop round 25 (two-turn windows) on 2540, S-bend window 1836-2021: x_opt's kv-0.15 archived plan (lead 0.91,
+  |v| +1.75) stage 2 2110.80 at the rt-2112 gate -> x_graft D=1 at cut 2022: **2539 (50.78 s)**, server-checked
+  (TasReplay finish tick 2607; TasServer). sweet-maxwell 2542 is our 2540 to 1950 and behind after it.
