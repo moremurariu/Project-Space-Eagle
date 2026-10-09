@@ -1448,3 +1448,5 @@ dir, jump, cursor aim, shots with aim, certainties; best effort, not exact) and 
   0.84, graftable (galt 0.1) 0.68 with |dv| 0.28; stage 2 from the graftable plan 2467.00 at the rt-2470 gate -> x_graft
   D=1 at cut 2398: **2544 (50.88 s)**, server-checked (TasReplay finish tick 2612; TasServer).
 - sweet-maxwell 2549 (top-left corner window) vs our 2545: same line to 1570, theirs 2-4 behind after; nothing to add.
+- Same round, rt-1800 U-turn window 1761-1889: graftable plan (lead 0.67, |dv| 1.5) stage 2 1989.88 at the rt-1991
+  gate -> x_graft D=1 at cut 1939: **2543 (50.86 s)**, server-checked (TasReplay finish tick 2611; TasServer).
