@@ -19,6 +19,7 @@
 //   out: prefix (the run's inputs before A + the best plan) for x_ds / x_graft continuations
 //   kvalt=K1,K2 outalt=P: also keep the best plan seen for each other kv (e.g. 0 = lead only) and write it to P_k<i>.txt
 //   galt=G1,...: also archive by lead - G x |v - the run's v| - 0.1 x (lateral - 4) (graftable leads), after kvalt's
+//   talt=1: also archive by the lead at the end of the survival tail (the run's own inputs after the window), last
 //     (a high exit speed often cannot be kept through the next turn)
 #define private public
 #define protected public
@@ -148,16 +149,20 @@ struct SRes
 	bool m_Dead = false;
 	int m_DeadK = -1, m_Fin = -1;
 	float m_Lead = 0, m_Lat = 0, m_Sp = 0, m_IncSp = 0, m_DV = 0; // m_DV: |velocity - the run's velocity there|
+	float m_TLead = -100, m_TLat = 0; // lead / lateral distance at the end of the survival tail (the run's own inputs)
 	std::vector<STasInput> m_vIn;
 	std::vector<float> m_vLead; // every 10 ticks
 };
 
 // the window score with another kv (archive of best plans for kv values other than the chain's)
-// Gw > 0: "graftable" score, lead minus the velocity difference to the run (and the lateral distance), for x_graft
+// Gw > 0: "graftable" score, lead minus the velocity difference to the run (and the lateral distance), for x_graft;
+// Kv < 0: the lead at the end of the survival tail (how far ahead the state stays on the run's own inputs)
 static float AltScore(const SRes &R, float Kv, float Gw = 0)
 {
 	if(R.m_Dead || R.m_Fin >= 0 || g.m_pField)
 		return R.m_Score;
+	if(Kv < 0)
+		return R.m_TLead - 0.05f * std::max(0.0f, R.m_TLat - g.m_Lat0);
 	if(Gw > 0)
 		return R.m_Lead - Gw * R.m_DV - 0.1f * std::max(0.0f, R.m_Lat - 4.0f);
 	return R.m_Lead + Kv * (R.m_Sp - R.m_IncSp) - g.m_Lw * std::max(0.0f, R.m_Lat - g.m_Lat0);
@@ -286,6 +291,7 @@ static void Eval(const SPlan &P, SRes &Res, bool Keep, const std::vector<SCkpt> 
 	}
 	Res.m_Dead = false;
 	Res.m_Fin = -1;
+	Res.m_TLead = -100;
 	for(int k = k0; k < g.m_NT; k++)
 	{
 		if(pRec && k % CK == 0)
@@ -385,6 +391,13 @@ static void Eval(const SPlan &P, SRes &Res, bool Keep, const std::vector<SCkpt> 
 			}
 			else
 				WinScore = Res.m_Lead + g.m_Kv * (Res.m_Sp - IncSp) - g.m_Lw * std::max(0.0f, Lat - g.m_Lat0);
+		}
+		if(k == g.m_NT - 1 && g.m_NT > g.m_N)
+		{
+			float Lab, Lat, IncSp;
+			Project(S.m_Core.m_Pos, k, Lab, Lat, IncSp);
+			Res.m_TLead = Lab - S.RaceTick();
+			Res.m_TLat = Lat;
 		}
 	}
 	Res.m_Score = WinScore;
@@ -693,6 +706,7 @@ int main(int argc, const char **argv)
 	CFastG::Init();
 	std::string Run, Out, Field, WStr, Ref, Prefix, Shots, OutAlt;
 	std::vector<float> vKvAlt, vGwAlt;
+	int TAlt = 0;
 	int Cut = -1, End = -1, Threads = 3, Seed = 1, Verbose = 0, Tail = 30, Shift = 0;
 	long long Iters = 200000;
 	float T0 = 0.3f;
@@ -748,6 +762,7 @@ int main(int argc, const char **argv)
 				a = b + 1;
 			}
 		}
+		else if(K == "talt") TAlt = std::atoi(V.c_str());
 		else if(K == "outalt") OutAlt = V;
 		else if(K == "ck") UseCk = std::atoi(V.c_str()) != 0;
 		else if(K == "kickr") KickR = std::atof(V.c_str());
@@ -1030,6 +1045,11 @@ int main(int argc, const char **argv)
 		vAKv.push_back(0);
 		vAGw.push_back(Gw);
 	}
+	if(TAlt)
+	{
+		vAKv.push_back(-1);
+		vAGw.push_back(0);
+	}
 	const int NA = (int)vAKv.size();
 	std::vector<SPlan> vAltBest(NA, P0);
 	std::vector<float> vAltScore(NA);
@@ -1159,8 +1179,10 @@ int main(int argc, const char **argv)
 			Same = Same || SameIn(Ra.m_vIn, D);
 		if(!Same)
 			vDone.push_back(Ra.m_vIn);
-		std::printf("ALT kv %.2f score %.3f lead %.3f lat %.1f |v| %.2f (run %.2f) dv %.2f gw %.2f%s%s\n", vAKv[a], AltScore(Ra, vAKv[a], vAGw[a]), Ra.m_Lead, Ra.m_Lat,
-			Ra.m_Sp, Ra.m_IncSp, Ra.m_DV, vAGw[a], Ra.m_Dead ? " DEAD" : "", Same ? " same" : "");
+		// "lead" is the tail-end lead for the tail archive (its window part sets up the continuation; stage 2 re-searches it)
+		std::printf("ALT kv %.2f score %.3f lead %.3f lat %.1f |v| %.2f (run %.2f) dv %.2f gw %.2f window lead %.2f tail lead %.2f%s%s\n", std::max(0.0f, vAKv[a]),
+			AltScore(Ra, vAKv[a], vAGw[a]), vAKv[a] < 0 ? Ra.m_TLead : Ra.m_Lead, Ra.m_Lat, Ra.m_Sp, Ra.m_IncSp, Ra.m_DV, vAGw[a], Ra.m_Lead, Ra.m_TLead,
+			Ra.m_Dead ? " DEAD" : "", Same ? " same" : "");
 		if(!OutAlt.empty() && !Same && !Ra.m_Dead)
 		{
 			char aBuf[512];

@@ -22,6 +22,7 @@ KV, SEED = kw.get('kv', '0.3'), int(kw.get('seed', 1))
 T0 = kw.get('t0', '0.4')
 KVALT = kw.get('kvalt', '0,0.15')  # x_opt also keeps its best plan by these kv (0: lead only); each gets a stage 2
 GALT = kw.get('galt', '0.1,0.25')  # and by lead - gw x |v - run v| (graftable leads: 2544, 2543)
+TALT = kw.get('talt', '1')  # and by the lead 20 ticks after the window end (continuation-aware)
 VARS = kw.get('vars', 'dschain_variants_rf.txt')  # x_ds variant set for stage 2+
 VAR = [l.strip() for l in open(os.path.join(HERE, VARS)) if l.strip() and not l.startswith('#')]
 os.makedirs(d, exist_ok=True)
@@ -88,7 +89,7 @@ for k, w in enumerate(wins):
     tag = os.path.join(d, 'w%d_%d' % (cut, end))
     out = subprocess.run([os.path.join(BIN, 'x_opt'), MAP, 'run=' + run, 'cut=%d' % cut, 'end=%d' % end, 'tail=20', 'iters=' + ITERS,
                           'threads=' + TH, 'seed=%d' % (SEED + k), 't0=' + T0, 'kv=' + KV, 'out=' + tag + '_o.txt'] +
-                         (['kvalt=' + KVALT, 'outalt=' + tag] if KVALT else []) + (['galt=' + GALT, 'outalt=' + tag] if GALT else []), capture_output=True, text=True).stdout
+                         (['kvalt=' + KVALT, 'outalt=' + tag] if KVALT else []) + (['galt=' + GALT, 'outalt=' + tag] if GALT else []) + (['talt=' + TALT, 'outalt=' + tag] if TALT else []), capture_output=True, text=True).stdout
     m = re.search(r'RESULT score ([-0-9.]+) lead ([-0-9.]+) lat ([0-9.]+) \|v\| ([0-9.]+) \(run ([0-9.]+)\)', out)
     log('window %d-%d: x_opt %s' % (cut, end, m.group(0) if m else 'no result'))
     alts = []
