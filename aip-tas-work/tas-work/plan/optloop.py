@@ -18,7 +18,7 @@ ROUNDS, SEED = int(kw.get('rounds', 99)), int(kw.get('seed', 1000))
 ITERS, TH = kw.get('iters', '6000000'), kw.get('threads', '4')
 KVS = kw.get('kv', '0.1,0.3').split(',')  # the lead-only archive gave both gains after it was added
 EXT = int(kw.get('ext', 2))
-VSETS = kw.get('vsets', 'dschain_variants_rf.txt,dschain_variants_rf2.txt').split(',')  # stage-2 x_ds variants, alternating every 3 rounds  # extra stages (turns) for a stage-2 lead that does not graft
+VSETS = kw.get('vsets', 'dschain_variants_rf_s0.txt,dschain_variants_rf2_s0.txt').split(',')  # stage-2 x_ds variants, alternating every 3 rounds  # extra stages (turns) for a stage-2 lead that does not graft
 BEST = os.path.join(TW, 'kog_full_best.txt')
 # commits go to the checked-out branch, with this session's link (session=URL overrides)
 BRANCH = subprocess.run(['git', '-C', ROOT, 'rev-parse', '--abbrev-ref', 'HEAD'], capture_output=True, text=True).stdout.strip()
