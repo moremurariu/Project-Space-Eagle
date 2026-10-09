@@ -1431,3 +1431,12 @@ dir, jump, cursor aim, shots with aim, certainties; best effort, not exact) and 
 - sweet-maxwell 2551 (its optloop window 1210-1360) vs our 2547: same line to 1340, theirs +1.0 at 1400-1570 (0-3 px),
   -1.8 from 1600 (our 1705 / 1756 gains). multigraft of theirs onto ours, cuts 1496-1571: D=1 finishes at 1496-1516 and
   1546: **2546 (50.92 s)**, server-checked (TasReplay finish tick 2614; TasServer).
+- optloop round 9 (seed 5900, kv 0.4), bottom-left turn window 2118-2238: lead-only plan (lead 1.09, |v| 57.7) stage 2
+  2290.02 at the rt-2291 gate (the speed-scored plan's best 2293+) -> x_graft D=1 at cut 2242: **2545 (50.90 s)**,
+  server-checked (TasReplay finish tick 2613; TasServer). Both optloop gains since kvalt came from the lead-only plan.
+- Rounds with windows on the straights (optloop mode 2): the window end lies just before the next turn, where extra
+  speed is useless (U-turn 1 approach: a stronger kick at 1125, |v| 54 vs 47, 7.5 behind after the turn); no gain.
+- Leads into the shaft (r6 window 1373-1490, 2.1 ahead at 1553): stage 3 from 1545 33 behind at 1598, from 1528 12
+  behind, from 1515 6.5 behind (the stack grenade is fired ~25 ticks before the double kick, so the re-search has to
+  start before it); x_opt from that line through the shaft (its replay of the run's shaft plan dies): 14-32 behind.
+- structsearch (sweet-maxwell) on 2546, turns 2261 / 1961 / 2133 / 1141: 14 behind, no pre-fire, no room, 6.6 behind.
