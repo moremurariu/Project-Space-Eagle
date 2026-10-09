@@ -23,6 +23,9 @@ kw = dict(a.split('=', 1) for a in sys.argv[2:] if '=' in a)
 K, BEAM, CORES, SEED = int(kw.get('k', 3)), kw.get('beam', '4000'), int(kw.get('cores', 4)), int(kw.get('seed', 1))
 VAR = [l.strip() for l in open(os.path.join(HERE, 'dschain_variants_rf.txt')) if l.strip() and not l.startswith('#')]
 NEW = ['cellreload=1', 'shlate=12']
+# commits go to the checked-out branch, with this session's link (session=URL overrides)
+BRANCH = subprocess.run(['git', '-C', ROOT, 'rev-parse', '--abbrev-ref', 'HEAD'], capture_output=True, text=True).stdout.strip()
+SESSION = kw.get('session', 'https://claude.ai/code/session_01FMtZNoArAZJ4aqsFiXN4kh')
 os.makedirs(d, exist_ok=True)
 LOG = open(os.path.join(d, 'log'), 'a')
 
@@ -108,11 +111,11 @@ def publish(path, ticks, what):
         nf.write('- structsearch %s (%s): **%d (%.2f s)**, server-checked.\n' % (what, os.path.relpath(path, TW), ticks, ticks / 50.0))
     msg = ('Full run %d (%.2f s): structsearch %s (approach shot -> pre-fire + point-blank, x_ds + x_opt + graft)\n\n'
            'Server-checked: TasReplay, no freeze, no double start.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n'
-           'Claude-Session: https://claude.ai/code/session_01XxupAVqSvwb6MWzmsVwkue') % (ticks, ticks / 50.0, what)
+           'Claude-Session: ' + SESSION) % (ticks, ticks / 50.0, what)
     subprocess.run(['git', '-C', ROOT, 'add', os.path.relpath(dst, ROOT), 'tas-work/kog_full_best.txt', 'tas-work/NOTES.md'])
     subprocess.run(['git', '-C', ROOT, 'commit', '-q', '-m', msg])
     for k in range(4):
-        if subprocess.run(['git', '-C', ROOT, 'push', '-u', 'origin', 'claude/sweet-maxwell-3t11yw']).returncode == 0:
+        if subprocess.run(['git', '-C', ROOT, 'push', '-u', 'origin', BRANCH]).returncode == 0:
             break
         time.sleep(2 ** (k + 1))
     log('  NEW BEST %d committed and pushed' % ticks)
