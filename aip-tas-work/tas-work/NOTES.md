@@ -1587,3 +1587,4 @@ approach shot, x_pfscan pre-fires, point-blank) and evaluates each with the two-
   2548 at best (level), from 2462 / 2466 / 2470: 2551-2632 (its state at the maze entrance is a bad one); final-maze
   approach 2445: 4-5 behind, 2472: level. Pass 2 (runs/lbk2: every episode, holds 2 / 3 / 5): S-bend main episode
   1919-1931: 2116.63 at the rt-2117 gate (0.37). latebrake now chains fractional leads (chain=3) like optsweep.
+- optloop window 2238-2356 (runs/loop/mix/r0/w2238_2356_v3_mg/g_c2359_D1.txt): **2547 (50.94 s)**, server-checked.
