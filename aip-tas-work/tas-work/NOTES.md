@@ -1456,5 +1456,7 @@ dir, jump, cursor aim, shots with aim, certainties; best effort, not exact) and 
 - optloop round 15 (two-turn windows, rf2_s0), window 1771-1985: graftable plan with gw 0.25
   (lead 0.74, |dv| 1.44) stage 2 2112.64 at the rt-2114 gate -> x_graft D=1 at cut 2042: **2541 (50.82 s)**,
   server-checked (TasReplay finish tick 2609; TasServer).
-- latebrake (sweet-maxwell) on 2542: U-turn 1 ties (1304.97 at 1305); turns 1275 / 1417 / 1469: holding the direction
-  key through the braking episode dies within 2 ticks (no later braking possible there).
+- latebrake (sweet-maxwell) on 2542/2541: U-turn 1 ties (1304.97 at 1305); turns 1275 / 1417 / 1469: holding the
+  direction key through the braking episode dies within 2 ticks (no later braking possible there); rt-1800 U-turn
+  1988.92 / S-bend 2036.80 / top-left corner 2160.67 at their gates (+0.1..+0.3, no graft; the corner lead chained to
+  2465.00, no graft); 2132 / 2437 / 2464 far behind. No gain: our line already brakes late where it can.
