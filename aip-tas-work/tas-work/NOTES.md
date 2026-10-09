@@ -1588,3 +1588,11 @@ approach shot, x_pfscan pre-fires, point-blank) and evaluates each with the two-
   approach 2445: 4-5 behind, 2472: level. Pass 2 (runs/lbk2: every episode, holds 2 / 3 / 5): S-bend main episode
   1919-1931: 2116.63 at the rt-2117 gate (0.37). latebrake now chains fractional leads (chain=3) like optsweep.
 - optloop window 2238-2356 (runs/loop/mix/r0/w2238_2356_v3_mg/g_c2359_D1.txt): **2547 (50.94 s)**, server-checked.
+- optloop on 2548 with dschain_variants_rf_mix.txt (runs/loop/mix: surv=0 for seeds 21 / 23, survsoft=1 for 22 / 24,
+  chaining): hop window 2238-2356 (x_opt +0.95, |v| 54.9 vs 50.6 at 2356; stage 2 2472.01 at the rt-2473 gate) ->
+  multigraft D=1 at 2359: **2547 (50.94 s)**. Chaining: window 1775-1889 0.79 ahead at 1993 -> chain 0 1.74 ahead at
+  2117 -> chain 1 1.33 ahead at 2165 (grafts fail: on the run's line but not its state) -> chain 2 NOGATE.
+- x_ds gate fallback (new): at the rt-2244 gate 3 of 4 variants ended NOGATE with the beam alive (the 30-tick
+  constant-input gate survival check rejected every arrival, as the beam check did in the shaft); the best failing
+  arrival is now used when none passes. optsweep chain cuts 15 ticks before the gate (10 cut into doomed approaches)
+  and runs up to 6 stages. rf_mix variants get celljump=1.
