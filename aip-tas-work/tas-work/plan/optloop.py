@@ -17,7 +17,8 @@ kw = dict(a.split('=', 1) for a in sys.argv[2:] if '=' in a)
 ROUNDS, SEED = int(kw.get('rounds', 99)), int(kw.get('seed', 1000))
 ITERS, TH = kw.get('iters', '6000000'), kw.get('threads', '4')
 KVS = kw.get('kv', '0.3,0.4').split(',')
-EXT = int(kw.get('ext', 2))  # extra stages (turns) for a stage-2 lead that does not graft
+EXT = int(kw.get('ext', 2))
+VSETS = kw.get('vsets', 'dschain_variants_rf.txt,dschain_variants_rf2.txt').split(',')  # stage-2 x_ds variants, alternating every 2 rounds  # extra stages (turns) for a stage-2 lead that does not graft
 BEST = os.path.join(TW, 'kog_full_best.txt')
 # commits go to the checked-out branch, with this session's link (session=URL overrides)
 BRANCH = subprocess.run(['git', '-C', ROOT, 'rev-parse', '--abbrev-ref', 'HEAD'], capture_output=True, text=True).stdout.strip()
@@ -95,7 +96,7 @@ for r in range(R0, R0 + ROUNDS):
     log('round %d on %d: apexes %s, windows %s, kv %s' % (r, f0, ap, wins, kv))
     subprocess.run(['python3', os.path.join(HERE, 'optsweep.py'), os.path.join(rd, 'run.txt'), rd] + wins +
                    ['threads=' + TH, 'par=' + TH, 'seed=%d' % (SEED + 100 * r), 'iters=%d' % (int(ITERS) * span), 'kv=' + kv,
-                    't0=%s' % ('0.6' if r % 3 == 2 else '0.4')])
+                    't0=%s' % ('0.6' if r % 3 == 2 else '0.4'), 'vars=' + VSETS[(r // 2) % len(VSETS)]])
     f1 = finish(os.path.join(rd, 'run.txt'))
     cur = finish(BEST)
     log('round %d: %s -> %s (best file %s)' % (r, f0, f1, cur))
