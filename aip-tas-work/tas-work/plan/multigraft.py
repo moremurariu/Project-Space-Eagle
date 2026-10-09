@@ -45,6 +45,24 @@ def g(j):
     r=subprocess.run([BIN+'x_graft',MAP,f'prefix={os.path.abspath(line)}',f'cut={c}',f'run={run}',f'D={D}','horizon=45','beam='+os.environ.get('MG_BEAM','5000'),'threads=2','test=300',f'out={out}'],capture_output=True,text=True).stdout
     mm=re.search(r'RESULT graft finish (\d+)',r)
     return (c,D,int(mm.group(1)) if mm else None,out)
+# jobs run largest D / latest cut first; once STOP grafts finish, the rest (smaller D or earlier cuts of the same
+# line) cannot matter much and are skipped (MG_STOP=0 runs them all; a full sweep took 20-30 min per line)
+STOP=int(os.environ.get('MG_STOP','4'))
+done=0
 with ThreadPoolExecutor(PAR) as ex:
-    for c,D,f,out in ex.map(g, jobs):
+    pend=[]
+    it=iter(jobs)
+    def fill():
+        while len(pend)<PAR:
+            j=next(it,None)
+            if j is None: return
+            pend.append(ex.submit(g,j))
+    fill()
+    while pend:
+        c,D,f,out=pend.pop(0).result()
         print(f'cut {c} D {D}: {f}', flush=True)
+        if f is not None: done+=1
+        if STOP and done>=STOP:
+            for q in pend: q.result()
+            break
+        fill()

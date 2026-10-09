@@ -21,6 +21,7 @@
 //   galt=G1,...: also archive by lead - G x |v - the run's v| - 0.1 x (lateral - 4) (graftable leads), after kvalt's
 //   talt=1: also archive by the lead at the end of the survival tail (the run's own inputs after the window), last
 //     (a high exit speed often cannot be kept through the next turn)
+//   keepjump=1 (default): where the run still has its air jump at the window end, a plan that spent it is dead
 #define private public
 #define protected public
 #include <game/client/prediction/entities/character.h>
@@ -134,6 +135,8 @@ struct SCtx
 	std::vector<vec2> m_vIncV;
 	int m_RtA = 0, m_IncFinish = -1;
 	float m_Kv = 0.3f, m_Lw = 0.05f, m_Lat0 = 12, m_Fw = 0, m_LatMax = 100;
+	int m_KeepJump = 1; // a plan that ends the window without the air jump where the base plan still has it is dead
+	bool m_BaseJAv = false; // the base plan (the run) has its air jump at the window end
 	const STField *m_pField = nullptr;
 	float m_IncTEnd = 0;
 	// close-kick spots (mutation 16): window ticks where the run passes within kickr px of a solid tile, and the
@@ -372,6 +375,15 @@ static void Eval(const SPlan &P, SRes &Res, bool Keep, const std::vector<SCkpt> 
 			float Lab, Lat, IncSp;
 			Project(S.m_Core.m_Pos, k, Lab, Lat, IncSp);
 			Res.m_vLead.push_back(Lab - S.RaceTick());
+		}
+		if(k == g.m_N - 1 && g.m_KeepJump && g.m_BaseJAv && (S.m_Core.m_Jumped & 2))
+		{
+			// the run keeps its air jump through the window end for a later redirect (2551-2545: 1733 -> 1801 at the
+			// 1800 U-turn's bottom), the tail is too short to see it: a plan that spent it is ranked as dead
+			Res.m_Dead = true;
+			Res.m_DeadK = k;
+			Res.m_Score = -400.0f;
+			return;
 		}
 		if(k == g.m_N - 1)
 		{
@@ -727,6 +739,7 @@ int main(int argc, const char **argv)
 		else if(K == "cut") Cut = std::atoi(V.c_str());
 		else if(K == "end") End = std::atoi(V.c_str());
 		else if(K == "tail") Tail = std::atoi(V.c_str());
+		else if(K == "keepjump") g.m_KeepJump = std::atoi(V.c_str());
 		else if(K == "iters") Iters = std::atoll(V.c_str());
 		else if(K == "threads") Threads = std::atoi(V.c_str());
 		else if(K == "seed") Seed = std::atoi(V.c_str());
@@ -886,6 +899,12 @@ int main(int argc, const char **argv)
 		std::printf("reference %s: finish %d\n", Ref.c_str(), g.m_IncFinish);
 	}
 	g.m_vBase.assign(vIn.begin() + iA, vIn.begin() + iA + g.m_NT);
+	{
+		CFastG Q = g.m_Cut;
+		for(int k = 0; k < g.m_N && k < g.m_NT; k++)
+			Q.Step(g.m_vBase[k]);
+		g.m_BaseJAv = !(Q.m_Core.m_Jumped & 2);
+	}
 	// the plan
 	SPlan P0;
 	for(int k = 0; k < g.m_NT; k++)
