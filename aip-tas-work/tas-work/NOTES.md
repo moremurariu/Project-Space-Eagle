@@ -1572,3 +1572,7 @@ approach shot, x_pfscan pre-fires, point-blank) and evaluates each with the two-
   0.48), the floor-hook + air-jump redirect at 1800, and from rt 1818 2551's exact state at 1819; spliced there onto
   2551's inputs (kog_full_2550.txt), server-checked (TasReplay finish tick 2618, no freeze). Teero's late braking +
   a saved air jump. (jumpfrac=0.2 alone did not find it: those lines still jump at 1759, 1866-1872.)
+- **2549 (50.98 s):** optloop window 2045-2172 on 2551 (runs/loop/s0b, rf_s0 variants; x_opt + stage 2 from 2162:
+  2295.08 at the rt-2296 gate, 0.92 ahead) spliced onto 2550 (2550's inputs to the state at rt 2043 = 2551's 2044, then
+  the line's inputs from the one producing its rt 2045) and grafted back with multigraft (D=1 at cut 2281):
+  kog_full_2549.txt, server-checked (TasReplay finish tick 2617, no freeze). Disjoint from the 1800 U-turn change.
