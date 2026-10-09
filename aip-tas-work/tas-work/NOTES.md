@@ -1617,3 +1617,4 @@ approach shot, x_pfscan pre-fires, point-blank) and evaluates each with the two-
   ranked as dead (the 20-tick survival tail ends before the redirect it is kept for). multigraft stops after
   MG_STOP=4 finishing grafts (a full sweep took 20-30 min per line).
 - optloop window 1718-1888 (runs/loop/mix/r3/w1718_1888_v0_mg/g_c1967_D1.txt): **2543 (50.86 s)**, server-checked.
+- optloop round 4 (runs/loop/mix/r4/w2109_2235_v2_mg/g_c2264_D1.txt, bottom-left turn -> hop window 2109-2235, stage 2 2287.97 at the rt-2289 gate, graft D=1): **2542 (50.84 s)**, server-checked (TasReplay finish tick 2610).
