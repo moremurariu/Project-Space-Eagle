@@ -1605,3 +1605,6 @@ approach shot, x_pfscan pre-fires, point-blank) and evaluates each with the two-
   behind, 1417 3.5, 1469 5-20, corner 2087 pre-fire 2079 aim 228.4: 0.58 ahead at 2165 but every re-search from it
   dies at ~2199 (the bottom-left turn needs the run's 2193 kick; the pre-fire shifted the reload phase), final maze
   8-10 behind). optloop round 1 (two-turn windows) on 2547: no gain.
+- **2545 (50.90 s):** optloop round 2 on 2547 (rf_mix with incjump for two variants, t0 0.6): window 1462-1601 (left
+  U-turn exit -> shaft), stage 2 from 1591: 1679.06 at the rt-1681 gate (1.94 ahead) -> multigraft D=2 at cuts
+  1662-1674: kog_full_2545.txt (cut 1674), server-checked (TasReplay finish tick 2613, no freeze).
