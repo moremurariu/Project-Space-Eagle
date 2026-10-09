@@ -1974,7 +1974,7 @@ int main(int argc, const char **argv)
 		int m_Step = -1, m_Idx = -1;
 		float m_E = 0;
 		int m_Cand = -1;
-	} Best;
+	} Best, BestRaw; // BestRaw: the best arrival that failed the gate survival check (used only if none passes)
 	int FirstGate = -1;
 	FILE *pDump = gs_P.m_BeamDump.empty() ? nullptr : std::fopen(gs_P.m_BeamDump.c_str(), "w");
 	if(pDump)
@@ -2411,7 +2411,19 @@ int main(int argc, const char **argv)
 					Checked++;
 				}
 				if(!Ok)
+				{
+					// the constant-input check has false negatives where survival needs a sequence (hop approach at
+					// rt 2244: every arrival of 3 of 4 variants failed it with the beam alive): kept as a fallback
+					if(Val < BestRaw.m_T - 1e-4f)
+					{
+						BestRaw.m_T = Val;
+						BestRaw.m_Step = Step;
+						BestRaw.m_Idx = -1;
+						BestRaw.m_E = c.m_E;
+						BestRaw.m_Cand = k;
+					}
 					continue;
+				}
 				Best.m_T = Val;
 				Best.m_Step = Step;
 				Best.m_Idx = -1;
@@ -2791,31 +2803,27 @@ int main(int argc, const char **argv)
 			vNew = std::move(vKeep);
 		}
 		// record the gate winner's lineage now (its node is a candidate, not kept): store as an extra node
-		if(Best.m_Step == Step && Best.m_Idx == -1)
+		for(SBest *pB : {&Best, &BestRaw})
 		{
-			// the winning candidate
-			for(size_t k = Best.m_Cand; k < vAll.size(); k++)
-				if((int)k == Best.m_Cand)
-				{
-					const SCand &c = vAll[k];
-					const SState &Par = vBeam[c.m_Parent];
-					SNode Nd;
-					Nd.m_Parent = Par.m_Node;
-					Nd.m_NPatch = 0;
-					for(int r = 0; r < c.m_NR; r++)
-					{
-						Nd.m_aPatchStep[Nd.m_NPatch] = c.m_aR[r].m_Step;
-						Nd.m_aPTX[Nd.m_NPatch] = c.m_aR[r].m_TX;
-						Nd.m_aPTY[Nd.m_NPatch] = c.m_aR[r].m_TY;
-						Nd.m_NPatch++;
-					}
-					Nd.m_In = c.m_In;
-					Nd.m_Pos = vec2(0, 0);
-					Nd.m_HookPress = c.m_In.m_Hook && !Par.m_Prev.m_Hook;
-					Best.m_Idx = (int)vNodes.size();
-					vNodes.push_back(Nd);
-					break;
-				}
+			if(pB->m_Step != Step || pB->m_Idx != -1)
+				continue;
+			const SCand &c = vAll[pB->m_Cand];
+			const SState &Par = vBeam[c.m_Parent];
+			SNode Nd;
+			Nd.m_Parent = Par.m_Node;
+			Nd.m_NPatch = 0;
+			for(int r = 0; r < c.m_NR; r++)
+			{
+				Nd.m_aPatchStep[Nd.m_NPatch] = c.m_aR[r].m_Step;
+				Nd.m_aPTX[Nd.m_NPatch] = c.m_aR[r].m_TX;
+				Nd.m_aPTY[Nd.m_NPatch] = c.m_aR[r].m_TY;
+				Nd.m_NPatch++;
+			}
+			Nd.m_In = c.m_In;
+			Nd.m_Pos = vec2(0, 0);
+			Nd.m_HookPress = c.m_In.m_Hook && !Par.m_Prev.m_Hook;
+			pB->m_Idx = (int)vNodes.size();
+			vNodes.push_back(Nd);
 		}
 		gs_vHist.push_back(std::move(vNodes));
 		vBeam = std::move(vNew);
@@ -2879,6 +2887,11 @@ int main(int argc, const char **argv)
 				std::chrono::duration<double>(std::chrono::steady_clock::now() - t0).count());
 			std::fflush(stdout);
 		}
+	}
+	if(Best.m_Step < 0 && BestRaw.m_Step >= 0)
+	{
+		std::printf("gate fallback: no arrival passed the gate survival check (gatesurv %d), using the best one\n", gs_P.m_GateSurv);
+		Best = BestRaw;
 	}
 	if(Best.m_Step < 0)
 	{
