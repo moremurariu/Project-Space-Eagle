@@ -1496,3 +1496,22 @@ lead.py), `x_tfield` (new), x_ds `tfield=` / `tfmode=` / `nokickall=` (new).
   those turns; our searches (tracking our own slower line, or free) cannot. A high-speed turn solver is the missing
   piece for < 2500.
 - optloop window 1210-1360 (runs/loop/r5/w1210_1360_v3_mg/g_c1396_D1.txt): **2551 (51.02 s)**, server-checked.
+
+## Making x_ds keep Teero-type plans (Oct 9)
+U-turn 1 benchmark: x_ds from 2580's rt 1082 to the rt-1320 gate (rf variants, beam 6000) only ever rebuilds 2580's
+own structure (1319.97); the forced Teero structure (no approach shot, pre-fire 1126 -> 1146, point-blank 1151) is at
+1316. Three biases found, each now an option:
+- cellreload=1: the dedup cell only had "reload > 0". At the apex a lineage whose kick came from a lob pre-fired at
+  1126 (gun free at 1151) and one whose kick was a point-blank at 1145 (gun busy to 1170) share position / velocity, so
+  one replaced the other. The cell now has the reload bucket (5 ticks), grenades in flight and saved retro slots. From
+  a no-approach-shot line at 1120 the search then finds the pre-fire stack by itself (1146 + 1152, 1199.13 at 1200;
+  without: 1200.5-1201.7, apex point-blank).
+- freefrac=F [freemin=20]: a beam share for lineages that have not fired for >= freemin ticks (grenade savers), ranked
+  by the raw score (m_Lag0 / m_E0). The rollout / shadow pre-scoring replays the run's own shots, so a saver looks
+  ~5 ticks worse than it is and never reached the selection (log: savers best lag 0.46 at 1107 -> 5-7 at 1111).
+- shlate=N: shadow rollouts fire a run shot that the lineage's reload blocked up to N ticks late, at the run's
+  explosion point (a lineage on a shifted kick schedule lost every kick in its rollouts).
+Result on the benchmark: still 2580's structure from 1082 (1319.97), and from the 1120 no-approach line no variant
+reaches 1316 (1322-1323 new, 1321-1331 old): the stack forms, the dip after it is not found in one search (the forced
+version also needed a re-search from 1165). Next: a structure layer that generates the alternatives (skip the
+approach shot, x_pfscan pre-fires, point-blank) and evaluates each with the two-stage search.

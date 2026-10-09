@@ -134,6 +134,10 @@ struct SPar
 	int m_ShNoFire = 0; // shadow inputs without their shots
 	int m_NoKick0 = -1, m_NoKick1 = -1; // no explosions at all in these race ticks (keeps the slots for later stacks) // no shots fired in these race ticks (shadow / point-blank); retro slots there stay usable
 	float m_TrackFrac = 0, m_TrackV = 3, m_TrackLag = 2;
+	int m_ShLate = 0; // shadow rollouts fire a shot the lineage's reload blocked up to this many ticks late
+	int m_CellReload = 0; // shot phase in the dedup cell (reload bucket, grenades in flight, saved slots)
+	float m_FreeFrac = 0; // share of the beam reserved for lineages that keep their grenade (no shot for >= freemin ticks)
+	int m_FreeMin = 20;
 	int m_Shadow = 0; // add the incumbent's inputs at the matched progress point (this many, from the next one)
 	int m_ShadowBack = 1;
 	float m_RollPre = 3.0f, m_RollLam = 0.004f;
@@ -424,7 +428,10 @@ struct SCand
 	SRetroShot m_aR[2];
 	float m_G; // geodesic distance after the step
 	float m_Lag; // ticks behind the incumbent (lower better)
+	float m_Lag0 = 0; // m_Lag before the rollout / shadow re-scoring (the savers' ranking: rollouts replay the run's own
+	                  // shots, so they under-rate a lineage that kept its grenade for a later stack)
 	float m_E;
+	float m_E0 = 0; // m_E before the rollout re-scoring
 	float m_Opt;
 	float m_Jit = 0;
 	float m_Track = 0; // distance to the incumbent's state at the same progress
@@ -1226,6 +1233,8 @@ static void Score(const CFastG &G, SCand &C, const SState &Par)
 		C.m_TCost = Par.m_TCost * gs_P.m_TDecay + c * c / 1000.0f;
 		C.m_Lag = gs_P.m_TTrack * C.m_TCost + gs_P.m_TLag * C.m_Lag;
 	}
+	C.m_Lag0 = C.m_Lag;
+	C.m_E0 = C.m_E;
 }
 
 // ------------------------------------------------------------------------------------------------ rollout lookahead
@@ -1404,12 +1413,34 @@ static void ShadowEval(const CFastG &G0, float K0, float KI0, int H, int NOff, f
 		bool Dead = false;
 		int t = 0;
 		float K = K0;
+		long PendIdx = -1; // shlate: the run's shot that this state's reload phase blocked, fired as soon as it can
 		for(; t < H; t++)
 		{
 			long Idx = (long)(Base + t) + gs_IncStart;
 			if(Idx < 0 || Idx >= (long)gs_vIncIn.size())
 				break;
 			STasInput In = ShadowInput(Idx, F, t == 0 ? gs_vIncIn[std::max(0L, Idx - 1)] : gs_vIncIn[Idx - 1]);
+			if(gs_P.m_ShLate > 0)
+			{
+				const bool Press = In.m_Hook && Idx > 0 && !gs_vIncIn[Idx - 1].m_Hook;
+				if(In.m_Fire && F.m_ReloadTimer > 0 && gs_vShotTau[Idx] >= 1)
+					PendIdx = Idx; // the run fires here but this lineage's gun is still reloading
+				else if(!In.m_Fire && PendIdx >= 0 && F.m_ReloadTimer == 0 && !Press)
+				{
+					if(Idx - PendIdx <= gs_P.m_ShLate)
+					{
+						// late shot at the run's explosion point (flight shortened by the delay)
+						int Tau = std::max(1, gs_vShotTau[PendIdx] - (int)(Idx - PendIdx));
+						vec2 D = AimAt(F, F.m_Pos, gs_vShotX[PendIdx], Tau);
+						In.m_Fire = 1;
+						In.m_TX = Q16(D.x);
+						In.m_TY = Q16(D.y);
+						if(!In.m_TX && !In.m_TY)
+							In.m_TY = -1;
+					}
+					PendIdx = -1;
+				}
+			}
 			F.Step(In);
 			if(F.m_Dead)
 			{
@@ -1516,6 +1547,10 @@ int main(int argc, const char **argv)
 		else if(K == "nokickall") gs_P.m_NoKickAll = std::stoi(V);
 		else if(K == "shnofire") gs_P.m_ShNoFire = std::stoi(V);
 		else if(K == "trackfrac") gs_P.m_TrackFrac = std::stof(V);
+		else if(K == "freefrac") gs_P.m_FreeFrac = std::stof(V);
+		else if(K == "cellreload") gs_P.m_CellReload = std::stoi(V);
+		else if(K == "shlate") gs_P.m_ShLate = std::stoi(V);
+		else if(K == "freemin") gs_P.m_FreeMin = std::stoi(V);
 		else if(K == "trackv") gs_P.m_TrackV = std::stof(V);
 		else if(K == "tracklag") gs_P.m_TrackLag = std::stof(V);
 		else if(K == "latdz") gs_P.m_LatDz = std::stof(V);
@@ -1958,6 +1993,19 @@ int main(int argc, const char **argv)
 					int64_t vx = (int64_t)std::floor(Co.m_Vel.x / gs_P.m_CellVel), vy = (int64_t)std::floor(Co.m_Vel.y / gs_P.m_CellVel);
 					C.m_Cell = ((cx * 4096 + cy) * 1024 + (vx & 1023)) * 1024 + (vy & 1023);
 					C.m_Cell = C.m_Cell * 8 + (Co.m_HookState == HOOK_GRABBED ? 1 : Co.m_HookState == HOOK_FLYING ? 2 : 0) + 3 * (Tmp.m_G.m_ReloadTimer > 0);
+					if(gs_P.m_CellReload)
+					{
+						// shot phase in the cell: states at the same place and speed but with a different reload phase, a
+						// grenade in flight or a saved (unfired) grenade lead to different futures (a gun free at the turn
+						// exit vs one that fired a point-blank at the apex) and must not replace each other
+						int Rb = (Tmp.m_G.m_ReloadTimer + 4) / 5; // 0..5
+						int Np = std::min(Tmp.m_G.m_NumProj, 3);
+						int Last = Tmp.m_NFire ? Tmp.m_aFire[0] : Tmp.m_G.m_Tick - 1000;
+						if(Tmp.m_G.m_ReloadTimer > 0 && ReloadFrom(Tmp, Tmp.m_G.m_Tick) == 0)
+							Last = Tk;
+						int Fb = std::min(Tmp.m_G.m_Tick - Last, 50) / 25; // 0..2 free retro slots
+						C.m_Cell = C.m_Cell * 64 + Rb * 12 + Np * 3 + Fb;
+					}
 					{
 						int64_t qx = (int64_t)std::floor(Co.m_Pos.x / gs_P.m_QPos), qy = (int64_t)std::floor(Co.m_Pos.y / gs_P.m_QPos);
 						int64_t qvx = (int64_t)std::floor(Co.m_Vel.x / gs_P.m_QVel), qvy = (int64_t)std::floor(Co.m_Vel.y / gs_P.m_QVel);
@@ -2259,6 +2307,35 @@ int main(int argc, const char **argv)
 			for(auto &p : v)
 				vOrder[l].push_back(p.second);
 		}
+		// grenade savers (see below): the best ones by the raw score, kept through the rollout preselection
+		auto FreeTicks = [&](const SCand &c) {
+			const SState &Par = vBeam[c.m_Parent];
+			const int Now = Par.m_G.m_Tick;
+			int Last = Par.m_NFire ? Par.m_aFire[0] : Now - 1000;
+			for(int r = 0; r < c.m_NR; r++)
+				Last = std::max(Last, c.m_aR[r].m_Tau);
+			if(c.m_In.m_Fire && Par.m_G.m_ReloadTimer == 0)
+				Last = Now;
+			return Now - Last;
+		};
+		std::vector<int> vSaver;
+		if(gs_P.m_FreeFrac > 0 && NL > 0)
+		{
+			const float Lam = gs_P.m_vLam[0];
+			std::vector<std::pair<float, int>> v;
+			for(size_t k = 0; k < vAll.size(); k++)
+			{
+				const SCand &c = vAll[k];
+				if(c.m_Gate || FreeTicks(c) < gs_P.m_FreeMin)
+					continue;
+				float Eref = gs_Line.EnergyAt(c.m_G);
+				v.push_back({c.m_Lag0 + c.m_Jit - Lam * (gs_Line.EWeight(c.m_G) * (c.m_E - Eref) + c.m_Opt), (int)k});
+			}
+			int Want = std::min((int)v.size(), (int)(gs_P.m_Beam * gs_P.m_FreeFrac * 2) + 32);
+			std::partial_sort(v.begin(), v.begin() + Want, v.end());
+			for(int r = 0; r < Want; r++)
+				vSaver.push_back(v[r].second);
+		}
 		// rollout lookahead: re-score the preselected candidates by where short rollouts get them
 		if(gs_P.m_RollH > 0 || gs_P.m_ShH > 0)
 		{
@@ -2277,6 +2354,12 @@ int main(int argc, const char **argv)
 				}
 			if(IncSel >= 0 && !vIn[IncSel])
 				vP.push_back(IncSel);
+			for(int k : vSaver)
+				if(!vIn[k])
+				{
+					vIn[k] = 1;
+					vP.push_back(k);
+				}
 			gs_NPre = (long)vP.size();
 			std::atomic<int> Nx{0};
 			auto RW = [&]() {
@@ -2357,6 +2440,38 @@ int main(int argc, const char **argv)
 				Cells[vAll[k].m_Cell] = 1;
 				vTaken[k] = 1;
 				vSel.push_back(k);
+			}
+		}
+		// grenade savers: lineages that have not fired for >= freemin ticks keep a share of the beam, ranked among
+		// themselves. Their saved grenade is a retro lob from any of those ticks later (a pre-fire landing at the next
+		// turn exit, stacked with a point-blank), which the ranking cannot see before it explodes; without the reserve
+		// the lineages that spent it on an approach kick (braked away at the turn) crowd them out
+		if(gs_P.m_FreeFrac > 0 && !vSaver.empty())
+		{
+			const float Lam = gs_P.m_vLam[0];
+			std::vector<std::pair<float, int>> v;
+			for(int k : vSaver)
+			{
+				const SCand &c = vAll[k];
+				float Eref = gs_Line.EnergyAt(c.m_G);
+				v.push_back({c.m_Lag0 + c.m_Jit - Lam * (gs_Line.EWeight(c.m_G) * (c.m_E0 - Eref) + c.m_Opt), k});
+			}
+			std::sort(v.begin(), v.end());
+			const int Want = (int)(gs_P.m_Beam * gs_P.m_FreeFrac);
+			int Got = 0;
+			for(size_t q = 0; q < v.size() && Got < Want; q++)
+			{
+				int k = v[q].second;
+				if(vTaken[k])
+					continue;
+				const SCand &c = vAll[k];
+				if(Keys.count(c.m_Key) || Cells.count(c.m_Cell))
+					continue;
+				Cells[c.m_Cell] = 1;
+				Keys.insert(c.m_Key);
+				vTaken[k] = 1;
+				vSel.push_back(k);
+				Got++;
 			}
 		}
 		// round robin over the weights
@@ -2535,6 +2650,21 @@ int main(int argc, const char **argv)
 			}
 			std::printf("  retro found %ld emitted %ld | fire aims %ld emitted %ld | pre %ld sel %ld surv %ld\n", gs_NRetroFound.load(), gs_NRetroEmit.load(), gs_NFireTry.load(), gs_NFireEmit.load(), gs_NPre, gs_NSel, gs_NSurv);
 			std::printf("  on-incumbent states: %d\n", NMatch);
+			{
+				// grenade savers in the new beam (no shot for >= freemin ticks): count and best lag
+				int NS = 0;
+				float SL = 1e9f;
+				for(auto &S : vBeam)
+				{
+					int Last = S.m_NFire ? S.m_aFire[0] : S.m_G.m_Tick - 1000;
+					if(S.m_G.m_Tick - Last >= gs_P.m_FreeMin)
+					{
+						NS++;
+						SL = std::min(SL, S.m_Lag);
+					}
+				}
+				std::printf("  savers: %d, best lag %.2f\n", NS, SL);
+			}
 			std::printf("step %4d rt %d beam %zu cand %zu | best lag %.2f geo %.0f E %.0f |v| %.1f pos %.0f %.0f | inc lag %.2f | %.0fs\n", Step,
 				vBeam.empty() ? -1 : vBeam[0].m_G.RaceTick(), vBeam.size(), vAll.size(), BL, BG, BE, BV, BP.x, BP.y, IL,
 				std::chrono::duration<double>(std::chrono::steady_clock::now() - t0).count());
