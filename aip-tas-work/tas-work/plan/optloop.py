@@ -18,7 +18,7 @@ ROUNDS, SEED = int(kw.get('rounds', 99)), int(kw.get('seed', 1000))
 ITERS, TH = kw.get('iters', '6000000'), kw.get('threads', '4')
 KVS = kw.get('kv', '0.3,0.4').split(',')
 EXT = int(kw.get('ext', 2))
-VSETS = kw.get('vsets', 'dschain_variants_rf.txt,dschain_variants_rf2.txt').split(',')  # stage-2 x_ds variants, alternating every 2 rounds  # extra stages (turns) for a stage-2 lead that does not graft
+VSETS = kw.get('vsets', 'dschain_variants_rf.txt,dschain_variants_rf2.txt').split(',')  # stage-2 x_ds variants, alternating every 3 rounds  # extra stages (turns) for a stage-2 lead that does not graft
 BEST = os.path.join(TW, 'kog_full_best.txt')
 # commits go to the checked-out branch, with this session's link (session=URL overrides)
 BRANCH = subprocess.run(['git', '-C', ROOT, 'rev-parse', '--abbrev-ref', 'HEAD'], capture_output=True, text=True).stdout.strip()
@@ -66,14 +66,24 @@ for r in range(R0, R0 + ROUNDS):
     T = trace(os.path.join(rd, 'run.txt'))
     ap, fin = apexes(T)
     rng = random.Random(SEED + r)
-    span = 2 if r % 2 == 1 else 1  # odd rounds: windows over two turns (joint optimization)
+    mode = r % 3  # 0: a window on each turn, 1: over two turns (joint optimization), 2: on the straights between turns
+    span = 2 if mode == 1 else 1
     wins = []
     for i, a in enumerate(ap):
         if i + span - 1 >= len(ap):
             break
         b = ap[i + span - 1]
-        cut = a - rng.randint(90, 110)
-        end = b + rng.randint(20, 35)
+        if mode == 2:
+            # from just after turn i to just before turn i+1 (kicks on the straight), stage 2 through turn i+1
+            if i + 1 >= len(ap):
+                break
+            cut = a + rng.randint(5, 15)
+            end = ap[i + 1] - rng.randint(5, 15)
+            if end - cut < 40 or cut < 1000 or end >= fin - 15:
+                continue
+        else:
+            cut = a - rng.randint(90, 110)
+            end = b + rng.randint(20, 35)
         if cut < 1000 or end >= fin - 15:
             continue
         nxt = ap[i + span] + 30 if i + span < len(ap) else fin + 20
@@ -96,7 +106,7 @@ for r in range(R0, R0 + ROUNDS):
     log('round %d on %d: apexes %s, windows %s, kv %s' % (r, f0, ap, wins, kv))
     subprocess.run(['python3', os.path.join(HERE, 'optsweep.py'), os.path.join(rd, 'run.txt'), rd] + wins +
                    ['threads=' + TH, 'par=' + TH, 'seed=%d' % (SEED + 100 * r), 'iters=%d' % (int(ITERS) * span), 'kv=' + kv,
-                    't0=%s' % ('0.6' if r % 3 == 2 else '0.4'), 'vars=' + VSETS[(r // 2) % len(VSETS)]])
+                    't0=%s' % ('0.6' if r % 4 == 3 else '0.4'), 'vars=' + VSETS[(r // 3) % len(VSETS)]])
     f1 = finish(os.path.join(rd, 'run.txt'))
     cur = finish(BEST)
     log('round %d: %s -> %s (best file %s)' % (r, f0, f1, cur))
