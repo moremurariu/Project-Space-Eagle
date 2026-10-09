@@ -1536,3 +1536,14 @@ approach shot, x_pfscan pre-fires, point-blank) and evaluates each with the two-
 - x_ds survsoft=F (new): the best failing states fill the beam up to F x beam when too few pass.
 - plan/xdsbench.py (new): search-quality benchmark, x_ds from a run's own states at several cuts to cut + 150, every
   variant, per setting; a search that cannot follow its incumbent ends behind it.
+- Benchmark on 2551 (plan/xdsbench.py, runs/survb, 4 rf variants, gate = cut + 150, ticks behind the run, best of 4):
+  cut 1151 +0.02 / +0.02, 1260 +0.02 / +0.02 (most variants NOGATE either way), 1410 -4.17 / -1.16 (the rt-1560 gate
+  is mid-shaft: the -4.2 line spent the double-kick grenade at 1550 and is 11-13 behind at 1720), **1490 +6.84 /
+  -0.89, 1763 +1.46 / -0.44, 1978 +5.24 / -0.55**, 2092 -0.12 / 0.00, 2282 +1.29 / +1.12 (surv as in the variants /
+  surv=0); sum +10.58 / -1.87. Single variants with the check were often 17-22 behind, with surv=0 within ~1.
+  survsoft=1 behaves like surv=0 where the check fails (1570: 1719.785 / boost 1716.507, 69 s instead of 109 s).
+- U-turn-1 structure benchmark (2580 from rt 1082 to the rt-1320 gate) with surv=0 (+ cellreload freefrac shlate):
+  still 2580's own structure (1319.97, 6 of 8 runs). The survival fix does not make one search find the pre-fire
+  stack; it makes the re-searches after a plan change follow the run (shaft, 1800 U-turn, S-bend).
+- plan/dschain_variants_rf_s0.txt (rf with surv=0); optsweep / optloop / structsearch take vars=FILE. optloop on
+  2551 with it: runs/loop/s0.
