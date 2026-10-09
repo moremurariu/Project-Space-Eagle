@@ -1616,3 +1616,4 @@ approach shot, x_pfscan pre-fires, point-blank) and evaluates each with the two-
 - x_opt keepjump=1 (new, default): a plan that ends its window without the air jump the run still has there is
   ranked as dead (the 20-tick survival tail ends before the redirect it is kept for). multigraft stops after
   MG_STOP=4 finishing grafts (a full sweep took 20-30 min per line).
+- optloop window 1718-1888 (runs/loop/mix/r3/w1718_1888_v0_mg/g_c1967_D1.txt): **2543 (50.86 s)**, server-checked.
