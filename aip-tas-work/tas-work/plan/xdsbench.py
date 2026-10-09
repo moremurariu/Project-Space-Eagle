@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""xdsbench.py DIR RUN CUTS [len=150] [par=4] [beam=4000] [vars=plan/dschain_variants_rf.txt] [X=extra args] [Y=...]
+"""xdsbench.py DIR RUN CUTS [len=150] [par=4] [beam=4000] [vars=plan/dschain_variants_rf.txt] [only=X,..] [X=extra args] [Y=...]
 Search-quality benchmark: x_ds from RUN's own state at each cut to the gate cut+len (incumbent = RUN), every variant,
 once per setting (X / Y / ... = extra x_ds args; 'base' = none). A search that cannot even follow its incumbent ends
 behind it; the table is the gate time minus the incumbent's (negative = ahead). Writes DIR/bench.txt."""
@@ -16,7 +16,7 @@ kw = {}
 sets = {'base': ''}
 for a in sys.argv[4:]:
     k, v = a.split('=', 1)
-    if k in ('len', 'par', 'beam', 'vars'):
+    if k in ('len', 'par', 'beam', 'vars', 'only'):
         kw[k] = v
     else:
         sets[k] = v
@@ -47,6 +47,11 @@ for c in cuts:
     with open(os.path.join(d, 'c%d.txt' % c), 'w') as f:
         f.writelines(lines[:c + 68])
 jobs = [(c, s, i) for c in cuts for s in sets for i in range(len(VAR))]
+if 'only' in kw:  # run only these settings (another bench in the same DIR runs the rest); the table needs all
+    run_jobs = [j for j in jobs if j[1] in kw['only'].split(',')]
+    with ThreadPoolExecutor(PAR) as ex:
+        list(ex.map(one, run_jobs))
+    sys.exit(0)
 with ThreadPoolExecutor(PAR) as ex:
     res = dict(ex.map(one, jobs))
 with open(os.path.join(d, 'bench.txt'), 'w') as f:
