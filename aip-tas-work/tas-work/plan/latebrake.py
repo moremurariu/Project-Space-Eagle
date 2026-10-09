@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""latebrake.py DIR [turns=A1,..] [vmin=40] [cores=4] [vars=dschain_variants_rf_mix.txt] [allep=0] [ks=2,4] [full=1]
+"""latebrake.py DIR [turns=A1,..] [vmin=40] [cores=4] [vars=dschain_variants_rf_mix.txt] [allep=0] [ks=2,4] [full=1] [chain=3]
 Teero brakes later than we do before turns and carries 7-14 px/t more on those approaches (sp/teerov.py). For every
 turn A (speed minimum with a >= 60 deg heading change) of tas-work/kog_full_best.txt whose approach has a
 direction-key braking episode (dir 0 or against vx at |vx| > 8 in the air, |v| >= vmin, starting E0 in A-60..A-5):
@@ -22,6 +22,7 @@ CORES, VMIN = int(kw.get('cores', 4)), float(kw.get('vmin', 40))
 ALLEP = int(kw.get('allep', 0))  # every braking episode of the approach, not only the first
 KS = [int(x) for x in kw.get('ks', '0').split(',') if int(x) > 0]  # hold lengths (besides the full / half episode)
 FULL = int(kw.get('full', 1))
+CHAIN = int(kw.get('chain', 3))  # stages to carry a fractional lead (0 = off)
 VAR = [l.strip() for l in open(os.path.join(HERE, kw.get('vars', 'dschain_variants_rf_mix.txt'))) if l.strip() and not l.startswith('#')]
 os.makedirs(d, exist_ok=True)
 LOG = open(os.path.join(d, 'log'), 'a')
@@ -150,6 +151,38 @@ def try_turn(A):
                 best = (f, p)
         if best and best[0] < FIN and publish(best[1], best[0], 'turn %d (dir held %d-%d%s)' % (A, E0, E0 + k - 1, ', jump kept' if nj else '')):
             return True
+    if ok and 0.25 <= min(G, FIN) - ok[0][0] < 0.9 and G < FIN - 3:
+        # a fraction of a tick ahead: re-searched on through the next turns until the lead grafts (optsweep's chain)
+        t, line, k, nj, E0 = ok[0]
+        for c in range(CHAIN):
+            nx = [a for a in ap if a > G + 15]
+            g = min(nx[0] + 30 if nx else FIN, FIN)
+            cut = G - 10
+            ctag = '%s_ch%d' % (line, c)
+            pre = ctag + '_c.txt'
+            open(pre, 'w').writelines(open(line).readlines()[:cut + 68])
+            with ThreadPoolExecutor(CORES) as ex:
+                rr = list(ex.map(lambda iv: (xds(run, pre, g, '%s_v%d' % (ctag, iv[0]), iv[1], FIN, []), '%s_v%d' % (ctag, iv[0])), enumerate(VAR)))
+            rr = sorted(r for r in rr if r[0] is not None)
+            log('  chain %d from %d to %d: %s' % (c, cut, min(g, FIN), ' '.join('%.2f' % r[0] for r in rr) or 'NOGATE'))
+            if not rr or min(g, FIN) - rr[0][0] < 0.2:
+                break
+            if min(g, FIN) - rr[0][0] >= 0.9 or g >= FIN - 3:
+                gd = rr[0][1] + '_mg'
+                mg = subprocess.run(['python3', os.path.join(HERE, 'multigraft.py'), rr[0][1], run, gd, str(cut + 3), str(min(g, FIN - 5)), '6', '3', str(CORES)],
+                                    capture_output=True, text=True).stdout
+                log('  chain multigraft: %s' % ' | '.join(mg.strip().splitlines()[-2:]))
+                cs = [os.path.join(gd, x) for x in sorted(os.listdir(gd))] if os.path.isdir(gd) else []
+                if g >= FIN - 3:
+                    cs.append(rr[0][1])
+                best = None
+                for p in cs:
+                    f = finish(p)
+                    if f is not None and (best is None or f < best[0]):
+                        best = (f, p)
+                if best and best[0] < FIN and publish(best[1], best[0], 'turn %d (dir held %d-%d, chained)' % (A, E0, E0 + k - 1)):
+                    return True
+            line, G = rr[0][1], g
     return False
 
 

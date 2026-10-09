@@ -1582,3 +1582,8 @@ approach shot, x_pfscan pre-fires, point-blank) and evaluates each with the two-
   finish tick 2616, no freeze). Earlier pass results: U-turn 1 level (1304.97 / 1305), dip 1275 and left U-turn 1417 /
   1469 doomed (the hold runs the tee into freeze within 1-9 ticks), shaft top 1811.89 / 1812, 1800 U-turn 1994.98 /
   1994 on 2549.
+- latebrake pass 1 (runs/lbk) after the S-bend: 2136 1 behind; hop 2265 (dir held 2232-2234): **2471.00 at the
+  rt-2473 gate (2 ahead)** but on the run's line only at 2468 (graft fails); re-searched to the finish from 2455:
+  2548 at best (level), from 2462 / 2466 / 2470: 2551-2632 (its state at the maze entrance is a bad one); final-maze
+  approach 2445: 4-5 behind, 2472: level. Pass 2 (runs/lbk2: every episode, holds 2 / 3 / 5): S-bend main episode
+  1919-1931: 2116.63 at the rt-2117 gate (0.37). latebrake now chains fractional leads (chain=3) like optsweep.
