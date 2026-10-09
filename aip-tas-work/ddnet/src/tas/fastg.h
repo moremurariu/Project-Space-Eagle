@@ -28,6 +28,7 @@ struct SExplLog
 	int m_Tick;
 	vec2 m_E, m_Tee, m_VelBefore, m_Force;
 	float m_Dist;
+	int m_FireTick = -1; // server tick the grenade was fired
 };
 
 struct SStepAudit
@@ -83,7 +84,7 @@ private:
 	void HandleWeaponSwitch();
 	void DoWeaponSwitch();
 	void FireWeapon(int GameTick);
-	void Explode(vec2 Pos);
+	void Explode(vec2 Pos, int FireTick = -1);
 	void TickProjectiles();
 };
 

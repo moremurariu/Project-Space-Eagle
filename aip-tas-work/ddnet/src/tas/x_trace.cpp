@@ -80,9 +80,9 @@ int main(int argc, const char **argv)
 			vec2 Vb = E.m_VelBefore;
 			vec2 Va = Vb + E.m_Force;
 			float c = length(Vb) > 0.01f && length(E.m_Force) > 0.01f ? dot(normalize(Vb), normalize(E.m_Force)) : 0;
-			std::printf("E %d %d ex %.1f %.1f tee %.1f %.1f dist %.1f force %.2f %.2f |f| %.2f vb %.2f %.2f |vb| %.2f |va| %.2f cos %.2f dv2 %.0f\n", (int)i,
+			std::printf("E %d %d ex %.1f %.1f tee %.1f %.1f dist %.1f force %.2f %.2f |f| %.2f vb %.2f %.2f |vb| %.2f |va| %.2f cos %.2f dv2 %.0f fired %d\n", (int)i,
 				E.m_Tick - F.m_StartTick, E.m_E.x, E.m_E.y, E.m_Tee.x, E.m_Tee.y, E.m_Dist, E.m_Force.x, E.m_Force.y, length(E.m_Force), Vb.x, Vb.y, length(Vb),
-				length(Va), c, dot(Va, Va) - dot(Vb, Vb));
+				length(Va), c, dot(Va, Va) - dot(Vb, Vb), E.m_FireTick >= 0 ? E.m_FireTick - F.m_StartTick : -1);
 		}
 		if(F.m_FinishTick >= 0)
 			break;

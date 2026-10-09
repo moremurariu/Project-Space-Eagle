@@ -234,7 +234,7 @@ void CFastG::FireWeapon(int GameTick)
 	m_ReloadTimer = m_Core.m_Tuning.GetWeaponFireDelay(W) * SERVER_TICK_SPEED;
 }
 
-void CFastG::Explode(vec2 Pos)
+void CFastG::Explode(vec2 Pos, int FireTick)
 {
 	const float Radius = 135.0f, InnerRadius = 48.0f;
 	if(!(distance(m_Pos, Pos) < Radius + CCharacterCore::PhysicalSize()))
@@ -248,7 +248,7 @@ void CFastG::Explode(vec2 Pos)
 	float Strength = m_Core.m_Tuning.m_ExplosionStrength;
 	float Dmg = Strength * l;
 	if(ms_pLog)
-		ms_pLog->push_back({m_Tick, Pos, m_Pos, m_Core.m_Vel, (int)Dmg ? ForceDir * Dmg * 2 : vec2(0, 0), length(Diff)});
+		ms_pLog->push_back({m_Tick, Pos, m_Pos, m_Core.m_Vel, (int)Dmg ? ForceDir * Dmg * 2 : vec2(0, 0), length(Diff), FireTick});
 	if((int)Dmg)
 	{
 		// TakeDamage: no move restrictions on this map (ClampVel is the identity)
@@ -282,12 +282,12 @@ void CFastG::TickProjectiles()
 		{
 			// server CProjectile::Tick explodes once and returns; the client prediction world would also run the
 			// lifetime explosion when the hit falls on the last lifetime tick (nadelab: server-checked)
-			Explode(ColPos);
+			Explode(ColPos, P.m_StartTick);
 			Destroy = true;
 		}
 		else if(P.m_LifeSpan == -1)
 		{
-			Explode(ColPos);
+			Explode(ColPos, P.m_StartTick);
 			Destroy = true;
 		}
 		if(!Destroy)
