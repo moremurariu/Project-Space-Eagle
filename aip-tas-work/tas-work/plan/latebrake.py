@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""latebrake.py DIR [turns=A1,..] [vmin=40] [cores=4] [vars=dschain_variants_rf_mix.txt]
+"""latebrake.py DIR [turns=A1,..] [vmin=40] [cores=4] [vars=dschain_variants_rf_mix.txt] [allep=0] [ks=2,4] [full=1]
 Teero brakes later than we do before turns and carries 7-14 px/t more on those approaches (sp/teerov.py). For every
 turn A (speed minimum with a >= 60 deg heading change) of tas-work/kog_full_best.txt whose approach has a
 direction-key braking episode (dir 0 or against vx at |vx| > 8 in the air, |v| >= vmin, starting E0 in A-60..A-5):
@@ -19,6 +19,9 @@ BEST = os.path.join(TW, 'kog_full_best.txt')
 d = os.path.abspath(sys.argv[1])
 kw = dict(a.split('=', 1) for a in sys.argv[2:] if '=' in a)
 CORES, VMIN = int(kw.get('cores', 4)), float(kw.get('vmin', 40))
+ALLEP = int(kw.get('allep', 0))  # every braking episode of the approach, not only the first
+KS = [int(x) for x in kw.get('ks', '0').split(',') if int(x) > 0]  # hold lengths (besides the full / half episode)
+FULL = int(kw.get('full', 1))
 VAR = [l.strip() for l in open(os.path.join(HERE, kw.get('vars', 'dschain_variants_rf_mix.txt'))) if l.strip() and not l.startswith('#')]
 os.makedirs(d, exist_ok=True)
 LOG = open(os.path.join(d, 'log'), 'a')
@@ -121,28 +124,16 @@ def try_turn(A):
     if not eps:
         log('turn %d: no braking episode at |v| >= %.0f' % (A, VMIN))
         return False
-    E0, E1 = eps[0]
     L = open(run).readlines()
     jobs = []
-    for k in sorted({E1 - E0 + 1, max(2, (E1 - E0 + 1) // 2)}, reverse=True):
-        pre = os.path.join(d, 't%d_k%d_p.txt' % (A, k))
-        out = L[:E0 + k - 1 + 68]
-        for rt in range(E0, E0 + k):
-            a = out[rt + 68 - 1].split()
-            vx = T[rt - 1]['v'][0]
-            a[0] = '1' if vx > 0 else '-1'
-            out[rt + 68 - 1] = ' '.join(a) + '\n'
-        open(pre, 'w').writelines(out)
-        for nj in (True, False):
-            extra = ['celljump=1'] + (['nojump=%d,%d' % (E0 + k, A - 3)] if nj else [])
-            for i, v in enumerate(VAR):
-                jobs.append((pre, '%s/t%d_k%d_%s_v%d.txt' % (d, A, k, 'nj' if nj else 'j', i), v, extra, k, nj))
-    log('turn %d (run %d): episodes %s, held %s, gate %d' % (A, FIN, eps, sorted({j[4] for j in jobs}), G))
+    for E0, E1 in (eps if ALLEP else eps[:1]):
+        jobs += turn_jobs(A, E0, E1, L, T, run)
+    log('turn %d (run %d): episodes %s, %d searches, gate %d' % (A, FIN, eps, len(jobs), G))
     with ThreadPoolExecutor(CORES) as ex:
-        res = list(ex.map(lambda j: (xds(run, j[0], G, j[1], j[2], FIN, j[3]), j[1], j[4], j[5]), jobs))
+        res = list(ex.map(lambda j: (xds(run, j[0], G, j[1], j[2], FIN, j[3]), j[1], j[4], j[5], j[6]), jobs))
     ok = sorted(r for r in res if r[0] is not None)
-    log('  gate %d: %s' % (min(G, FIN), ' '.join('%.2f(k%d%s)' % (r[0], r[2], 'nj' if r[3] else '') for r in ok[:8]) or 'NOGATE'))
-    for t, line, k, nj in ok[:3]:
+    log('  gate %d: %s' % (min(G, FIN), ' '.join('%.2f(e%d k%d%s)' % (r[0], r[4], r[2], 'nj' if r[3] else '') for r in ok[:8]) or 'NOGATE'))
+    for t, line, k, nj, E0 in ok[:3]:
         if t > min(G, FIN) - 0.9:
             break
         gd = line + '_mg'
@@ -160,6 +151,26 @@ def try_turn(A):
         if best and best[0] < FIN and publish(best[1], best[0], 'turn %d (dir held %d-%d%s)' % (A, E0, E0 + k - 1, ', jump kept' if nj else '')):
             return True
     return False
+
+
+def turn_jobs(A, E0, E1, L, T, run):
+    jobs = []
+    n = E1 - E0 + 1
+    ks = set(min(n, x) for x in KS) if KS else {max(2, n // 2)}
+    for k in sorted(ks | ({n} if FULL else set()), reverse=True):
+        pre = os.path.join(d, 't%d_e%d_k%d_p.txt' % (A, E0, k))
+        out = L[:E0 + k - 1 + 68]
+        for rt in range(E0, E0 + k):
+            a = out[rt + 68 - 1].split()
+            vx = T[rt - 1]['v'][0]
+            a[0] = '1' if vx > 0 else '-1'
+            out[rt + 68 - 1] = ' '.join(a) + '\n'
+        open(pre, 'w').writelines(out)
+        for nj in (True, False):
+            extra = ['celljump=1'] + (['nojump=%d,%d' % (E0 + k, A - 3)] if nj else [])
+            for i, v in enumerate(VAR):
+                jobs.append((pre, '%s/t%d_e%d_k%d_%s_v%d.txt' % (d, A, E0, k, 'nj' if nj else 'j', i), v, extra, k, nj, E0))
+    return jobs
 
 
 T0 = trace(BEST)
