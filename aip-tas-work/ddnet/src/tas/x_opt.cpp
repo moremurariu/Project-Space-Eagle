@@ -1145,12 +1145,20 @@ int main(int argc, const char **argv)
 		WriteInputs(Out.c_str(), vO);
 		std::printf("wrote %s (%zu inputs, ends at rt %d)\n", Out.c_str(), vO.size(), g.m_RtA + g.m_N);
 	}
+	auto SameIn = [&](const std::vector<STasInput> &A, const std::vector<STasInput> &B) {
+		return A.size() == B.size() && std::equal(A.begin(), A.begin() + std::min((int)A.size(), g.m_N), B.begin(),
+						    [](const STasInput &x, const STasInput &y) { return std::memcmp(&x, &y, sizeof(STasInput)) == 0; });
+	};
+	std::vector<std::vector<STasInput>> vDone = {Rb.m_vIn}; // the main plan and the alternatives already written
 	for(int a = 0; a < NA; a++)
 	{
 		SRes Ra;
 		Eval(vAltBest[a], Ra, true);
-		const bool Same = Ra.m_vIn.size() == Rb.m_vIn.size() && std::equal(Ra.m_vIn.begin(), Ra.m_vIn.begin() + std::min((int)Ra.m_vIn.size(), g.m_N), Rb.m_vIn.begin(),
-			[](const STasInput &x, const STasInput &y) { return std::memcmp(&x, &y, sizeof(STasInput)) == 0; });
+		bool Same = false;
+		for(const auto &D : vDone)
+			Same = Same || SameIn(Ra.m_vIn, D);
+		if(!Same)
+			vDone.push_back(Ra.m_vIn);
 		std::printf("ALT kv %.2f score %.3f lead %.3f lat %.1f |v| %.2f (run %.2f) dv %.2f gw %.2f%s%s\n", vAKv[a], AltScore(Ra, vAKv[a], vAGw[a]), Ra.m_Lead, Ra.m_Lat,
 			Ra.m_Sp, Ra.m_IncSp, Ra.m_DV, vAGw[a], Ra.m_Dead ? " DEAD" : "", Same ? " same" : "");
 		if(!OutAlt.empty() && !Same && !Ra.m_Dead)
