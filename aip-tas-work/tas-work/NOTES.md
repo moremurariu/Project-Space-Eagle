@@ -1450,3 +1450,6 @@ dir, jump, cursor aim, shots with aim, certainties; best effort, not exact) and 
 - sweet-maxwell 2549 (top-left corner window) vs our 2545: same line to 1570, theirs 2-4 behind after; nothing to add.
 - Same round, rt-1800 U-turn window 1761-1889: graftable plan (lead 0.67, |dv| 1.5) stage 2 1989.88 at the rt-1991
   gate -> x_graft D=1 at cut 1939: **2543 (50.86 s)**, server-checked (TasReplay finish tick 2611; TasServer).
+- optloop round 13 (two-turn windows, kv 0.3, rf2_s0), window 2154-2354: lead-only plan (lead 0.33, |dv| 2.7) stage 2
+  2466.03 at the rt-2468 gate -> x_graft D=1 at cut 2397: **2542 (50.84 s)**, server-checked (TasReplay finish tick
+  2610; TasServer). Of the six optloop gains since the archive was added, none came from the speed-scored plan.
