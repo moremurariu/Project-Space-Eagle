@@ -1609,3 +1609,10 @@ approach shot, x_pfscan pre-fires, point-blank) and evaluates each with the two-
   U-turn exit -> shaft), stage 2 from 1591: 1679.06 at the rt-1681 gate (1.94 ahead) -> multigraft D=2 at cuts
   1662-1674: kog_full_2545.txt (cut 1674), server-checked (TasReplay finish tick 2613, no freeze).
 - optloop window 1615-1737 (runs/loop/mix/r2/w1615_1737_v3_mg/g_c1758_D1.txt): **2544 (50.88 s)**, server-checked.
+- optloop round 2 (runs/loop/mix/r2; rf_mix with incjump for seeds 22 / 23, x_opt keepjump from the window 1615 on,
+  multigraft early stop): 2547 -> 2545 (window 1462-1601, D=2) -> **2544 (50.88 s)** (window 1615-1737: x_opt over
+  the shaft exit with the 1733-1797 air jump kept, stage 2 1816.03 at the rt-1817 gate past the 1800 U-turn, graft
+  D=1 at 1758). Before keepjump, the windows crossing 1733-1797 ended 11-25 behind at the U-turn.
+- x_opt keepjump=1 (new, default): a plan that ends its window without the air jump the run still has there is
+  ranked as dead (the 20-tick survival tail ends before the redirect it is kept for). multigraft stops after
+  MG_STOP=4 finishing grafts (a full sweep took 20-30 min per line).
