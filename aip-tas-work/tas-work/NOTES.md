@@ -1440,3 +1440,11 @@ dir, jump, cursor aim, shots with aim, certainties; best effort, not exact) and 
   behind, from 1515 6.5 behind (the stack grenade is fired ~25 ticks before the double kick, so the re-search has to
   start before it); x_opt from that line through the shaft (its replay of the run's shaft plan dies): 14-32 behind.
 - structsearch (sweet-maxwell) on 2546, turns 2261 / 1961 / 2133 / 1141: 14 behind, no pre-fire, no room, 6.6 behind.
+- From sweet-maxwell: rf variants with the survival check off (their benchmark over 8 re-search sections on 2551: sum
+  +10.6 ticks behind the run with it, -1.9 without); optloop's stage 2+ now uses rf_s0 / rf2_s0. Extra stages re-search
+  from 8 and from 25 ticks before the previous gate (the shaft lead of r12 window 1364-1499: 1603.8 at the rt-1598 gate
+  from the 25-before cut, was 33 behind from the 8-before cut).
+- optloop round 12 (seed 6200, kv 0.1, rf_s0), hop window 2225-2359: x_opt main plan lead 0.83 |v| +4.7, lead-only
+  0.84, graftable (galt 0.1) 0.68 with |dv| 0.28; stage 2 from the graftable plan 2467.00 at the rt-2470 gate -> x_graft
+  D=1 at cut 2398: **2544 (50.88 s)**, server-checked (TasReplay finish tick 2612; TasServer).
+- sweet-maxwell 2549 (top-left corner window) vs our 2545: same line to 1570, theirs 2-4 behind after; nothing to add.
