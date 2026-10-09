@@ -1600,3 +1600,8 @@ approach shot, x_pfscan pre-fires, point-blank) and evaluates each with the two-
   later redirect (up to 3 ticks before its use). 2547: 1030-1057 1203-1312 1410-1433 1569-1589 1733-1797 1817-1858
   1907-1922 2163-2175 2216-2228 2282-2352 2408-2435 2520-2543. Chains that cross the 1800 U-turn ended 11 behind there
   (the re-search spent the jump). rf_mix: incjump=1 for seeds 22 / 23.
+- latebrake pass 3 (runs/lbk3, chaining) on 2547: S-bend main episode 0.37 ahead at 2117 -> chain 2165.34 (behind);
+  1800 U-turn level (1992.92 / 1993); 2135 NOGATE. structsearch with rf_mix (runs/ss5) on 2547: no gain (1275 7-10
+  behind, 1417 3.5, 1469 5-20, corner 2087 pre-fire 2079 aim 228.4: 0.58 ahead at 2165 but every re-search from it
+  dies at ~2199 (the bottom-left turn needs the run's 2193 kick; the pre-fire shifted the reload phase), final maze
+  8-10 behind). optloop round 1 (two-turn windows) on 2547: no gain.
