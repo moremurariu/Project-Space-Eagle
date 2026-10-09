@@ -1608,3 +1608,4 @@ approach shot, x_pfscan pre-fires, point-blank) and evaluates each with the two-
 - **2545 (50.90 s):** optloop round 2 on 2547 (rf_mix with incjump for two variants, t0 0.6): window 1462-1601 (left
   U-turn exit -> shaft), stage 2 from 1591: 1679.06 at the rt-1681 gate (1.94 ahead) -> multigraft D=2 at cuts
   1662-1674: kog_full_2545.txt (cut 1674), server-checked (TasReplay finish tick 2613, no freeze).
+- optloop window 1615-1737 (runs/loop/mix/r2/w1615_1737_v3_mg/g_c1758_D1.txt): **2544 (50.88 s)**, server-checked.
