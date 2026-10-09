@@ -1618,3 +1618,7 @@ approach shot, x_pfscan pre-fires, point-blank) and evaluates each with the two-
   MG_STOP=4 finishing grafts (a full sweep took 20-30 min per line).
 - optloop window 1718-1888 (runs/loop/mix/r3/w1718_1888_v0_mg/g_c1967_D1.txt): **2543 (50.86 s)**, server-checked.
 - optloop round 4 (runs/loop/mix/r4/w2109_2235_v2_mg/g_c2264_D1.txt, bottom-left turn -> hop window 2109-2235, stage 2 2287.97 at the rt-2289 gate, graft D=1): **2542 (50.84 s)**, server-checked (TasReplay finish tick 2610).
+- optloop rounds 3 / 4 on rf_mix: 2544 -> **2543** (window 1718-1888, 1800 U-turn exit + S-bend approach, graft D=1
+  at 1967) -> **2542** (window 2109-2235, bottom-left turn -> hop). Recurring dead ends: gates at rt ~1553 (before
+  the shaft double kick: 1-3 "ahead" that are 10-25 behind after it), chains into rt 2241-2244 / the hop (beams die
+  at ~2199 where the run's 2193 kick is needed) and the final maze (level at best).
