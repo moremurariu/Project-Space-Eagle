@@ -18,6 +18,7 @@
 //   field=FILE: score by the time-to-go field instead (fw x (T_run - T_ours) at the end tick)
 //   out: prefix (the run's inputs before A + the best plan) for x_ds / x_graft continuations
 //   kvalt=K1,K2 outalt=P: also keep the best plan seen for each other kv (e.g. 0 = lead only) and write it to P_k<i>.txt
+//   galt=G1,...: also archive by lead - G x |v - the run's v| - 0.1 x (lateral - 4) (graftable leads), after kvalt's
 //     (a high exit speed often cannot be kept through the next turn)
 #define private public
 #define protected public
@@ -146,16 +147,19 @@ struct SRes
 	float m_Score = -1e9f;
 	bool m_Dead = false;
 	int m_DeadK = -1, m_Fin = -1;
-	float m_Lead = 0, m_Lat = 0, m_Sp = 0, m_IncSp = 0;
+	float m_Lead = 0, m_Lat = 0, m_Sp = 0, m_IncSp = 0, m_DV = 0; // m_DV: |velocity - the run's velocity there|
 	std::vector<STasInput> m_vIn;
 	std::vector<float> m_vLead; // every 10 ticks
 };
 
 // the window score with another kv (archive of best plans for kv values other than the chain's)
-static float AltScore(const SRes &R, float Kv)
+// Gw > 0: "graftable" score, lead minus the velocity difference to the run (and the lateral distance), for x_graft
+static float AltScore(const SRes &R, float Kv, float Gw = 0)
 {
 	if(R.m_Dead || R.m_Fin >= 0 || g.m_pField)
 		return R.m_Score;
+	if(Gw > 0)
+		return R.m_Lead - Gw * R.m_DV - 0.1f * std::max(0.0f, R.m_Lat - 4.0f);
 	return R.m_Lead + Kv * (R.m_Sp - R.m_IncSp) - g.m_Lw * std::max(0.0f, R.m_Lat - g.m_Lat0);
 }
 
@@ -195,7 +199,7 @@ struct SCkpt
 {
 	CFastG m_S;
 	size_t m_Hi, m_Si;
-	float m_Win, m_Lead, m_Lat, m_Sp, m_IncSp;
+	float m_Win, m_Lead, m_Lat, m_Sp, m_IncSp, m_DV;
 };
 
 // first window tick where plans A and B can behave differently (g.m_NT if they are the same)
@@ -270,6 +274,7 @@ static void Eval(const SPlan &P, SRes &Res, bool Keep, const std::vector<SCkpt> 
 		Res.m_Lat = C.m_Lat;
 		Res.m_Sp = C.m_Sp;
 		Res.m_IncSp = C.m_IncSp;
+		Res.m_DV = C.m_DV;
 		k0 = c * CK;
 		if(pRec)
 			pRec->assign(pFrom->begin(), pFrom->begin() + c);
@@ -284,7 +289,7 @@ static void Eval(const SPlan &P, SRes &Res, bool Keep, const std::vector<SCkpt> 
 	for(int k = k0; k < g.m_NT; k++)
 	{
 		if(pRec && k % CK == 0)
-			pRec->push_back({S, hi, si, WinScore, Res.m_Lead, Res.m_Lat, Res.m_Sp, Res.m_IncSp});
+			pRec->push_back({S, hi, si, WinScore, Res.m_Lead, Res.m_Lat, Res.m_Sp, Res.m_IncSp, Res.m_DV});
 		STasInput In = g.m_vBase[k];
 		In.m_Dir = P.m_D[k];
 		In.m_Jump = P.m_J[k];
@@ -372,6 +377,7 @@ static void Eval(const SPlan &P, SRes &Res, bool Keep, const std::vector<SCkpt> 
 			Res.m_Lat = Lat;
 			Res.m_Sp = IncSp > 1e-3f ? dot(S.m_Core.m_Vel, IncV) / IncSp : length(S.m_Core.m_Vel);
 			Res.m_IncSp = IncSp;
+			Res.m_DV = length(S.m_Core.m_Vel - IncV);
 			if(g.m_pField)
 			{
 				float T = g.m_pField->Value(S.m_Core.m_Pos, S.m_Core.m_Vel);
@@ -686,7 +692,7 @@ int main(int argc, const char **argv)
 	}
 	CFastG::Init();
 	std::string Run, Out, Field, WStr, Ref, Prefix, Shots, OutAlt;
-	std::vector<float> vKvAlt;
+	std::vector<float> vKvAlt, vGwAlt;
 	int Cut = -1, End = -1, Threads = 3, Seed = 1, Verbose = 0, Tail = 30, Shift = 0;
 	long long Iters = 200000;
 	float T0 = 0.3f;
@@ -728,6 +734,17 @@ int main(int argc, const char **argv)
 				if(b == std::string::npos)
 					b = V.size();
 				vKvAlt.push_back(std::atof(V.substr(a, b - a).c_str()));
+				a = b + 1;
+			}
+		}
+		else if(K == "galt")
+		{
+			for(size_t a = 0; a < V.size();)
+			{
+				size_t b = V.find(',', a);
+				if(b == std::string::npos)
+					b = V.size();
+				vGwAlt.push_back(std::atof(V.substr(a, b - a).c_str()));
 				a = b + 1;
 			}
 		}
@@ -1006,11 +1023,18 @@ int main(int argc, const char **argv)
 	SPlan Best = P0;
 	float BestScore = Res0.m_Score;
 	std::atomic<long long> Done{0};
-	const int NA = (int)vKvAlt.size();
+	// archive entries: kvalt (kv, 0) then galt (0, gw)
+	std::vector<float> vAKv = vKvAlt, vAGw(vKvAlt.size(), 0.0f);
+	for(float Gw : vGwAlt)
+	{
+		vAKv.push_back(0);
+		vAGw.push_back(Gw);
+	}
+	const int NA = (int)vAKv.size();
 	std::vector<SPlan> vAltBest(NA, P0);
 	std::vector<float> vAltScore(NA);
 	for(int a = 0; a < NA; a++)
-		vAltScore[a] = AltScore(Res0, vKvAlt[a]);
+		vAltScore[a] = AltScore(Res0, vAKv[a], vAGw[a]);
 	auto Work = [&](int Tid) {
 		std::vector<SPlan> vMyAlt(NA, P0);
 		std::vector<float> vMyAltSc(vAltScore);
@@ -1040,7 +1064,7 @@ int main(int argc, const char **argv)
 			Done++;
 			for(int a = 0; a < NA; a++)
 			{
-				const float As = AltScore(Rc, vKvAlt[a]);
+				const float As = AltScore(Rc, vAKv[a], vAGw[a]);
 				if(As > vMyAltSc[a])
 				{
 					vMyAltSc[a] = As;
@@ -1127,8 +1151,8 @@ int main(int argc, const char **argv)
 		Eval(vAltBest[a], Ra, true);
 		const bool Same = Ra.m_vIn.size() == Rb.m_vIn.size() && std::equal(Ra.m_vIn.begin(), Ra.m_vIn.begin() + std::min((int)Ra.m_vIn.size(), g.m_N), Rb.m_vIn.begin(),
 			[](const STasInput &x, const STasInput &y) { return std::memcmp(&x, &y, sizeof(STasInput)) == 0; });
-		std::printf("ALT kv %.2f score %.3f lead %.3f lat %.1f |v| %.2f (run %.2f)%s%s\n", vKvAlt[a], AltScore(Ra, vKvAlt[a]), Ra.m_Lead, Ra.m_Lat, Ra.m_Sp, Ra.m_IncSp,
-			Ra.m_Dead ? " DEAD" : "", Same ? " same" : "");
+		std::printf("ALT kv %.2f score %.3f lead %.3f lat %.1f |v| %.2f (run %.2f) dv %.2f gw %.2f%s%s\n", vAKv[a], AltScore(Ra, vAKv[a], vAGw[a]), Ra.m_Lead, Ra.m_Lat,
+			Ra.m_Sp, Ra.m_IncSp, Ra.m_DV, vAGw[a], Ra.m_Dead ? " DEAD" : "", Same ? " same" : "");
 		if(!OutAlt.empty() && !Same && !Ra.m_Dead)
 		{
 			char aBuf[512];
