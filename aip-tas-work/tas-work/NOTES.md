@@ -1453,3 +1453,8 @@ dir, jump, cursor aim, shots with aim, certainties; best effort, not exact) and 
 - optloop round 13 (two-turn windows, kv 0.3, rf2_s0), window 2154-2354: lead-only plan (lead 0.33, |dv| 2.7) stage 2
   2466.03 at the rt-2468 gate -> x_graft D=1 at cut 2397: **2542 (50.84 s)**, server-checked (TasReplay finish tick
   2610; TasServer). Of the six optloop gains since the archive was added, none came from the speed-scored plan.
+- optloop round 15 (two-turn windows, rf2_s0), window 1771-1985: graftable plan with gw 0.25
+  (lead 0.74, |dv| 1.44) stage 2 2112.64 at the rt-2114 gate -> x_graft D=1 at cut 2042: **2541 (50.82 s)**,
+  server-checked (TasReplay finish tick 2609; TasServer).
+- latebrake (sweet-maxwell) on 2542: U-turn 1 ties (1304.97 at 1305); turns 1275 / 1417 / 1469: holding the direction
+  key through the braking episode dies within 2 ticks (no later braking possible there).
