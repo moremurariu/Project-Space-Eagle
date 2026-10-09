@@ -1624,3 +1624,4 @@ approach shot, x_pfscan pre-fires, point-blank) and evaluates each with the two-
   at ~2199 where the run's 2193 kick is needed) and the final maze (level at best).
 - optloop round 5 on 2542: no gain. Final-maze sweep on 2542 (runs/maze: x_ds rf_mix, beam 8000, cuts 2400 / 2420 /
   2440 / 2460 / 2480 / 2500 straight to the finish): all 24 searches 2542 (converged for this search).
+- optloop window 2163-2280 (runs/loop/mix/r6/w2163_2280_v3_mg/g_c2439_D1.txt): **2541 (50.82 s)**, server-checked.
