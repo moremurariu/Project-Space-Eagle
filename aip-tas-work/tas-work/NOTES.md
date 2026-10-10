@@ -1715,3 +1715,4 @@ approach shot, x_pfscan pre-fires, point-blank) and evaluates each with the two-
   stage 1 from 1289 to 1446 rejoined the run's states one tick early: spliced at 1298, finish 2538, server-checked.)
 - teeroguide now hands untracked lines that are a whole tick ahead but not yet on the run's states to carry.py.
   Sweep restarted on 2538 (runs/tg/sw2).
+- optloop window 2358-2484 (runs/loop/mix/r10/w2358_2484_v1_sp_k2502_D1.txt): **2537 (50.74 s)**, server-checked.
