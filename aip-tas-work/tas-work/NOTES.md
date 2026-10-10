@@ -1738,3 +1738,6 @@ approach shot, x_pfscan pre-fires, point-blank) and evaluates each with the two-
 - Self-guided tracking (teeroguide track=self: the run's own path, target 1.5 ticks earlier) at cuts 1100 / 1180 / 1330:
   on-line leads 0.0-0.34; the tracked searches cannot hold the earlier schedule. Stopped.
 - optloop window 1483-1615 (runs/loop/mix/r12/w1483_1615_ch0_v1_mg/g_c1754_D1.txt): **2536 (50.72 s)**, server-checked.
+  (2536 = Teero's time: optloop round 12 window 1483-1615 (left U-turn exit -> shaft -> shaft-top exit, x_opt lead
+  0.95), stage 2 1.09 ahead at 1691, chained through the 1800 U-turn at beam 16000 (0.93 at 1807), multigraft D=1 at
+  1754.)
