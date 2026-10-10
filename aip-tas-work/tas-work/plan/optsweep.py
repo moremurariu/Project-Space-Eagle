@@ -23,6 +23,9 @@ T0 = kw.get('t0', '0.4')
 KVALT = kw.get('kvalt', '0,0.15')  # x_opt also keeps its best plan by these kv (0: lead only); each gets a stage 2
 GALT = kw.get('galt', '0.1,0.25')  # and by lead - gw x |v - run v| (graftable leads: 2544, 2543)
 TALT = kw.get('talt', '1')  # and by the lead 20 ticks after the window end (continuation-aware)
+# x_ds beam for stage 2 and the extra stages (sweet-maxwell's fragility benchmark: from a 0.5 px/t slower state beam 4000
+# ends 3-30 ticks behind where beam 30000 is level: re-searches from a changed state need a big beam)
+BEAM2, BEAMX = int(kw.get('beam2', 10000)), int(kw.get('beamx', 16000))
 VARS = kw.get('vars', 'dschain_variants_rf.txt')  # x_ds variant set for stage 2+
 VAR = [l.strip() for l in open(os.path.join(HERE, VARS)) if l.strip() and not l.startswith('#')]
 os.makedirs(d, exist_ok=True)
@@ -47,9 +50,9 @@ def head(path, rt, out):
         g.writelines(lines[:rt + 68])
 
 
-def xds(prefix, gate, out, var):
+def xds(prefix, gate, out, var, beam):
     g = 'gate=finish' if gate >= FIN - 3 else 'gate=rt%d' % gate
-    cmd = [os.path.join(BIN, 'x_ds'), MAP, 'inc=' + run, 'prefix=' + prefix, g, 'incforce=0', 'threads=1', 'beam=4000',
+    cmd = [os.path.join(BIN, 'x_ds'), MAP, 'inc=' + run, 'prefix=' + prefix, g, 'incforce=0', 'threads=1', 'beam=%d' % beam,
            'verbose=0', 'out=' + out] + var.split()
     with open(out + '.log', 'w') as lf:
         subprocess.run(cmd, stdout=lf, stderr=subprocess.STDOUT)
@@ -59,9 +62,9 @@ def xds(prefix, gate, out, var):
 
 FIN = finish(run)
 log('optsweep on %s (finish %s), windows %s' % (run, FIN, wins))
-def stage(prefix, gate, tag):
+def stage(prefix, gate, tag, beam):
     with ThreadPoolExecutor(PAR) as ex:
-        res = list(ex.map(lambda iv: (xds(prefix, gate, '%s_v%d' % (tag, iv[0]), iv[1]), '%s_v%d' % (tag, iv[0])), enumerate(VAR)))
+        res = list(ex.map(lambda iv: (xds(prefix, gate, '%s_v%d' % (tag, iv[0]), iv[1], beam), '%s_v%d' % (tag, iv[0])), enumerate(VAR)))
     return sorted(r for r in res if r[0] is not None)
 
 
@@ -104,7 +107,7 @@ for k, w in enumerate(wins):
     for j, o in enumerate(srcs):
         cj = '%s_c%s.txt' % (tag, 'a%d' % j if j else '')
         head(o, c2, cj)
-        ok += stage(cj, g2, tag + ('_a%d' % j if j else ''))
+        ok += stage(cj, g2, tag + ('_a%d' % j if j else ''), BEAM2)
     ok.sort()
     g2e = min(g2, FIN)
     log('window %d-%d: stage 2 from %d to %d: %s' % (cut, end, c2, g2e, ' '.join('%.2f' % r[0] for r in ok) or 'NOGATE'))
@@ -120,7 +123,7 @@ for k, w in enumerate(wins):
         okn = []
         for cn in (gp - 15, gp - 28):
             head(okp[0][1], cn, '%s_c%d_%d.txt' % (tag, si + 3, cn))
-            okn += stage('%s_c%d_%d.txt' % (tag, si + 3, cn), gn, '%s_s%d_%d' % (tag, si + 3, cn))
+            okn += stage('%s_c%d_%d.txt' % (tag, si + 3, cn), gn, '%s_s%d_%d' % (tag, si + 3, cn), BEAMX)
         okn.sort()
         cn = gp - 28
         gne = min(gn, FIN)
