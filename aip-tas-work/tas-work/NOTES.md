@@ -1665,3 +1665,11 @@ approach shot, x_pfscan pre-fires, point-blank) and evaluates each with the two-
 - finsweep.py (new): x_ds from the run's own state straight to the finish: cuts 2160 / 2200 / 2240 -> 2541 at best
   (converged, like the final-maze sweep).
 - optloop resumed from round 8 with plan/dschain_variants_rf_mix2.txt (rf_mix + gateres=5,0.3).
+- **Beam size is most of the fragility:** x_ds from the slowed (-0.5 px/t) 1700 state with beam 30000 (+ incjump):
+  1849.97 / 1850.56 at the rt-1850 gate (level), vs +30 / NOGATE at beam 4000.
+- **2540 (50.80 s):** the S-bend line carried to the end with big beams: x_ds tracking Teero from 2541's rt 1915
+  (runs/stop/tr21, 3.7 ahead at 1965) -> untracked from its 1958 state (s2_1958_23, 1.8 ahead 1985-2035) -> corner
+  chain from 2020 at beam 20000 (gb_24: the run's 2147 + 2159 kick pair, 1.05 ahead at 2165) -> beam 30000 from 2150
+  to the rt-2289 gate (bb23: exactly the run's states one tick early from ~2247, through the bottom-left turn and the
+  hop) -> spliced at 2247 onto 2541's inputs one tick shifted (bb23[:2247+68] + 2541[2247+69:]): kog_full_2540.txt,
+  server-checked (TasReplay finish tick 2608, no freeze). Teero's lower, faster arc over the S-bend pillar.
