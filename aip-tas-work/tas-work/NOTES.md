@@ -1718,3 +1718,20 @@ approach shot, x_pfscan pre-fires, point-blank) and evaluates each with the two-
 - optloop window 2358-2484 (runs/loop/mix/r10/w2358_2484_v1_sp_k2502_D1.txt): **2537 (50.74 s)**, server-checked.
   (2537: optloop round 10 window 2358-2484 (final-maze approach): its stage-2 line spliced onto the run one tick
   early at rt 2502 by the new fast splice test in optsweep (no x_graft needed).)
+
+### Night of Oct 9-10, summary: 2541 -> 2537 (50.74 s)
+- 2540: Teero's S-bend top (tracked x_ds, big-beam chain, exact splice one tick early at 2247).
+- 2539: Teero's U-turn-1 exit (tracked, untracked re-search rejoined one tick early, splice at 1284).
+- 2538: Teero sweep's pickup stretch (a re-aimed 1081 kick, +2 px/t over 1080-1110), carried through U-turn 1 and the
+  dip at beam 30000 (after the incjump ground-jump fix), splice at 1298.
+- 2537: optloop round 10, window 2358-2484, found by optsweep's new fast splice test (splice at 2502).
+- Every gain is a whole-tick rejoin: a local change that leaves the line exactly on the run's states one tick early.
+  Leads that cross a fragile section (shaft double kick 1550-1600, the 1800 U-turn, the hop 2230-2270, the top-left
+  descent 2080-2110) die there even at beam 30000 (resources / kick phase / knife-edge solutions).
+- Teero-gain stretches left on 2537 (lagat, matched points): 1005-1055 1.6, 1140-1280 2.1, **1490-1565 7.1**, 1570-1585
+  1.2, 1595-1675 2.2, 1705-1785 1.7 (given back at the U-turn bottom: net 0 over 1700-1840), 1805-2065 4.0, 2100-2165
+  3.4, **2240-2465 9.8**, 2485-2530 1.7. The second sweep on 2537 (short untracked stage + carry) gave nothing new.
+- Hop: forbidding the 2234 upward kick (the one whose vertical speed the 2247 air jump then kills): 16-20 behind.
+- New tools: plan/teeroguide.py (sweep), plan/carry.py, plan/rejoin.py, plan/finsweep.py, analysis/lagat.py /
+  lagvs.py / stretchvs.py; x_ds linefrac, gateres, tpath, incumbent-continuation gate survival, the incjump fix;
+  optsweep beam2=16000 + splice test.
