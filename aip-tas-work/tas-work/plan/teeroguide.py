@@ -204,6 +204,9 @@ def stretches(lo, hi, mn):
     for l in out.splitlines():
         a = l.split()
         if len(a) >= 7 and float(a[6]) < 12:
+            # the projection can jump to the other branch of an out-and-back (the hop: -11.7 -> -18 in 5 ticks)
+            if G and abs(float(a[2]) - G[-1][1]) > 2.0:
+                continue
             G.append((int(a[0]), float(a[2])))
     segs, i = [], 0
     while i < len(G) - 1:

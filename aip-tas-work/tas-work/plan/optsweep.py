@@ -97,8 +97,31 @@ def apexes(path):
     return out
 
 
+def splice(l2, c0, g):
+    """l2 spliced onto run's inputs shifted by D = 3, 2, 1 ticks at every tick c0..g, replayed: an untracked x_ds
+    re-search often converges onto the run's own states exactly a whole tick early (Oct 10: 2541 -> 2540 -> 2539), which
+    this finds in seconds (x_graft takes 20-30 min per line)"""
+    a, b = open(l2).readlines(), open(run).readlines()
+    best = None
+    for D in (3, 2, 1):
+        for k in range(c0, min(g, len(a) - 68) + 1):
+            p = l2 + '_sp.txt'
+            open(p, 'w').writelines(a[:k + 68] + b[k + 68 + D:])
+            f = finish(p)
+            if f is not None and f < FIN and (best is None or f < best[0]):
+                best = (f, l2 + '_sp_k%d_D%d.txt' % (k, D))
+                subprocess.run(['cp', p, best[1]])
+        if best:
+            return best
+    return None
+
+
 def graft(l2, c0, g, tag):
     """multigraft l2 onto run from c0 to g; the finishing candidates (l2 itself when g is the finish)"""
+    sp = splice(l2, c0, g)
+    if sp:
+        log('%s: splice %s: %d' % (tag, os.path.basename(sp[1]), sp[0]))
+        return sp
     gd = l2 + '_mg'
     mg = subprocess.run(['python3', os.path.join(HERE, 'multigraft.py'), l2, run, gd, str(c0), str(min(g, FIN - 5)), '6', '3', str(PAR)],
                         capture_output=True, text=True).stdout
