@@ -1680,3 +1680,10 @@ approach shot, x_pfscan pre-fires, point-blank) and evaluates each with the two-
   shifted: kog_full_2539.txt, server-checked (TasReplay finish tick 2607, no freeze).
 - Corner (2060-2178) tracking Teero from the S-bend line: 2.4-3.4 ahead at 2080 on his lower line, 6-11 behind by
   2160 (as before: his corner line does not work from our states).
+- **Recipe that works (Oct 10, 2541 -> 2539):** x_ds tracking Teero's video track in time over a stretch where he is
+  faster finds his line (the untracked search never keeps it: it is behind or has less energy until it pays off);
+  an untracked re-search (gateres) from the tracked line's state a few ticks before its largest lead then converges
+  onto the run's own states exactly one tick early (the incumbent's shadow inputs, shifted), and the line spliced
+  onto the run's inputs shifted by one tick finishes one tick earlier. Leads that end in a fragile spot (the dip at
+  1275-1300, the 1800 U-turn) die there even at beam 30000. plan/teeroguide.py sweep runs this on every stretch
+  where Teero gains (analysis/lagat.py on the current best, matched points only).
