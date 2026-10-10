@@ -1497,3 +1497,6 @@ dir, jump, cursor aim, shots with aim, certainties; best effort, not exact) and 
 - sweet-maxwell 2534 (their S-bend window 1865-2104) vs our 2534: exactly our line one tick late to 1900, then ~1.2
   better through the S-bend, level with ours from 2300. Direct splice (our inputs to rt 1700 + theirs from 1701; also at
   1300-1800): **2533 (50.66 s)**, 3 ticks faster than Teero, server-checked (TasReplay finish tick 2601; TasServer).
+- sweet-maxwell 2533 (their window 1040-1197) = our 2533 line from 1300 on (their pickup-stretch gain ties ours).
+- optloop round 44 on 2533, window 1998-2100 (S-bend exit): graft D=1 at cut 2143: **2532 (50.64 s)**, 4 ticks faster
+  than Teero, server-checked (TasReplay finish tick 2600; TasServer).
