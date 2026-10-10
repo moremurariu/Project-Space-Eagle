@@ -32,6 +32,9 @@
 //     score (like freefrac for grenades)
 //   gateres=J,R: window gate arrivals without the air jump the incumbent has there and uses within 100 ticks cost J
 //     ticks, R ticks per tick their gun is still loading when the incumbent fires next (chain / stage-2 compatibility)
+//   tpath=FILE tpfrac=F [tpv=2 tplag=10]: a share of the beam for the states closest to a reference path (Teero's
+//     video track) by position + tpv x velocity at the same progress, lag (x tplag px per tick) as a tie-break: no
+//     timing, so a line that is behind or ahead of the reference is not pulled back (time tracking, tref, does that)
 //   linefrac=F [linemin=20]: a share of the beam for lineages >= linemin px off the incumbent's path, ranked among
 //     themselves (another line through a turn that pays off only after it: Teero's lower S-bend arc)
 //   celljump=1: the air jump's availability is part of the dedup cell (a lineage that saves the jump for a later
@@ -156,6 +159,8 @@ struct SPar
 	int m_CellReload = 0; // shot phase in the dedup cell (reload bucket, grenades in flight, saved slots)
 	float m_JumpFrac = 0; // share of the beam reserved for lineages that keep their air jump
 	float m_LineFrac = 0, m_LineMin = 20; // share of the beam for lineages >= linemin px off the incumbent's path
+	std::string m_TPath; // tpath=FILE tpfrac=F [tpv=2 tplag=10]: beam share for the states closest to that path
+	float m_TPFrac = 0, m_TPV = 2, m_TPLag = 10;
 	float m_GateResJ = 0, m_GateResR = 0; // gate arrivals: cost of a missing air jump / per tick of a late gun (gateres)
 	float m_FreeFrac = 0; // share of the beam reserved for lineages that keep their grenade (no shot for >= freemin ticks)
 	int m_FreeMin = 20;
@@ -386,6 +391,9 @@ static std::vector<vec2> gs_vHkA; // anchor of 'G' ticks
 static int gs_HkK0 = 0;
 static char HkAt(int k) { int i = k - gs_HkK0; return i >= 0 && i < (int)gs_vHkS.size() ? gs_vHkS[i] : 0; }
 static SRefLine gs_IncLine; // the incumbent's own path (shadow inputs are indexed on it)
+// tpath: a reference path (Teero's video track) used by position only: per incumbent race tick the matched index on it
+static SRefLine gs_TPath;
+static std::vector<int> gs_vIncToT;
 // incjump: race ticks over which the incumbent keeps its air jump for a later redirect (no jump presses there)
 static std::vector<std::pair<int, int>> gs_vIncJumpKeep;
 // incumbent resources per race tick (gateres): air jump available after the step, race ticks of its air-jump uses and
@@ -472,6 +480,7 @@ struct SCand
 	float m_Jit = 0;
 	float m_Track = 0; // distance to the incumbent's state at the same progress
 	float m_Lat = 0; // distance to the incumbent's path at the same progress
+	float m_TPD = 1e9f; // tpath: distance to the reference path (position + tpv x velocity)
 	int m_G0Rt = 0; // race tick after the step
 	float m_KInc = 0;
 	float m_TCost = 0;
@@ -1235,6 +1244,26 @@ static void Score(const CFastG &G, SCand &C, const SState &Par)
 	C.m_G = gs_Line.Project(G.m_Core.m_Pos, Par.m_G0, &Lat);
 	C.m_Track = Lat + gs_P.m_TrackV * distance(G.m_Core.m_Vel, gs_Line.VelAt(C.m_G));
 	C.m_Lat = Lat;
+	if(gs_P.m_TPFrac > 0 && !gs_vIncToT.empty())
+	{
+		const int ii = std::clamp((int)std::lround(C.m_G - gs_IncLine.m_Rt0), 0, (int)gs_vIncToT.size() - 1);
+		const int h = gs_vIncToT[ii], n = (int)gs_TPath.m_vP.size();
+		float Bd = 1e9f;
+		int Bj = h;
+		for(int j = std::max(0, h - 10); j <= std::min(n - 2, h + 10); j++)
+		{
+			vec2 A = gs_TPath.m_vP[j], B = gs_TPath.m_vP[j + 1], AB = B - A;
+			float L2 = dot(AB, AB);
+			float u = L2 > 1e-6f ? std::clamp(dot(G.m_Core.m_Pos - A, AB) / L2, 0.0f, 1.0f) : 0.0f;
+			float dd = distance(G.m_Core.m_Pos, A + AB * u);
+			if(dd < Bd)
+			{
+				Bd = dd;
+				Bj = u < 0.5f ? j : j + 1;
+			}
+		}
+		C.m_TPD = Bd + gs_P.m_TPV * distance(G.m_Core.m_Vel, gs_TPath.m_vV[Bj]);
+	}
 	C.m_KInc = gs_TRef ? gs_IncLine.Project(G.m_Core.m_Pos, Par.m_KInc) : C.m_G;
 	C.m_G0Rt = G.RaceTick();
 	float Rt = (float)G.RaceTick();
@@ -1652,6 +1681,10 @@ int main(int argc, const char **argv)
 		else if(K == "freefrac") gs_P.m_FreeFrac = std::stof(V);
 		else if(K == "jumpfrac") gs_P.m_JumpFrac = std::stof(V);
 		else if(K == "linefrac") gs_P.m_LineFrac = std::stof(V);
+		else if(K == "tpath") gs_P.m_TPath = V;
+		else if(K == "tpfrac") gs_P.m_TPFrac = std::stof(V);
+		else if(K == "tpv") gs_P.m_TPV = std::stof(V);
+		else if(K == "tplag") gs_P.m_TPLag = std::stof(V);
 		else if(K == "gateres") std::sscanf(V.c_str(), "%f,%f", &gs_P.m_GateResJ, &gs_P.m_GateResR);
 		else if(K == "linemin") gs_P.m_LineMin = std::stof(V);
 		else if(K == "cellreload") gs_P.m_CellReload = std::stoi(V);
@@ -1807,6 +1840,32 @@ int main(int argc, const char **argv)
 		gs_Ref.m_Rt0 += 1;
 		gs_Line.m_Rt0 = gs_Ref.m_Rt0;
 		gs_IncLine = gs_Line;
+		if(!gs_P.m_TPath.empty())
+		{
+			if(!LoadTrackLine(gs_P.m_TPath.c_str(), 0, 2, gs_TPath))
+			{
+				std::printf("cannot read %s\n", gs_P.m_TPath.c_str());
+				return 1;
+			}
+			// match every incumbent state to the path (monotone, near the previous match)
+			const int n = (int)gs_TPath.m_vP.size();
+			int h = -1;
+			for(const vec2 &P : gs_IncLine.m_vP)
+			{
+				int lo = h < 0 ? 0 : std::max(0, h - 5), hi = h < 0 ? n - 1 : std::min(n - 1, h + 25);
+				int Bj = lo;
+				float Bd = 1e30f;
+				for(int j = lo; j <= hi; j++)
+					if(distance(P, gs_TPath.m_vP[j]) < Bd)
+					{
+						Bd = distance(P, gs_TPath.m_vP[j]);
+						Bj = j;
+					}
+				h = Bj;
+				gs_vIncToT.push_back(h);
+			}
+			std::printf("tpath %s: %d points, incumbent matched %d..%d\n", gs_P.m_TPath.c_str(), n, gs_vIncToT.front(), gs_vIncToT.back());
+		}
 		if(!gs_P.m_TRef.empty())
 		{
 			SRefLine T;
@@ -2534,6 +2593,23 @@ int main(int argc, const char **argv)
 			for(int r = 0; r < Want; r++)
 				vLine.push_back(v[r].second);
 		}
+		// tpath share: the states closest to the reference path (position + velocity), lag as a tie-break
+		std::vector<int> vTP;
+		if(gs_P.m_TPFrac > 0 && NL > 0)
+		{
+			std::vector<std::pair<float, int>> v;
+			for(size_t k = 0; k < vAll.size(); k++)
+			{
+				const SCand &c = vAll[k];
+				if(c.m_Gate || c.m_TPD > 1e8f)
+					continue;
+				v.push_back({c.m_TPD + gs_P.m_TPLag * c.m_Lag0, (int)k});
+			}
+			int Want = std::min((int)v.size(), (int)(gs_P.m_Beam * gs_P.m_TPFrac * 2) + 32);
+			std::partial_sort(v.begin(), v.begin() + Want, v.end());
+			for(int r = 0; r < Want; r++)
+				vTP.push_back(v[r].second);
+		}
 		// rollout lookahead: re-score the preselected candidates by where short rollouts get them
 		if(gs_P.m_RollH > 0 || gs_P.m_ShH > 0)
 		{
@@ -2552,7 +2628,7 @@ int main(int argc, const char **argv)
 				}
 			if(IncSel >= 0 && !vIn[IncSel])
 				vP.push_back(IncSel);
-			for(const auto *pV : {&vSaver, &vJSaver, &vLine})
+			for(const auto *pV : {&vSaver, &vJSaver, &vLine, &vTP})
 				for(int k : *pV)
 					if(!vIn[k])
 					{
@@ -2681,6 +2757,27 @@ int main(int argc, const char **argv)
 		// over 1752-1795 and 1871.6-1874 without (it spent the jump at 1758 and hit the wall at 1803)
 		Reserve(vJSaver, gs_P.m_JumpFrac);
 		Reserve(vLine, gs_P.m_LineFrac);
+		// tpath: Reserve ranks by the raw score, so the path-closest states are taken first here
+		if(gs_P.m_TPFrac > 0 && !vTP.empty())
+		{
+			const int Want = (int)(gs_P.m_Beam * gs_P.m_TPFrac);
+			int Got = 0;
+			for(int k : vTP)
+			{
+				if(Got >= Want)
+					break;
+				if(vTaken[k])
+					continue;
+				const SCand &c = vAll[k];
+				if(Keys.count(c.m_Key) || Cells.count(c.m_Cell))
+					continue;
+				Cells[c.m_Cell] = 1;
+				Keys.insert(c.m_Key);
+				vTaken[k] = 1;
+				vSel.push_back(k);
+				Got++;
+			}
+		}
 		// round robin over the weights
 		std::vector<size_t> vPos(NL, 0);
 		bool Any = true;

@@ -1706,3 +1706,6 @@ approach shot, x_pfscan pre-fires, point-blank) and evaluates each with the two-
   teeroguide / carry stages (the U-turn-1 1.91 line "dead in the dip at beam 30000" ran incjump variants), and the
   rejoin sweep's dip cuts. Also: the gate survival check now passes an arrival when replaying the incumbent's
   (shadow-aimed) inputs from its matched progress survives 30 ticks; gateres only counts incumbent shots after the gate.
+- x_ds tpath=FILE tpfrac=F (new, experimental): a beam share for the states closest to a reference path by position
+  + velocity at the same progress (no timing, unlike tref / ttrack). At the hop (2539 from rt 2225, gate 2305,
+  tpfrac=0.3, Teero's track) both variants still end exactly on the run's line (2304.96 / 2305.00).
