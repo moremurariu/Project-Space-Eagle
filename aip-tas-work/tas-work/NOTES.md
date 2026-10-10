@@ -1749,3 +1749,4 @@ approach shot, x_pfscan pre-fires, point-blank) and evaluates each with the two-
 - **2534 (50.68 s):** optloop round 13 window 1865-2104 (S-bend -> top-left corner), stage 2 1.27 ahead at the rt-2156
   gate, multigraft D=1 at 2119. Teero sweeps 3-6 (diverse offsets) on 2537 / 2536 / 2535: no gain; stopped, the loop
   gets the CPU. optloop: stage-2 gates in front of the fragile sections now move past them (from the next restart).
+- optloop window 1040-1197 (runs/loop/mix/r15/w1040_1197_ch0_v0_sp_k1310_D1.txt): **2533 (50.66 s)**, server-checked.
