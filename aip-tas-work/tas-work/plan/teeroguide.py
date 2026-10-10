@@ -143,8 +143,12 @@ def guide(CUT, TOFF, LABEL):
     tag = os.path.join(d, 'g%d' % CUT)
     pre = tag + '_p.txt'
     open(pre, 'w').writelines(open(run).readlines()[:CUT + 68])
-    jobs = [('%s_t%s_v%d.txt' % (tag, tw, i), v, ['tref=' + TRACK, 'ttrack=' + tw, 'toff=%g' % TOFF])
-            for tw in ('1', '0.5') for i, v in enumerate(VAR[:3])]
+    # tracked jobs: weights x time-offset deltas x variants (defaults: 1 / 0.5, 0, the first three variants)
+    TWS = kw.get('tws', '1,0.5').split(',')
+    DTS = [float(x) for x in kw.get('toffs', '0').split(',')]
+    TVS = [int(x) for x in kw.get('tvars', '0,1,2').split(',')]
+    jobs = [('%s_t%s_o%g_v%d.txt' % (tag, tw, dt, i), VAR[i], ['tref=' + TRACK, 'ttrack=' + tw, 'toff=%g' % (TOFF + dt)])
+            for tw in TWS for dt in DTS for i in TVS]
     with ThreadPoolExecutor(CORES) as ex:
         res = list(ex.map(lambda j: (xds(pre, 'gate=rt%d' % LABEL, j[0], j[1], j[2]), j[0]), jobs))
     log('cut %d toff %g to his label %d (run %d): tracked %d of %d' % (CUT, TOFF, LABEL, FIN, sum(r[0] is not None for r in res), len(res)))
