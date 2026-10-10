@@ -1710,3 +1710,8 @@ approach shot, x_pfscan pre-fires, point-blank) and evaluates each with the two-
   + velocity at the same progress (no timing, unlike tref / ttrack). At the hop (2539 from rt 2225, gate 2305,
   tpfrac=0.3, Teero's track) both variants still end exactly on the run's line (2304.96 / 2305.00).
 - carry pickup stretch (Teero-tracked 1055-1108) (stage 1, splice at 1298, 1 ticks early) (runs/tg/pk/sp_2538_k1298_D1.txt): **2538 (50.76 s)**, server-checked.
+  (2538: the Teero sweep's pickup stretch (cut 1055, his label 1108) gave an untracked line 1.05 ahead at the
+  U-turn-1 approach gate 1171, same speeds through the turn; carry.py (beam 30000, the fixed incjump) stage 0 to 1304,
+  stage 1 from 1289 to 1446 rejoined the run's states one tick early: spliced at 1298, finish 2538, server-checked.)
+- teeroguide now hands untracked lines that are a whole tick ahead but not yet on the run's states to carry.py.
+  Sweep restarted on 2538 (runs/tg/sw2).
