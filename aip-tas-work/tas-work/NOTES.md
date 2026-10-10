@@ -1482,3 +1482,7 @@ dir, jump, cursor aim, shots with aim, certainties; best effort, not exact) and 
   (+2.8): sum 34 (all of them would give ~2503). Tracked leads: shaft 2.09 at 1521 (carried: gone, -13..-26), shaft
   exit 1.2 at 1623 (gone, -8..-13), S-bend 1.13 at 1959 (untracked re-search level), hop 0.65, maze 0.47, U-turn 1
   0.10, pickup 0.02: no gain.
+- sweet-maxwell 2537 (their optloop maze-entrance window 2358-2484, splice at 2502) vs our 2537: same to 1930, their
+  S-bend arc after it, then ~1 behind ours from 2100 to 2475 and level at 2500 (the maze gain). Our 2537 grafted onto
+  theirs (multigraft LINE = ours, RUN = theirs, cuts 2396-2470): D=1 at 2421-2436 -> **2536 (50.72 s)**, equal to
+  Teero's 2536, server-checked (TasReplay finish tick 2604; TasServer).
