@@ -1467,3 +1467,7 @@ dir, jump, cursor aim, shots with aim, certainties; best effort, not exact) and 
 - optloop round 25 (two-turn windows) on 2540, S-bend window 1836-2021: x_opt's kv-0.15 archived plan (lead 0.91,
   |v| +1.75) stage 2 2110.80 at the rt-2112 gate -> x_graft D=1 at cut 2022: **2539 (50.78 s)**, server-checked
   (TasReplay finish tick 2607; TasServer). sweet-maxwell 2542 is our 2540 to 1950 and behind after it.
+- sweet-maxwell 2540 (Teero's S-bend arc, carried with beam 20000-30000 re-searches) vs our 2539: +1.8..+2.4 at
+  1960-1975 on our line, then behind from 2050 (our 2022 S-bend graft). multigraft at 1962-1996 (D 1-2) and x_graft beam
+  30000 horizon 90 at 1972 / 1982 / 1992: no graft (different S-bend structures). optsweep stages now use beam 10000 /
+  16000 (their fragility benchmark: beam 4000 from a slightly changed state ends 3-30 behind, beam 30000 level).
