@@ -54,6 +54,8 @@ def finish(path):
 
 
 R0 = int(kw.get('r0', 0))
+# race-tick ranges (2535's timeline, a few ticks of drift do not matter) whose gates move past them
+FRAGILE = [(1232, 1268), (1535, 1562), (1745, 1790), (2050, 2088), (2212, 2258)]
 for r in range(R0, R0 + ROUNDS):
     rd = os.path.join(d, 'r%d' % r)
     os.makedirs(rd, exist_ok=True)
@@ -75,6 +77,12 @@ for r in range(R0, R0 + ROUNDS):
         g2 = min(nxt, fin + 20)
         if g2 - end < 40:
             g2 = min(end + 80, fin + 20)
+        # a stage-2 gate in front of a fragile section (the dip, the shaft double kick, the 1800 U-turn, the top-left
+        # descent, the hop) rates leads that die right after it (Oct 10: every 1549-1551 lead died in the shaft):
+        # such gates move past the section
+        for za, zb in FRAGILE:
+            if za <= g2 <= zb:
+                g2 = min(zb + 25, fin + 20)
         wins.append('%d:%d:%d:%d' % (cut, end, end - 10, g2))
     rng.shuffle(wins)
     kv = KVS[r % len(KVS)]
