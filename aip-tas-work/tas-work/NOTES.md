@@ -1687,3 +1687,14 @@ approach shot, x_pfscan pre-fires, point-blank) and evaluates each with the two-
   onto the run's inputs shifted by one tick finishes one tick earlier. Leads that end in a fragile spot (the dip at
   1275-1300, the 1800 U-turn) die there even at beam 30000. plan/teeroguide.py sweep runs this on every stretch
   where Teero gains (analysis/lagat.py on the current best, matched points only).
+- Teero sweep (runs/tg/sw1) and side tests on 2539, no gain so far: hop (cut 2240; the lag map jumps -11.7 -> -18 at
+  the hop, an artifact of projecting an out-and-back; teeroguide now drops such jumps), left U-turn exit 1485 (2.06
+  ahead at 1548, dead in the shaft: 8-13 behind at 1596, and 12.5 behind at beam 30000 - the line's gun phase cannot
+  make the shaft double kick), corner exit 2095 (0.75 at 2128, 1 behind after the hop), S-bend exit 1985 (0.61, 14
+  behind at the top-left corner), top-left hump tracked over 2040 -> his label 2140 (runs/tg/tl: **3.43 ahead at the
+  apex 2080**, 2.8-5 behind at 2159 after the descent; his descent kick is ~6 ticks after the apex, ours at it).
+- Same pattern at three humps (S-bend pillar, top-left, hop): Teero crosses lower and faster, our run higher. At the
+  hop, x_ds without shadow rollouts (shh=0) still reproduces the run exactly; without any incumbent guidance (shh=0
+  shadow=0 trackfrac=0, linefrac=0.3) it is 14 behind at 2305: the search only works near the run's own line.
+- Time-tracking with a fixed offset pulls a line that got ahead of the reference back to it (the tracked lines peak
+  at the hump and lose afterwards); teeroguide therefore re-searches untracked from just before the peak.
