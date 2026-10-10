@@ -1649,3 +1649,19 @@ approach shot, x_pfscan pre-fires, point-blank) and evaluates each with the two-
   arrivals without the air jump the incumbent has there and uses within 100 ticks cost J ticks, R per tick the gun is
   still loading when the incumbent next fires. With gateres=5,0.3 the corner arrivals keep the jump; the hop chains
   still die (the missing 2160 kick).
+- Corner chain with beam 20000 (+ gateres, cellreload, shlate=4): 1.05 ahead at the rt-2165 gate with the run's own
+  2147 + 2159 kick pair (runs/stop/gb_24); multigraft 2120-2161 all fail; chained on it keeps 0.95 to rt 2185, then
+  the bottom-left turning kick (2185, cos 0.20 vs the run's 0.28; it enters 2.8 px/t faster) loses it by 2230.
+- **Search fragility (plan/xdsbench.py, runs/pb):** x_ds from 2541's own state at a cut to cut + 150 (rf_mix, best of 4
+  variants, ticks behind the run), unperturbed / +0.5 px/t (boost=0.5) / -0.5 px/t: 1300 0.00 / **+3.05** / 0.00;
+  1500 +0.17 / +0.23 / +0.29; 1700 0.00 / **+3.73** / **+30.2**; 1900 -1.76 / -0.78 / -0.61. A 1% speed change at
+  the dip (1300) or before the 1800 U-turn (1700) costs the search 3-30 ticks: the run's solution there is knife-edge
+  and x_ds only finds it by replaying the run (shadow). That is why every upstream gain dies downstream: the S-bend line,
+  the U-turn-1 and shaft structures, the optloop chains. (1900 -1.76: a line 1.7 ahead at the corner approach rt 2045.)
+- teeroguide.py at the hop (runs/tg): tracking Teero from rt 2265 (hop exit) to his label 2335 gives no lead (0.7-4.9
+  behind at the end); from 2228 (before the hop) 5-12 behind. Tracking from 1480 over the left U-turn exit: 1.0-1.6
+  ahead at 1520-1550, then dead in the shaft (no double kick). His hop-exit and 1490-1550 speed come from shots /
+  lines our state there does not allow.
+- finsweep.py (new): x_ds from the run's own state straight to the finish: cuts 2160 / 2200 / 2240 -> 2541 at best
+  (converged, like the final-maze sweep).
+- optloop resumed from round 8 with plan/dschain_variants_rf_mix2.txt (rf_mix + gateres=5,0.3).
