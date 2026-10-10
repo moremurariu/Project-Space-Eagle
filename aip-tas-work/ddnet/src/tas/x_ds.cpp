@@ -1440,6 +1440,32 @@ static STasInput ShadowInput(long Idx, const CFastG &G, const STasInput &Prev)
 
 // shadow rollouts: follow the incumbent's own inputs (from the matched progress point, offsets 0..n-1) for H ticks on
 // the exact stepper; returns the best end lag and its energy (lag at H ticks: race tick - progress)
+// gate survival by the incumbent's own continuation: the arrival state replays the incumbent's (shadow-aimed) inputs
+// from its matched progress (offsets 0, -1, +1) for N ticks without dying. The constant-input check alone rejected the
+// incumbent's own state at the rt-1355 gate after the dip (Oct 10): x_ds from 2539's own rt-1275 state ended 8.7 behind
+// with a surviving worse arrival, and incforce=1 did not help
+static bool SurvivesInc(const CFastG &G0, float K, int N)
+{
+	for(int o : {0, -1, 1})
+	{
+		CFastG F = G0;
+		bool Ok = true;
+		for(int t = 0; t < N && Ok; t++)
+		{
+			long Idx = (long)std::floor(K) + o + t + gs_IncStart;
+			if(Idx < 1 || Idx >= (long)gs_vIncIn.size())
+				break;
+			STasInput In = ShadowInput(Idx, F, gs_vIncIn[Idx - 1]);
+			F.Step(In);
+			if(F.m_Dead || F.m_Bad)
+				Ok = false;
+		}
+		if(Ok)
+			return true;
+	}
+	return false;
+}
+
 static void ShadowEval(const CFastG &G0, float K0, float KI0, int H, int NOff, float LamMid, float &LagOut, float &EOut, bool &Any)
 {
 	float BestS = 1e30f;
@@ -1529,7 +1555,7 @@ static float GateResPen(const SState &Par, const SCand &c, int GateRt)
 	}
 	if(gs_P.m_GateResR > 0)
 		for(int f : gs_vIncFireRt)
-			if(f > GateRt - 3)
+			if(f > GateRt)
 			{
 				// the gun must be loaded at the state before the incumbent's next firing input
 				int Free = S.m_G.RaceTick() + S.m_G.m_ReloadTimer;
@@ -2012,9 +2038,12 @@ int main(int argc, const char **argv)
 						return;
 					if((In.m_Fire || pR1) && G.RaceTick() + 1 >= gs_P.m_NoKick0 && G.RaceTick() + 1 <= gs_P.m_NoKick1 && (!IsInc || gs_P.m_NoKickAll))
 						return;
-					if(In.m_Jump && !Prev.m_Jump && G.RaceTick() + 1 >= gs_P.m_NoJump0 && G.RaceTick() + 1 <= gs_P.m_NoJump1 && !IsInc)
+					// nojump / incjump keep the AIR jump: a press on the ground is a ground jump and does not use it (2539 jumps off
+					// the block at the dip bottom at rt 1277, inside its 1151-1311 kept window; forbidding it there made x_ds
+					// lose the run's own line from rt 1275: 8.7 behind at the rt-1355 gate)
+					if(In.m_Jump && !Prev.m_Jump && !Grounded && G.RaceTick() + 1 >= gs_P.m_NoJump0 && G.RaceTick() + 1 <= gs_P.m_NoJump1 && !IsInc)
 						return;
-					if(gs_P.m_IncJump && In.m_Jump && !Prev.m_Jump && !IsInc && IncJumpKept(G.RaceTick() + 1))
+					if(gs_P.m_IncJump && In.m_Jump && !Prev.m_Jump && !Grounded && !IsInc && IncJumpKept(G.RaceTick() + 1))
 						return;
 					Tmp = S;
 					if(pR1)
@@ -2369,7 +2398,7 @@ int main(int argc, const char **argv)
 					for(int r = 0; r < c.m_NR; r++)
 						ApplyRetro(S, c.m_aR[r]);
 					S.m_G.Step(c.m_In);
-					Ok = Survives(S.m_G, c.m_In, gs_P.m_GateSurv);
+					Ok = Survives(S.m_G, c.m_In, gs_P.m_GateSurv) || (gs_P.m_TRef.empty() && SurvivesInc(S.m_G, c.m_G, gs_P.m_GateSurv));
 					Checked++;
 				}
 				if(!Ok)
