@@ -1673,3 +1673,10 @@ approach shot, x_pfscan pre-fires, point-blank) and evaluates each with the two-
   to the rt-2289 gate (bb23: exactly the run's states one tick early from ~2247, through the bottom-left turn and the
   hop) -> spliced at 2247 onto 2541's inputs one tick shifted (bb23[:2247+68] + 2541[2247+69:]): kog_full_2540.txt,
   server-checked (TasReplay finish tick 2608, no freeze). Teero's lower, faster arc over the S-bend pillar.
+- **2539 (50.78 s):** Teero's U-turn-1 exit: teeroguide (runs/tg/u1) from 2540's rt 1150 tracking his track (toff -16)
+  to his label 1275: t1150_1_v1 1.28 ahead at 1238 (t1150_0.5_v1 1.91 at 1247, but every re-search from it dies in
+  the dip, 3.5 behind at 1305 even at beam 30000); untracked x_ds (beam 12000, gateres) from its 1235 state: exactly
+  the run's states one tick early from ~1250 (1303.88 at the rt-1305 gate); spliced at 1284 onto 2540's inputs one tick
+  shifted: kog_full_2539.txt, server-checked (TasReplay finish tick 2607, no freeze).
+- Corner (2060-2178) tracking Teero from the S-bend line: 2.4-3.4 ahead at 2080 on his lower line, 6-11 behind by
+  2160 (as before: his corner line does not work from our states).
