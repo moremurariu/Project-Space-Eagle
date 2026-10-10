@@ -1489,3 +1489,8 @@ dir, jump, cursor aim, shots with aim, certainties; best effort, not exact) and 
 - optloop round 37 on 2536, window 1008-1208 (right after the pickup through U-turn 1; possible since windows may start
   at rt 972): x_opt graftable plan (gw 0.1: lead 0.75, |dv| 0.17) stage 2 1286.96 at the rt-1288 gate -> x_graft D=1
   at cut 1241: **2535 (50.70 s)**, 1 tick faster than Teero, server-checked (TasReplay finish tick 2603; TasServer).
+- sweet-maxwell 2536 (their optloop window 1483-1615) vs our 2535: -1 from 1200 (no 1008-1208 gain), level by 1615
+  (their shaft gain), exactly our line 1700-1930, then their S-bend (-1). Direct three-part splice: our inputs to rt
+  1400 + theirs from 1401 (one tick early) to 1800 + ours from 1802: **2534 (50.68 s)**, server-checked (TasReplay
+  finish tick 2602; TasServer). (Second splice at 1750 / 1850 / 1900 does not finish: the states match exactly only
+  near 1800.)
