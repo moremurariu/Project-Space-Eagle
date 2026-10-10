@@ -1477,3 +1477,8 @@ dir, jump, cursor aim, shots with aim, certainties; best effort, not exact) and 
   finish tick 2605; TasServer). 1 tick behind Teero.
 - x_ds fixes merged from sweet-maxwell: incjump / nojump blocked ground jumps (hit rf_mix seeds 22 / 23 in our rotation);
   gate survival by the incumbent's continuation; gateres; rf_mix2 replaces rf_mix in optloop's variant rotation.
+- teeroguide.py sweep (sweet-maxwell's tool) on 2537: stretches where Teero gains 1005-1055 (+1.6), 1140-1280 (+2.0),
+  1490-1585 (+8.1), 1595-1675 (+2.2), 1705-1785 (+1.7), 1945-2170 (+4.8), 2240-2385 (+7.4), 2395-2465 (+3.7), 2495-2535
+  (+2.8): sum 34 (all of them would give ~2503). Tracked leads: shaft 2.09 at 1521 (carried: gone, -13..-26), shaft
+  exit 1.2 at 1623 (gone, -8..-13), S-bend 1.13 at 1959 (untracked re-search level), hop 0.65, maze 0.47, U-turn 1
+  0.10, pickup 0.02: no gain.
