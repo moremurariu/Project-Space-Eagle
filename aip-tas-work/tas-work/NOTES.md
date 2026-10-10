@@ -1486,3 +1486,6 @@ dir, jump, cursor aim, shots with aim, certainties; best effort, not exact) and 
   S-bend arc after it, then ~1 behind ours from 2100 to 2475 and level at 2500 (the maze gain). Our 2537 grafted onto
   theirs (multigraft LINE = ours, RUN = theirs, cuts 2396-2470): D=1 at 2421-2436 -> **2536 (50.72 s)**, equal to
   Teero's 2536, server-checked (TasReplay finish tick 2604; TasServer).
+- optloop round 37 on 2536, window 1008-1208 (right after the pickup through U-turn 1; possible since windows may start
+  at rt 972): x_opt graftable plan (gw 0.1: lead 0.75, |dv| 0.17) stage 2 1286.96 at the rt-1288 gate -> x_graft D=1
+  at cut 1241: **2535 (50.70 s)**, 1 tick faster than Teero, server-checked (TasReplay finish tick 2603; TasServer).
