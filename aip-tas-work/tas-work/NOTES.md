@@ -1716,3 +1716,5 @@ approach shot, x_pfscan pre-fires, point-blank) and evaluates each with the two-
 - teeroguide now hands untracked lines that are a whole tick ahead but not yet on the run's states to carry.py.
   Sweep restarted on 2538 (runs/tg/sw2).
 - optloop window 2358-2484 (runs/loop/mix/r10/w2358_2484_v1_sp_k2502_D1.txt): **2537 (50.74 s)**, server-checked.
+  (2537: optloop round 10 window 2358-2484 (final-maze approach): its stage-2 line spliced onto the run one tick
+  early at rt 2502 by the new fast splice test in optsweep (no x_graft needed).)
