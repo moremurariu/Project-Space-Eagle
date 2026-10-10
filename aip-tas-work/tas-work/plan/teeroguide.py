@@ -23,6 +23,9 @@ d = os.path.abspath(sys.argv[1])
 SWEEP = sys.argv[2] == 'sweep'
 kw = dict(a.split('=', 1) for a in sys.argv[2:] if '=' in a)
 CORES, BEAM, G2 = int(kw.get('cores', 4)), kw.get('beam', '8000'), kw.get('gate2', 'auto')
+# the reference track ("label x y" per tick): Teero's video track, or 'self' = the run's own path (time-shifted by toff:
+# toff = -1.5 asks the tracked search to be 1.5 ticks ahead of the run along its own path)
+TRACK = kw.get('track', os.path.join(TW, 'teero_track.txt'))
 VAR = [l.strip() for l in open(os.path.join(HERE, kw.get('vars', 'dschain_variants_rf_mix.txt'))) if l.strip() and not l.startswith('#')]
 os.makedirs(d, exist_ok=True)
 LOG = open(os.path.join(d, 'log'), 'a')
@@ -140,7 +143,7 @@ def guide(CUT, TOFF, LABEL):
     tag = os.path.join(d, 'g%d' % CUT)
     pre = tag + '_p.txt'
     open(pre, 'w').writelines(open(run).readlines()[:CUT + 68])
-    jobs = [('%s_t%s_v%d.txt' % (tag, tw, i), v, ['tref=' + os.path.join(TW, 'teero_track.txt'), 'ttrack=' + tw, 'toff=%g' % TOFF])
+    jobs = [('%s_t%s_v%d.txt' % (tag, tw, i), v, ['tref=' + TRACK, 'ttrack=' + tw, 'toff=%g' % TOFF])
             for tw in ('1', '0.5') for i, v in enumerate(VAR[:3])]
     with ThreadPoolExecutor(CORES) as ex:
         res = list(ex.map(lambda j: (xds(pre, 'gate=rt%d' % LABEL, j[0], j[1], j[2]), j[0]), jobs))
@@ -236,7 +239,20 @@ run = os.path.join(d, 'run.txt')
 subprocess.run(['cp', BEST, run])
 FIN = finish(run)
 AP = apexes(trace(run, 990))
-if not SWEEP:
+if TRACK == 'self':
+    TRACK = os.path.join(d, 'self_track.txt')
+    with open(TRACK, 'w') as f:
+        for t, v in sorted(trace(run, 960).items()):
+            f.write('%d %.2f %.2f\n' % (t, v[0], v[1]))
+if not SWEEP and 'cuts' in kw:
+    # self / any track over a list of cuts: track from each cut to cut + span at offset toff
+    for c in [int(x) for x in kw['cuts'].split(',')]:
+        try:
+            guide(c, float(kw.get('toff', -1.5)), c + int(kw.get('span', 60)))
+            AP = apexes(trace(run, 990))
+        except Exception as ex:
+            log('cut %d: error %r' % (c, ex))
+elif not SWEEP:
     guide(int(sys.argv[2]), float(sys.argv[3]), int(sys.argv[4]))
 else:
     segs = stretches(int(kw.get('from', 1000)), int(kw.get('to', 2540)), float(kw.get('min', 1.0)))
