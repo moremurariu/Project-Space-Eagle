@@ -1471,3 +1471,9 @@ dir, jump, cursor aim, shots with aim, certainties; best effort, not exact) and 
   1960-1975 on our line, then behind from 2050 (our 2022 S-bend graft). multigraft at 1962-1996 (D 1-2) and x_graft beam
   30000 horizon 90 at 1972 / 1982 / 1992: no graft (different S-bend structures). optsweep stages now use beam 10000 /
   16000 (their fragility benchmark: beam 4000 from a slightly changed state ends 3-30 behind, beam 30000 level).
+- sweet-maxwell 2538 (their pickup stretch: x_ds tracking Teero 1055-1108, carried with big-beam stages and spliced at
+  1298 one tick early onto their line) vs our 2539: exactly +2.00 on our line (0 px) from 1300 to 1900. Direct splice
+  (their inputs to rt 1600 + ours from 1602; also at 1400 / 1800): **2537 (50.74 s)**, server-checked (TasReplay
+  finish tick 2605; TasServer). 1 tick behind Teero.
+- x_ds fixes merged from sweet-maxwell: incjump / nojump blocked ground jumps (hit rf_mix seeds 22 / 23 in our rotation);
+  gate survival by the incumbent's continuation; gateres; rf_mix2 replaces rf_mix in optloop's variant rotation.
