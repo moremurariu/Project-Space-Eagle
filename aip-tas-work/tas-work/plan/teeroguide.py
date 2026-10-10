@@ -227,7 +227,7 @@ def stretches(lo, hi, mn):
         while j + 1 < len(G) and G[j + 1][1] >= G[j][1] - 0.15:
             j += 1
         if G[j][1] - G[i][1] >= mn:
-            segs.append((G[i][0], G[j][0], G[j][1] - G[i][1], G[i][1], int(round(G[j][0] - G[j][1])) + 3))
+            segs.append((G[i][0], G[j][0], G[j][1] - G[i][1], G[i][1], min(int(round(G[j][0] - G[j][1])) + 3, 2532)))  # his track ends at 2538
         i = j + 1
     return segs
 
