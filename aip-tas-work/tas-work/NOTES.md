@@ -1698,3 +1698,11 @@ approach shot, x_pfscan pre-fires, point-blank) and evaluates each with the two-
   shadow=0 trackfrac=0, linefrac=0.3) it is 14 behind at 2305: the search only works near the run's own line.
 - Time-tracking with a fixed offset pulls a line that got ahead of the reference back to it (the tracked lines peak
   at the hump and lose afterwards); teeroguide therefore re-searches untracked from just before the peak.
+- **x_ds bug (fixed Oct 10, 03:5x): incjump / nojump blocked ground jumps.** They forbid jump presses (for lineages
+  other than the incumbent's own) in the run's kept-air-jump windows, but a press on the ground is a ground jump and
+  does not use the air jump. 2539 jumps off the block at the dip bottom at rt 1277 inside its 1151-1311 window, so
+  from its own rt-1275 state x_ds seed 23 (incjump=1) lost the run's line at once (8.7 behind at the rt-1355 gate;
+  incforce=1 did not help); now 1354.90. It hit rf_mix seeds 22 / 23 in every optloop round since round 2, the
+  teeroguide / carry stages (the U-turn-1 1.91 line "dead in the dip at beam 30000" ran incjump variants), and the
+  rejoin sweep's dip cuts. Also: the gate survival check now passes an arrival when replaying the incumbent's
+  (shadow-aimed) inputs from its matched progress survives 30 ticks; gateres only counts incumbent shots after the gate.
