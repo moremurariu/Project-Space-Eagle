@@ -1709,3 +1709,4 @@ approach shot, x_pfscan pre-fires, point-blank) and evaluates each with the two-
 - x_ds tpath=FILE tpfrac=F (new, experimental): a beam share for the states closest to a reference path by position
   + velocity at the same progress (no timing, unlike tref / ttrack). At the hop (2539 from rt 2225, gate 2305,
   tpfrac=0.3, Teero's track) both variants still end exactly on the run's line (2304.96 / 2305.00).
+- carry pickup stretch (Teero-tracked 1055-1108) (stage 1, splice at 1298, 1 ticks early) (runs/tg/pk/sp_2538_k1298_D1.txt): **2538 (50.76 s)**, server-checked.
