@@ -1735,3 +1735,5 @@ approach shot, x_pfscan pre-fires, point-blank) and evaluates each with the two-
 - New tools: plan/teeroguide.py (sweep), plan/carry.py, plan/rejoin.py, plan/finsweep.py, analysis/lagat.py /
   lagvs.py / stretchvs.py; x_ds linefrac, gateres, tpath, incumbent-continuation gate survival, the incjump fix;
   optsweep beam2=16000 + splice test.
+- Self-guided tracking (teeroguide track=self: the run's own path, target 1.5 ticks earlier) at cuts 1100 / 1180 / 1330:
+  on-line leads 0.0-0.34; the tracked searches cannot hold the earlier schedule. Stopped.
