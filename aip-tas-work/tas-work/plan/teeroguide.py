@@ -164,8 +164,9 @@ def guide(CUT, TOFF, LABEL):
             if G2 == 'finish':
                 g, gt = 'gate=finish', FIN
             elif G2 == 'auto':
-                nx = [a for a in AP if a > c2 + 25]
-                gt = min(nx[0] + 30 if nx else FIN, FIN)
+                # a short stage (the tracked lead is made clean; the big-beam carry takes the hard sections after it:
+                # beam-12000 stages to the next apex + 30 died in the hop / shaft / 1800 U-turn)
+                gt = min(c2 + 45, FIN)
                 g = 'gate=finish' if gt >= FIN - 3 else 'gate=rt%d' % gt
             else:
                 g, gt = 'gate=rt%s' % G2, int(G2)
