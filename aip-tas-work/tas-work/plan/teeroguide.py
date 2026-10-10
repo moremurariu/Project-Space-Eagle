@@ -187,6 +187,18 @@ def guide(CUT, TOFF, LABEL):
                             best = b
             if best:
                 break
+            # a whole tick ahead at the gate but not on the run's states yet: carried on by big-beam stages (carry.py;
+            # 2539 -> 2538: a pickup-stretch line 1.05 ahead at the U-turn-1 approach rejoined one tick early at 1298)
+            if rr and rr[0][0] <= gt - 0.9 and gt < FIN - 3:
+                cd = rr[0][1][:-4] + '_carry'
+                subprocess.run(['python3', os.path.join(HERE, 'carry.py'), cd, rr[0][1], str(gt - 15), 'cores=%d' % CORES, 'stages=4',
+                                'what=Teero-tracked from %d, carried' % CUT], capture_output=True)
+                cl = open(os.path.join(cd, 'log')).read() if os.path.exists(os.path.join(cd, 'log')) else ''
+                log('  carry %s: %s' % (os.path.basename(rr[0][1]), ' | '.join(l[9:] for l in cl.strip().splitlines()[-2:])))
+                if 'NEW BEST' in cl:
+                    subprocess.run(['cp', BEST, run])
+                    FIN = finish(run)
+                    return True
         if best:
             break
     if best and publish(best[3], best[0], 'cut %d (Teero tracked to his label %d)' % (CUT, LABEL)):
