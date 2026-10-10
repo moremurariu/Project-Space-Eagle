@@ -1494,3 +1494,6 @@ dir, jump, cursor aim, shots with aim, certainties; best effort, not exact) and 
   1400 + theirs from 1401 (one tick early) to 1800 + ours from 1802: **2534 (50.68 s)**, server-checked (TasReplay
   finish tick 2602; TasServer). (Second splice at 1750 / 1850 / 1900 does not finish: the states match exactly only
   near 1800.)
+- sweet-maxwell 2534 (their S-bend window 1865-2104) vs our 2534: exactly our line one tick late to 1900, then ~1.2
+  better through the S-bend, level with ours from 2300. Direct splice (our inputs to rt 1700 + theirs from 1701; also at
+  1300-1800): **2533 (50.66 s)**, 3 ticks faster than Teero, server-checked (TasReplay finish tick 2601; TasServer).
