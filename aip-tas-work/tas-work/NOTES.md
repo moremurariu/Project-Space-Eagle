@@ -1746,3 +1746,6 @@ approach shot, x_pfscan pre-fires, point-blank) and evaluates each with the two-
   1.98 ahead at the rt-2079 gate, multigraft D=1 at 2062 (runs/loop/mix/r12/w1869_1999_v1_mg/g_c2062_D1.txt).
   Round 12 (stage-2 / chain beam 16000, fixed incjump, splice test): 2537 -> 2536 -> 2535.
 - optloop window 1865-2104 (runs/loop/mix/r13/w1865_2104_v3_mg/g_c2119_D1.txt): **2534 (50.68 s)**, server-checked.
+- **2534 (50.68 s):** optloop round 13 window 1865-2104 (S-bend -> top-left corner), stage 2 1.27 ahead at the rt-2156
+  gate, multigraft D=1 at 2119. Teero sweeps 3-6 (diverse offsets) on 2537 / 2536 / 2535: no gain; stopped, the loop
+  gets the CPU. optloop: stage-2 gates in front of the fragile sections now move past them (from the next restart).
