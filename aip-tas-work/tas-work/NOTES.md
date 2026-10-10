@@ -1745,3 +1745,4 @@ approach shot, x_pfscan pre-fires, point-blank) and evaluates each with the two-
 - **2535 (50.70 s), one tick under Teero:** optloop round 12 window 1869-1999 (S-bend approach -> exit), stage 2
   1.98 ahead at the rt-2079 gate, multigraft D=1 at 2062 (runs/loop/mix/r12/w1869_1999_v1_mg/g_c2062_D1.txt).
   Round 12 (stage-2 / chain beam 16000, fixed incjump, splice test): 2537 -> 2536 -> 2535.
+- optloop window 1865-2104 (runs/loop/mix/r13/w1865_2104_v3_mg/g_c2119_D1.txt): **2534 (50.68 s)**, server-checked.
