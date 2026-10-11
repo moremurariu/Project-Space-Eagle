@@ -1835,3 +1835,8 @@ approach shot, x_pfscan pre-fires, point-blank) and evaluates each with the two-
 - **srvfin.sh now replays on every build present (plain gcc, gcc FMA, clang FMA contract=on) and passes a run only if
   all finish with the same time and no frozen tick.** kog_full_best.txt reset to **2535 (50.70 s)**, the best run valid
   on both builds; kog_full_2534 / 2533 / 2531 are kept for their lines but are NOT valid runs.
+- **2534 (50.68 s), valid on all three builds** (plain gcc, gcc FMA, clang FMA): 2535 + the pickup-stretch gain of the
+  old 2533 (its inputs to line 1378, then 2535's from line 1380: the old 2533 rejoined 2534/2535's states one tick early
+  at race 1310). The old 2534 / 2533 / 2531 moved to invalid/. The old S-bend window line (2534's gain) is what puts
+  the tee on the freeze corner at 2099; the hop gain of 2531 does not transfer onto the new 2534 by splicing (the old
+  2533 is 1 px off 2535's line after its 2119 graft) and is re-searched on the new run.
