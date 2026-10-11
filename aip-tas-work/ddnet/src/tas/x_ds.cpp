@@ -1734,6 +1734,7 @@ int main(int argc, const char **argv)
 		else if(K == "fpw") gs_P.m_FPW = std::stoi(V);
 		else if(K == "fpg") gs_P.m_FPG = std::stoi(V);
 		else if(K == "gatelat") gs_P.m_GateLat = std::stof(V);
+		else if(K == "frzshift") std::sscanf(V.c_str(), "%d,%d,%d", &CFastG::ms_FrzShift, &CFastG::ms_FrzT0, &CFastG::ms_FrzT1);
 		else if(K == "fpinc") gs_P.m_FPInc = std::stoi(V);
 		else if(K == "nofire") std::sscanf(V.c_str(), "%d,%d", &gs_P.m_NoFire0, &gs_P.m_NoFire1);
 		else if(K == "nokick") std::sscanf(V.c_str(), "%d,%d", &gs_P.m_NoKick0, &gs_P.m_NoKick1);

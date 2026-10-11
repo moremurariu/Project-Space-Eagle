@@ -49,6 +49,10 @@ public:
 	// call after CTasGame::LoadMap
 	static void Init();
 	static CTeamsCore ms_Teams;
+	// freeze margin (search only): in race ticks ms_FrzT0..ms_FrzT1 a move also counts as frozen if DDNet's 1-px
+	// sampling hits freeze with the move shifted by up to ms_FrzShift px in x and y (another platform's float rounding
+	// can move the tee by a pixel: 2531 froze at line 2167 on FMA builds)
+	static int ms_FrzShift, ms_FrzT0, ms_FrzT1;
 
 	CCharacterCore m_Core;
 	vec2 m_Pos = vec2(0, 0); // CCharacter::m_Pos (after the last move)

@@ -413,6 +413,12 @@ void CFastG::Step(const STasInput &In)
 		Move = gs_vFlags[TileAt(m_Pos.x, m_Pos.y)];
 	if(Move & FL_FREEZE)
 		m_Dead = true;
+	if(ms_FrzShift > 0 && !m_Dead && m_StartTick >= 0 && RaceTick() >= ms_FrzT0 && RaceTick() <= ms_FrzT1)
+		for(int sx = -ms_FrzShift; sx <= ms_FrzShift && !m_Dead; sx++)
+			for(int sy = -ms_FrzShift; sy <= ms_FrzShift && !m_Dead; sy++)
+				if((sx || sy) && (MoveFlags(m_PrevPos + vec2(sx, sy), m_Pos + vec2(sx, sy)) & FL_FREEZE))
+					m_Dead = true;
 	if(m_StartTick == -2)
 		m_Dead = true;
 }
+int CFastG::ms_FrzShift = 0, CFastG::ms_FrzT0 = 0, CFastG::ms_FrzT1 = -1;
