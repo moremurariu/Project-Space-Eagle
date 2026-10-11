@@ -1783,3 +1783,4 @@ approach shot, x_pfscan pre-fires, point-blank) and evaluates each with the two-
   (2286.5 at the rt-2300 gate, "13.5 ahead") is a geodesic artifact of the open room: leads are measured by place.
 - plan/teerofp.py (new): Teero's shots mapped by place onto the run (teero/shots_sim.tsv) as a fire plan + light
   tracking, x_ds from CUT to END, lead by place, carry.py on a whole-tick lead.
+- carry hop with Teero's lob onto the block over the right channel (fire plan + tracking) (runs/fp/carry_h05/s2_v0.txt): **2531 (50.62 s)**, server-checked.
