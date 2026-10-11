@@ -464,7 +464,7 @@ struct SNode
 static std::vector<std::vector<SNode>> gs_vHist; // per step
 static long gs_NPre = 0, gs_NSel = 0, gs_NSurv = 0;
 static std::atomic<long> gs_NStackTry{0}, gs_NStackEmit{0}, gs_NCanPB{0}, gs_NOldR{0}, gs_NPBAims{0};
-static std::atomic<long> gs_NRetroFound{0}, gs_NRetroEmit{0}, gs_NFireEmit{0}, gs_NFireTry{0};
+static std::atomic<long> gs_NRetroFound{0}, gs_NRetroEmit{0}, gs_NFireEmit{0}, gs_NFireTry{0}, gs_NFPLob{0};
 static int gs_T0 = 0; // tick of the root state
 static vec2 gs_RootPos;
 static int gs_RootRt = 0;
@@ -609,8 +609,11 @@ static int ReloadFrom(const SState &S, int Tick)
 		R = std::max(R, 25 - (Tick - S.m_aFire[i]));
 	return std::max(0, R);
 }
-// fireplan: planned race ticks and their grace
+// fireplan: planned race ticks and their grace; a window may name a lob target (T+G@X:Y), where the search fires
+// forward pre-fires at that point (a retro lob needs a free, hook-press-free ancestor tick at exactly the right
+// distance; lineages that re-time their shots almost never have one: "with old retro 0" at the shaft double kick)
 static std::vector<std::pair<int, int>> gs_vFP;
+static std::vector<vec2> gs_vFPT; // per window: lob target, (-1, -1) none
 static bool FirePlanOk(const SState &S, int ShotNow)
 {
 	if(gs_vFP.empty())
@@ -2088,14 +2091,39 @@ int main(int argc, const char **argv)
 			if(q == std::string::npos)
 				q = V.size();
 			std::string E = V.substr(p, q - p);
+			vec2 Tg(-1, -1);
+			size_t At = E.find('@');
+			if(At != std::string::npos)
+			{
+				std::sscanf(E.c_str() + At + 1, "%f:%f", &Tg.x, &Tg.y);
+				E = E.substr(0, At);
+			}
 			size_t Pl = E.find('+');
 			gs_vFP.emplace_back(std::stoi(E.substr(0, Pl)), Pl == std::string::npos ? gs_P.m_FPG : std::stoi(E.substr(Pl + 1)));
+			gs_vFPT.push_back(Tg);
 			p = q + 1;
 		}
-		std::sort(gs_vFP.begin(), gs_vFP.end());
+		// keep the targets with their windows when sorting
+		std::vector<size_t> vI(gs_vFP.size());
+		for(size_t k = 0; k < vI.size(); k++)
+			vI[k] = k;
+		std::sort(vI.begin(), vI.end(), [](size_t a, size_t b) { return gs_vFP[a] < gs_vFP[b]; });
+		std::vector<std::pair<int, int>> vF2;
+		std::vector<vec2> vT2;
+		for(size_t k : vI)
+		{
+			vF2.push_back(gs_vFP[k]);
+			vT2.push_back(gs_vFPT[k]);
+		}
+		gs_vFP = vF2;
+		gs_vFPT = vT2;
 		std::printf("fireplan (+-%d):", gs_P.m_FPW);
-		for(auto &[T, G] : gs_vFP)
-			std::printf(" %d%s", T, G ? ("+" + std::to_string(G)).c_str() : "");
+		for(size_t k = 0; k < gs_vFP.size(); k++)
+		{
+			std::printf(" %d%s", gs_vFP[k].first, gs_vFP[k].second ? ("+" + std::to_string(gs_vFP[k].second)).c_str() : "");
+			if(gs_vFPT[k].x >= 0)
+				std::printf("@%.0f:%.0f", gs_vFPT[k].x, gs_vFPT[k].y);
+		}
 		std::printf("\n");
 	}
 	std::printf("x_ds: cut rt %d (tick %d) pos %.0f %.0f v %.1f %.1f geo %.0f | incumbent finish rt %d, ref time at cut %.1f | geo field %.1fs\n",
@@ -2427,6 +2455,71 @@ int main(int argc, const char **argv)
 								F.m_TY = TY;
 								Emit(F, nullptr, nullptr, true, false);
 							}
+				}
+				// fire-plan lobs: forward pre-fires at a planned target from inside its window
+				if(CanPB && !gs_vFPT.empty())
+				{
+					const int Rf = G.RaceTick(); // fired race tick of a shot by this step's input
+					for(size_t k = 0; k < gs_vFP.size(); k++)
+					{
+						if(gs_vFPT[k].x < 0 || std::abs(Rf - gs_vFP[k].first) > gs_P.m_FPW)
+							continue;
+						const float Curv = G.m_Core.m_Tuning.m_GrenadeCurvature, Speed = G.m_Core.m_Tuning.m_GrenadeSpeed;
+						const float Vg = Speed / SERVER_TICK_SPEED, Cg = Curv / 10000.0f * Vg * Vg, R0 = CCharacterCore::PhysicalSize() * 0.75f;
+						for(vec2 Off : {vec2(0, 0), vec2(10, 0), vec2(-10, 0), vec2(0, 10), vec2(0, -10)})
+						{
+							const vec2 W = gs_vFPT[k] + Off - G.m_Pos;
+							auto F = [&](float Tau2) { return length(vec2(W.x, W.y - Cg * Tau2 * Tau2)) - R0 - Vg * Tau2; };
+							for(int Tau = 2; Tau <= 90; Tau++)
+							{
+								float Lo = Tau - 1.0f, Hi = (float)Tau;
+								if(!((F(Lo) > 0) != (F(Hi) > 0)))
+									continue;
+								const bool Desc = F(Lo) > 0;
+								for(int it = 0; it < 22; it++)
+								{
+									float Mid = 0.5f * (Lo + Hi);
+									if((F(Mid) > 0) == Desc)
+										Lo = Mid;
+									else
+										Hi = Mid;
+								}
+								vec2 Dn = normalize(vec2(W.x, W.y - Cg * Hi * Hi));
+								int16_t TX = (int16_t)std::lround(Dn.x * 10000), TY = (int16_t)std::lround(Dn.y * 10000);
+								if(!TX && !TY)
+									continue;
+								// the grenade must first collide near the target
+								const vec2 Dir = normalize(vec2(TX, TY));
+								const vec2 P0 = G.m_Pos + Dir * R0;
+								bool Ok = false;
+								for(int T2 = 1; T2 <= Tau + 1; T2++)
+								{
+									vec2 A = CalcPos(P0, Dir, Curv, Speed, (T2 - 1) / (float)SERVER_TICK_SPEED);
+									vec2 B = CalcPos(P0, Dir, Curv, Speed, T2 / (float)SERVER_TICK_SPEED);
+									vec2 Col, NP;
+									if(CTasGame::Collision()->IntersectLine(A, B, &Col, &NP))
+									{
+										Ok = distance(Col, gs_vFPT[k]) < 40.0f;
+										break;
+									}
+								}
+								if(!Ok)
+									continue;
+								gs_NFPLob++;
+								for(int Dir2 = -1; Dir2 <= 1; Dir2++)
+								{
+									STasInput Fi = Base;
+									Fi.m_Dir = Dir2;
+									Fi.m_Jump = 0;
+									Fi.m_Hook = Hooking;
+									Fi.m_Fire = 1;
+									Fi.m_TX = TX;
+									Fi.m_TY = TY;
+									Emit(Fi, nullptr, nullptr, false, false);
+								}
+							}
+						}
+					}
 				}
 				// retro shots exploding in this step
 				if(gs_P.m_Retro > 0 && Step > 0)
@@ -3162,7 +3255,7 @@ int main(int argc, const char **argv)
 			length(G.Vel()), dot(G.Vel(), G.Vel()) - G.Pos().y);
 	}
 	WriteInputs(gs_P.m_Out.c_str(), vFull);
-	std::printf("stacks: tried %ld emitted %ld | retro found %ld emitted %ld | canpb %ld with pb aims %ld with old retro %ld\n", gs_NStackTry.load(), gs_NStackEmit.load(), gs_NRetroFound.load(), gs_NRetroEmit.load(), gs_NCanPB.load(), gs_NPBAims.load(), gs_NOldR.load());
+	std::printf("stacks: tried %ld emitted %ld | retro found %ld emitted %ld | canpb %ld with pb aims %ld with old retro %ld | plan lobs %ld\n", gs_NStackTry.load(), gs_NStackEmit.load(), gs_NRetroFound.load(), gs_NRetroEmit.load(), gs_NCanPB.load(), gs_NPBAims.load(), gs_NOldR.load(), gs_NFPLob.load());
 	std::printf("GATE t %.3f (incumbent %.3f) E %.0f retro patches %zu -> %s (%.0fs)\n", gs_vHist.empty() ? 0.0f : Best.m_T + (GateG >= 0 ? gs_P.m_EGain * (Best.m_E - gs_Line.EnergyAt(GateG)) : 0.0f),
 		GateG >= 0 ? GateG : (float)IncFinish, Best.m_E, vPatches.size(), gs_P.m_Out.c_str(),
 		std::chrono::duration<double>(std::chrono::steady_clock::now() - t0).count());
