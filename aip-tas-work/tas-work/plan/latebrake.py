@@ -78,12 +78,30 @@ def episodes(T, lo, hi):
 
 def xds(run, prefix, gate, out, var, fin, extra):
     g = 'gate=finish' if gate >= fin - 3 else 'gate=rt%d' % gate
-    cmd = [os.path.join(BIN, 'x_ds'), MAP, 'inc=' + run, 'prefix=' + prefix, g, 'incforce=0', 'threads=1', 'beam=4000',
+    cmd = [os.path.join(BIN, 'x_ds'), MAP, 'inc=' + run, 'prefix=' + prefix, g, 'incforce=0', 'threads=1', 'beam=' + kw.get('beam', '4000'),
            'verbose=0', 'out=' + out] + var.split() + extra
     with open(out + '.log', 'w') as lf:
         subprocess.run(cmd, stdout=lf, stderr=subprocess.STDOUT)
     m = re.search(r'GATE t ([0-9.]+)', open(out + '.log').read())
     return float(m.group(1)) if m else None
+
+
+def splice(line, run, lo, hi, FIN):
+    """LINE spliced onto RUN's inputs shifted by D = 3, 2, 1 at every tick lo..hi (an x_ds line a whole tick ahead
+    often runs on the run's own states exactly), replayed: the fastest finish below FIN"""
+    a, b = open(line).readlines(), open(run).readlines()
+    best = None
+    for D in (3, 2, 1):
+        for k in range(lo, min(hi, len(a) - 68) + 1):
+            p = line + '_sp.txt'
+            open(p, 'w').writelines(a[:k + 68] + b[k + 68 + D:])
+            f = finish(p)
+            if f is not None and f < FIN and (best is None or f < best[0]):
+                best = (f, line + '_sp_k%d_D%d.txt' % (k, D))
+                subprocess.run(['cp', p, best[1]])
+        if best:
+            return best
+    return None
 
 
 def publish(path, ticks, what):
@@ -137,6 +155,9 @@ def try_turn(A):
     for t, line, k, nj, E0 in ok[:3]:
         if t > min(G, FIN) - 0.9:
             break
+        sp = splice(line, run, E0 + k + 1, min(G, FIN), FIN)
+        if sp and publish(sp[1], sp[0], 'turn %d (dir held %d-%d%s, splice)' % (A, E0, E0 + k - 1, ', jump kept' if nj else '')):
+            return True
         gd = line + '_mg'
         mg = subprocess.run(['python3', os.path.join(HERE, 'multigraft.py'), line, run, gd, str(E0 + k + 3), str(min(G, FIN - 5)), '6', '3', str(CORES)],
                             capture_output=True, text=True).stdout
