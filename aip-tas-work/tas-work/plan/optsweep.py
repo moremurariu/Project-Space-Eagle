@@ -26,6 +26,7 @@ TALT = kw.get('talt', '1')  # and by the lead 20 ticks after the window end (con
 # x_ds beam for stage 2 and the extra stages (sweet-maxwell's fragility benchmark: from a 0.5 px/t slower state beam 4000
 # ends 3-30 ticks behind where beam 30000 is level: re-searches from a changed state need a big beam)
 BEAM2, BEAMX = int(kw.get('beam2', 10000)), int(kw.get('beamx', 16000))
+XDS_TIMEOUT = int(kw.get('xdstimeout', 900))  # seconds per x_ds run
 VARS = kw.get('vars', 'dschain_variants_rf.txt')  # x_ds variant set for stage 2+
 VAR = [l.strip() for l in open(os.path.join(HERE, VARS)) if l.strip() and not l.startswith('#')]
 os.makedirs(d, exist_ok=True)
@@ -55,7 +56,11 @@ def xds(prefix, gate, out, var, beam):
     cmd = [os.path.join(BIN, 'x_ds'), MAP, 'inc=' + run, 'prefix=' + prefix, g, 'incforce=0', 'threads=1', 'beam=%d' % beam,
            'verbose=0', 'out=' + out] + var.split()
     with open(out + '.log', 'w') as lf:
-        subprocess.run(cmd, stdout=lf, stderr=subprocess.STDOUT)
+        try:
+            # a big-beam stage through the shaft once ran 53 min; one search may not stall the round
+            subprocess.run(cmd, stdout=lf, stderr=subprocess.STDOUT, timeout=XDS_TIMEOUT)
+        except subprocess.TimeoutExpired:
+            lf.write('TIMEOUT\n')
     m = re.search(r'GATE t ([0-9.]+)', open(out + '.log').read())
     return float(m.group(1)) if m else None
 

@@ -1504,3 +1504,8 @@ dir, jump, cursor aim, shots with aim, certainties; best effort, not exact) and 
   behind ours at 2100-2200 (no 2143 gain), then their hop puts them +1.00 on our line from 2300. Direct splice (our
   inputs to rt 2168 + theirs from 2169; any cut 2150-2186): **2530 (50.60 s)**, 6 ticks faster than Teero,
   server-checked at cuts 2150 / 2168 / 2186 (TasReplay finish tick 2598, no freeze; TasServer).
+- sweet-maxwell (Oct 11): runs are knife-edge (~50 ticks where a 1-px shift hits freeze), and builds with FMA
+  (gcc / clang FMA) can replay a run differently from the plain build; their user decided the plain no-FMA build is the
+  reference. Our srvfin.sh / srvcheck.sh / TasServer checks use the plain build, so 2530 and the earlier runs are valid
+  under that rule.
+- optsweep: each x_ds run is capped at 15 min (xdstimeout=; a beam-16000 extra stage through the shaft ran 53 min).
