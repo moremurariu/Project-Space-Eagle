@@ -154,6 +154,8 @@ struct SPar
 	// T + W every lineage (the incumbent's too) fires only within W of a planned tick, and has fired in a window by its
 	// end (+G ticks of grace for a lob that a retro shot may still place there)
 	std::string m_FirePlan;
+	float m_GateLat = 0; // gatelat=L: a gate arrival must be within L px of the incumbent's path (the projection can slide
+	                     // along a zigzag or an open room: "3.5 ahead" at the rt-2457 gate for a line 8.6 behind by place)
 	int m_FPW = 2, m_FPG = 0; // fpg: default grace (a pre-fire is placed by a retro shot only when it explodes)
 	int m_FPInc = -9999; // fpinc=D: the fire plan is the incumbent's own shots after the cut, D ticks earlier (a line D
 	                     // ticks ahead keeps the run's shot structure by place: its lobs and double kicks stay possible)
@@ -614,6 +616,15 @@ static int ReloadFrom(const SState &S, int Tick)
 // distance; lineages that re-time their shots almost never have one: "with old retro 0" at the shaft double kick)
 static std::vector<std::pair<int, int>> gs_vFP;
 static std::vector<vec2> gs_vFPT; // per window: lob target, (-1, -1) none
+static thread_local bool gs_tLobEmit = false; // the input being emitted is a fire-plan lob at its target
+// the targeted window a shot fired at race tick F falls in (-1: none)
+static int FPTargetWin(int F)
+{
+	for(size_t k = 0; k < gs_vFP.size(); k++)
+		if(gs_vFPT[k].x >= 0 && std::abs(F - gs_vFP[k].first) <= gs_P.m_FPW)
+			return (int)k;
+	return -1;
+}
 static bool FirePlanOk(const SState &S, int ShotNow)
 {
 	if(gs_vFP.empty())
@@ -1722,6 +1733,7 @@ int main(int argc, const char **argv)
 		else if(K == "fireplan") gs_P.m_FirePlan = V;
 		else if(K == "fpw") gs_P.m_FPW = std::stoi(V);
 		else if(K == "fpg") gs_P.m_FPG = std::stoi(V);
+		else if(K == "gatelat") gs_P.m_GateLat = std::stof(V);
 		else if(K == "fpinc") gs_P.m_FPInc = std::stoi(V);
 		else if(K == "nofire") std::sscanf(V.c_str(), "%d,%d", &gs_P.m_NoFire0, &gs_P.m_NoFire1);
 		else if(K == "nokick") std::sscanf(V.c_str(), "%d,%d", &gs_P.m_NoKick0, &gs_P.m_NoKick1);
@@ -2207,6 +2219,21 @@ int main(int argc, const char **argv)
 				auto Emit = [&](const STasInput &In, const SRetroShot *pR1, const SRetroShot *pR2, bool ImmFire, bool IsInc) {
 					if(In.m_Fire && G.RaceTick() + 1 >= gs_P.m_NoFire0 && G.RaceTick() + 1 <= gs_P.m_NoFire1 && !IsInc)
 						return;
+					if(!gs_vFPT.empty())
+					{
+						// a targeted window takes only the lob at its target (the beam otherwise spends the slot on the
+						// immediate kick: the shaft lob window used as a near point-blank at 1538, the double kick lost)
+						if(In.m_Fire && !gs_tLobEmit && G.m_ReloadTimer == 0 && FPTargetWin(G.RaceTick()) >= 0)
+							return;
+						for(const SRetroShot *pR : {pR1, pR2})
+						{
+							if(!pR)
+								continue;
+							const int k = FPTargetWin(pR->m_Tau - G.m_StartTick);
+							if(k >= 0 && distance(pR->m_Col, gs_vFPT[k]) >= 40.0f)
+								return;
+						}
+					}
 					if((In.m_Fire || pR1) && G.RaceTick() + 1 >= gs_P.m_NoKick0 && G.RaceTick() + 1 <= gs_P.m_NoKick1 && (!IsInc || gs_P.m_NoKickAll))
 						return;
 					// nojump / incjump keep the AIR jump: a press on the ground is a ground jump and does not use it (2539 jumps off
@@ -2332,7 +2359,7 @@ int main(int argc, const char **argv)
 					C.m_Inc = IsInc;
 					if(GateG >= 0)
 					{
-						if(C.m_G >= GateG)
+						if(C.m_G >= GateG && (gs_P.m_GateLat <= 0 || C.m_Lat < gs_P.m_GateLat))
 						{
 							float g0 = S.m_G0;
 							float f = C.m_G > g0 ? (GateG - g0) / (C.m_G - g0) : 1.0f;
@@ -2515,7 +2542,9 @@ int main(int argc, const char **argv)
 									Fi.m_Fire = 1;
 									Fi.m_TX = TX;
 									Fi.m_TY = TY;
+									gs_tLobEmit = true;
 									Emit(Fi, nullptr, nullptr, false, false);
+									gs_tLobEmit = false;
 								}
 							}
 						}

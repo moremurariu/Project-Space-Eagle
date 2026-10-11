@@ -50,7 +50,7 @@ def head(path, rt, out):
 def xds(prefix, gate, out, var):
     g = 'gate=finish' if gate >= FIN - 3 else 'gate=rt%d' % gate
     cmd = [os.path.join(BIN, 'x_ds'), MAP, 'inc=' + run, 'prefix=' + prefix, g, 'incforce=0', 'threads=1', 'beam=' + BEAM2,
-           'verbose=0', 'out=' + out] + var.split()
+           'verbose=0', 'gatelat=64', 'out=' + out] + var.split()
     with open(out + '.log', 'w') as lf:
         subprocess.run(cmd, stdout=lf, stderr=subprocess.STDOUT)
     m = re.search(r'GATE t ([0-9.]+)', open(out + '.log').read())

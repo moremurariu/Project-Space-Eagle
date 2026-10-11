@@ -76,7 +76,7 @@ def leads(line, run, r0):
 
 def xds(prefix, gate, out, var, extra):
     cmd = [os.path.join(BIN, 'x_ds'), MAP, 'inc=' + run, 'prefix=' + prefix, gate, 'incforce=0', 'threads=1', 'beam=' + BEAM,
-           'verbose=0', 'out=' + out] + var.split() + extra
+           'verbose=0', 'gatelat=64', 'out=' + out] + var.split() + extra
     with open(out + '.log', 'w') as lf:
         subprocess.run(cmd, stdout=lf, stderr=subprocess.STDOUT)
     m = re.search(r'GATE t ([0-9.]+)', open(out + '.log').read())

@@ -69,7 +69,7 @@ X0 = [a for a in kw.get('x0', '').split(';') if a]
 def xds(prefix, gate, out, var, extra=()):
     g = 'gate=finish' if gate >= FIN - 3 else 'gate=rt%d' % gate
     cmd = [os.path.join(BIN, 'x_ds'), MAP, 'inc=' + run, 'prefix=' + prefix, g, 'incforce=0', 'threads=1', 'beam=' + BEAM,
-           'verbose=0', 'out=' + out] + var.split() + list(extra)
+           'verbose=0', 'gatelat=64', 'out=' + out] + var.split() + list(extra)
     with open(out + '.log', 'w') as lf:
         subprocess.run(cmd, stdout=lf, stderr=subprocess.STDOUT)
     m = re.search(r'GATE t ([0-9.]+)', open(out + '.log').read())

@@ -107,7 +107,7 @@ open(pre, 'w').writelines(open(run).readlines()[:CUT + 68])
 
 def xds(out, var, extra):
     cmd = [os.path.join(BIN, 'x_ds'), MAP, 'inc=' + run, 'prefix=' + pre, 'gate=rt%d' % END, 'incforce=0', 'threads=1', 'beam=' + BEAM,
-           'verbose=0', 'out=' + out] + var.split() + extra
+           'verbose=0', 'gatelat=64', 'out=' + out] + var.split() + extra
     with open(out + '.log', 'w') as lf:
         subprocess.run(cmd, stdout=lf, stderr=subprocess.STDOUT)
     return os.path.exists(out) and 'GATE t' in open(out + '.log').read()
