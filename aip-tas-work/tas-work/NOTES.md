@@ -1753,3 +1753,10 @@ approach shot, x_pfscan pre-fires, point-blank) and evaluates each with the two-
 - **2533 (50.66 s):** optloop round 15 window 1040-1197 (pickup -> U-turn 1, x_opt lead 0.61), stage 2 1.91 ahead at
   the rt-1277 gate (no on-line graft cut), chain 0 through the dip 1.07 ahead at 1329 and the fast splice test found
   the rejoin one tick early at 1310 (runs/loop/mix/r15/w1040_1197_ch0_v0_sp_k1310_D1.txt).
+- Teero vs 2533 (lagat): even over rt 1000-2000 (lag -17.65 -> -17.07); he gains 7.4 over 2000-2500, mostly the hop
+  exit (2260-2300: 4.3 ticks in 40 ticks; he crosses the hop top at ~19 px/t, we stall at 9 after the 2244 air jump
+  kills the climb, then he is 4-7 px/t faster on the descent) and 2300-2400 (2.4). Remaining Teero-faster stretches:
+  1005-1055 1.6, 1140-1280 1.2, 1490-1550 7.1, 1555-1585 1.4, 1835-2060 2.8, 2100-2120 1.9, 2140-2165 1.3, 2260-2460
+  10.0, 2490-2530 2.5 (29.8 in all).
+- optloop rounds 14-19 on 2534 / 2533 (fragile-zone gates, per-window kv=0 before fragile sections and the maze from
+  round 19): round 15 -> 2533, the others no gain.
