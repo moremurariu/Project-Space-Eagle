@@ -1509,3 +1509,6 @@ dir, jump, cursor aim, shots with aim, certainties; best effort, not exact) and 
   reference. Our srvfin.sh / srvcheck.sh / TasServer checks use the plain build, so 2530 and the earlier runs are valid
   under that rule.
 - optsweep: each x_ds run is capped at 15 min (xdstimeout=; a beam-16000 extra stage through the shaft ran 53 min).
+- optloop round 52 on 2530, shaft-exit window 1567-1699: stage 2 (beam 10000) 1778.06 at the rt-1779 gate, no graft;
+  stage 3 (beam 16000) from 1751 (28 ticks before the gate) 1857.63 at the rt-1859 gate -> x_graft D=1 at cut 1794:
+  **2529 (50.58 s)**, 7 ticks faster than Teero, server-checked (TasReplay finish tick 2597; TasServer).
