@@ -150,6 +150,13 @@ struct SPar
 	int m_TShift = 3, m_TSmooth = 2;
 	float m_Boost = 0; // diagnostics: add this many px/t along the root velocity (a hypothetical extra kick)
 	int m_NoFire0 = -1, m_NoFire1 = -1;
+	// fireplan=T1,T2[+G],... fpw=W: a shot schedule (race ticks as x_trace prints them, "fired"): from T1 - W to the last
+	// T + W every lineage (the incumbent's too) fires only within W of a planned tick, and has fired in a window by its
+	// end (+G ticks of grace for a lob that a retro shot may still place there)
+	std::string m_FirePlan;
+	int m_FPW = 2, m_FPG = 0; // fpg: default grace (a pre-fire is placed by a retro shot only when it explodes)
+	int m_FPInc = -9999; // fpinc=D: the fire plan is the incumbent's own shots after the cut, D ticks earlier (a line D
+	                     // ticks ahead keeps the run's shot structure by place: its lobs and double kicks stay possible)
 	int m_NoKickAll = 0; // nokick applies to the incumbent's own lineage too
 	int m_ShNoFire = 0; // shadow inputs without their shots
 	int m_NoJump0 = -1, m_NoJump1 = -1; // no jump presses in these race ticks (keeps the air jump for later)
@@ -601,6 +608,42 @@ static int ReloadFrom(const SState &S, int Tick)
 	for(int i = 0; i < S.m_NFire; i++)
 		R = std::max(R, 25 - (Tick - S.m_aFire[i]));
 	return std::max(0, R);
+}
+// fireplan: planned race ticks and their grace
+static std::vector<std::pair<int, int>> gs_vFP;
+static bool FirePlanOk(const SState &S, int ShotNow)
+{
+	if(gs_vFP.empty())
+		return true;
+	const int St = S.m_G.m_StartTick, Rt = S.m_G.RaceTick(), W = gs_P.m_FPW;
+	const int Lo = gs_vFP.front().first - W, Hi = gs_vFP.back().first + W;
+	int aF[MAXFIRE + 1], NF = 0;
+	for(int i = 0; i < S.m_NFire; i++)
+		aF[NF++] = S.m_aFire[i] - St;
+	if(ShotNow >= 0)
+		aF[NF++] = ShotNow - St;
+	for(int i = 0; i < NF; i++)
+	{
+		const int f = aF[i];
+		if(f < Lo || f > Hi || f < gs_RootRt)
+			continue;
+		bool In = false;
+		for(auto &[T, G] : gs_vFP)
+			In |= std::abs(f - T) <= W;
+		if(!In)
+			return false;
+	}
+	for(auto &[T, G] : gs_vFP)
+	{
+		if(T - W < gs_RootRt || Rt <= T + W + G)
+			continue;
+		bool Got = false;
+		for(int i = 0; i < NF; i++)
+			Got |= std::abs(aF[i] - T) <= W;
+		if(!Got)
+			return false;
+	}
+	return true;
 }
 // free shot slots in (Tick - maxf, Tick] that could still be used (greedy count)
 static int FreeSlots(const SState &S, int Tick)
@@ -1411,6 +1454,7 @@ static std::vector<STasInput> gs_vIncIn;
 static std::vector<vec2> gs_vAnchor; // hook press -> grab point (x < -1e8: none)
 static std::vector<vec2> gs_vShotX; // shot -> explosion point
 static std::vector<int> gs_vShotTau; // shot -> flight ticks until the explosion step (1 = same step), -1 none
+static std::vector<int> gs_vIncShotIdx; // input index of each incumbent shot (parallel to gs_vIncFireRt)
 static int gs_ShadowMode = 2; // 1: raw inputs, 2: anchor targets
 
 static int16_t Q16(float v) { return (int16_t)std::lround(std::clamp(v, -1.0f, 1.0f) * 10000); }
@@ -1672,6 +1716,10 @@ int main(int argc, const char **argv)
 		else if(K == "sinkh") gs_Line.m_SinkH = std::stof(V);
 		else if(K == "boost") gs_P.m_Boost = std::stof(V);
 		else if(K == "sinkmin") gs_Line.m_SinkMin = std::stof(V);
+		else if(K == "fireplan") gs_P.m_FirePlan = V;
+		else if(K == "fpw") gs_P.m_FPW = std::stoi(V);
+		else if(K == "fpg") gs_P.m_FPG = std::stoi(V);
+		else if(K == "fpinc") gs_P.m_FPInc = std::stoi(V);
 		else if(K == "nofire") std::sscanf(V.c_str(), "%d,%d", &gs_P.m_NoFire0, &gs_P.m_NoFire1);
 		else if(K == "nokick") std::sscanf(V.c_str(), "%d,%d", &gs_P.m_NoKick0, &gs_P.m_NoKick1);
 		else if(K == "nojump") std::sscanf(V.c_str(), "%d,%d", &gs_P.m_NoJump0, &gs_P.m_NoJump1);
@@ -1797,6 +1845,7 @@ int main(int argc, const char **argv)
 			{
 				vIncFires.push_back(Tick);
 				gs_vIncFireRt.push_back(F.RaceTick());
+				gs_vIncShotIdx.push_back((int)i);
 				// where does this shot explode? in flight: fly it; gone already: this step's explosion
 				int k = -1;
 				for(int q = 0; q < F.m_NumProj; q++)
@@ -2014,6 +2063,41 @@ int main(int argc, const char **argv)
 		GateG = (float)std::stoi(gs_P.m_Gate.substr(2));
 	else if(gs_P.m_Gate != "finish")
 		GateG = std::stof(gs_P.m_Gate);
+	if(gs_P.m_FPInc > -9999)
+	{
+		// fired race tick (x_trace "fired") = race tick after the firing step - 1; lobs get their flight as grace
+		std::string Pl;
+		for(size_t k = 0; k < gs_vIncFireRt.size(); k++)
+		{
+			const int f = gs_vIncFireRt[k] - 1 - gs_P.m_FPInc;
+			const int Tau = gs_vShotTau[gs_vIncShotIdx[k]];
+			if(f <= gs_RootRt + 1 || (GateG >= 0 && f > GateG + 30))
+				continue;
+			const int G = Tau > 3 ? std::max(gs_P.m_FPG, Tau + 3) : gs_P.m_FPG;
+			Pl += (Pl.empty() ? "" : ",") + std::to_string(f) + "+" + std::to_string(G);
+		}
+		gs_P.m_FirePlan = Pl;
+	}
+	if(!gs_P.m_FirePlan.empty())
+	{
+		size_t p = 0;
+		const std::string &V = gs_P.m_FirePlan;
+		while(p < V.size())
+		{
+			size_t q = V.find(',', p);
+			if(q == std::string::npos)
+				q = V.size();
+			std::string E = V.substr(p, q - p);
+			size_t Pl = E.find('+');
+			gs_vFP.emplace_back(std::stoi(E.substr(0, Pl)), Pl == std::string::npos ? gs_P.m_FPG : std::stoi(E.substr(Pl + 1)));
+			p = q + 1;
+		}
+		std::sort(gs_vFP.begin(), gs_vFP.end());
+		std::printf("fireplan (+-%d):", gs_P.m_FPW);
+		for(auto &[T, G] : gs_vFP)
+			std::printf(" %d%s", T, G ? ("+" + std::to_string(G)).c_str() : "");
+		std::printf("\n");
+	}
 	std::printf("x_ds: cut rt %d (tick %d) pos %.0f %.0f v %.1f %.1f geo %.0f | incumbent finish rt %d, ref time at cut %.1f | geo field %.1fs\n",
 		Root.m_G.RaceTick(), gs_T0, Root.m_G.m_Pos.x, Root.m_G.m_Pos.y, Root.m_G.m_Core.m_Vel.x, Root.m_G.m_Core.m_Vel.y,
 		gs_Geo.At(Root.m_G.m_Core.m_Pos), IncFinish, gs_Ref.TimeAt(gs_Geo.At(Root.m_G.m_Core.m_Pos)),
@@ -2110,11 +2194,14 @@ int main(int argc, const char **argv)
 					if(pR2)
 						ApplyRetro(Tmp, *pR2);
 					const int Tk = Tmp.m_G.m_Tick;
+					const int FpRl0 = Tmp.m_G.m_ReloadTimer;
 					vLog.clear();
 					CFastG::ms_pLog = &vLog;
 					Tmp.m_G.Step(In);
 					CFastG::ms_pLog = nullptr;
 					if(Tmp.m_G.m_Dead || Tmp.m_G.m_Bad)
+						return;
+					if(!gs_vFP.empty() && !FirePlanOk(Tmp, Tmp.m_G.m_ReloadTimer > FpRl0 ? Tk : -1))
 						return;
 					if(ImmFire)
 					{

@@ -1760,3 +1760,26 @@ approach shot, x_pfscan pre-fires, point-blank) and evaluates each with the two-
   10.0, 2490-2530 2.5 (29.8 in all).
 - optloop rounds 14-19 on 2534 / 2533 (fragile-zone gates, per-window kv=0 before fragile sections and the maze from
   round 19): round 15 -> 2533, the others no gain.
+
+## Teero's shot structure as a fire plan (Oct 11)
+- x_ds `fireplan=T1,T2[+G],... fpw=W [fpg=G]` (new): a shot schedule in race ticks (x_trace's "fired"); from T1 - W to
+  the last T + W every lineage (the incumbent's too) fires only within W of a planned tick and must have fired in each
+  window by its end + G (grace: a pre-fire / lob is placed by a retro shot only when it explodes). `fpinc=D`: the plan
+  is the incumbent's own shots after the cut, D ticks earlier (lobs get their flight time as grace).
+- Teero vs 2533 at 1420-1565: we gain 6.4 ticks to 1480, he gains 8 from 1480 to 1550 (net 1.2). He fires every 25
+  ticks (by place at our 1430 1454 1477 1506 1537 1562 1590; ours 1428 1458 1501 1539 1564 1589): a ceiling kick at
+  x ~1400 (our 1476) takes him from 31 to 38 px/t. Forced into our search (cut 1430, plan 1452/1453, 1476/1478,
+  1503/1506, W 1): beams die or 6.8 behind at 1545 - the transplant needs his whole line, not just the schedule.
+- fpinc on three dead optloop leads (w2020_2275 2.0 ahead at 2460, w1188_1325 1.5 at 1405, w1976_2097 1.3 at 2154):
+  no rescue (2527.0, beam died, 2281.0).
+- **Hop (rt 2225-2290): Teero's structure found.** He climbs on momentum (no point-blank climb kick on the block at
+  2228 like ours), fires a lob from the left channel bottom (his 2245.2 = our ~2231) that explodes on the solid block
+  over the right channel (tiles 121-123, row 116) as he crosses the pillar top, kicking him down into the channel: he
+  leaves it at ~24 px/t (ours 18.4) and stays 3-4 px/t faster to rt 2350. x_ds from 2533's rt-2190 state with
+  fireplan=2202,2231+30,2264 fpw=3 and light tracking (tref=teero_track.txt ttrack=0.5, toff=-16.04), seed 23, beam
+  16000: lob f2233 -> explosion 2254 at (3882, 3743), exit kick 2264 |v| 32.1 (ours 29.5): **2.16 ahead of 2533 by
+  place at rt 2284, +2 px/t** (ttrack=1 seed 21: 2.14). Without the plan (plain tracking) the hop was 5-12 behind;
+  untracked with the plan it reproduces the run (the run's 2228 shot is inside the 2231 window). The gate reading
+  (2286.5 at the rt-2300 gate, "13.5 ahead") is a geodesic artifact of the open room: leads are measured by place.
+- plan/teerofp.py (new): Teero's shots mapped by place onto the run (teero/shots_sim.tsv) as a fire plan + light
+  tracking, x_ds from CUT to END, lead by place, carry.py on a whole-tick lead.
