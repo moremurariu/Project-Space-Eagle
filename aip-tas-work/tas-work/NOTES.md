@@ -1500,3 +1500,7 @@ dir, jump, cursor aim, shots with aim, certainties; best effort, not exact) and 
 - sweet-maxwell 2533 (their window 1040-1197) = our 2533 line from 1300 on (their pickup-stretch gain ties ours).
 - optloop round 44 on 2533, window 1998-2100 (S-bend exit): graft D=1 at cut 2143: **2532 (50.64 s)**, 4 ticks faster
   than Teero, server-checked (TasReplay finish tick 2600; TasServer).
+- sweet-maxwell 2531 (their hop line: carry.py from the rt-2280 state at beam 30000) vs our 2532: same to 2000, ~1
+  behind ours at 2100-2200 (no 2143 gain), then their hop puts them +1.00 on our line from 2300. Direct splice (our
+  inputs to rt 2168 + theirs from 2169; any cut 2150-2186): **2530 (50.60 s)**, 6 ticks faster than Teero,
+  server-checked at cuts 2150 / 2168 / 2186 (TasReplay finish tick 2598, no freeze; TasServer).
