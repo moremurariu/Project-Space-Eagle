@@ -1832,11 +1832,11 @@ approach shot, x_pfscan pre-fires, point-blank) and evaluates each with the two-
 - Every recent run has ~50 ticks where a 1-px shift of the move would hit freeze with DDNet's sampling (robcheck.py),
   so the runs are knife-edge everywhere; divergence between builds is rare and run-specific, so the check is to
   replay on the other builds, not a blanket margin.
-- **srvfin.sh now replays on every build present (plain gcc, gcc FMA, clang FMA contract=on) and passes a run only if
-  all finish with the same time and no frozen tick.** kog_full_best.txt reset to **2535 (50.70 s)**, the best run valid
-  on both builds; kog_full_2534 / 2533 / 2531 are kept for their lines but are NOT valid runs.
-- **2534 (50.68 s), valid on all three builds** (plain gcc, gcc FMA, clang FMA): 2535 + the pickup-stretch gain of the
-  old 2533 (its inputs to line 1378, then 2535's from line 1380: the old 2533 rejoined 2534/2535's states one tick early
-  at race 1310). The old 2534 / 2533 / 2531 moved to invalid/. The old S-bend window line (2534's gain) is what puts
-  the tee on the freeze corner at 2099; the hop gain of 2531 does not transfer onto the new 2534 by splicing (the old
-  2533 is 1 px off 2535's line after its 2119 graft) and is re-searched on the new run.
+- (First reaction: best reset to 2535 and srvfin.sh required all builds; reverted, see below.)
+- kog_full_2534_allbuilds.txt: 2534 valid on all three builds (plain gcc, gcc FMA, clang FMA): 2535 + the pickup-stretch
+  gain of 2533 (its inputs to line 1378, then 2535's from line 1380). The S-bend window line of 2534 is what puts the tee
+  on the freeze corner at 2099 on FMA builds. 2531's hop gain does not transfer onto it by splicing (2533 is 1 px off
+  2535's line after its 2119 graft); the hop recipe re-run on it (teerofp 2190-2300) was 0.5-17 behind.
+- **User's decision (Oct 11): the plain no-FMA build is the reference, FMA builds are treated as buggy.** srvfin.sh
+  checks the plain build only (SRV_ALL=1 adds the FMA builds as information); kog_full_best.txt = **2531** again, and
+  2534 / 2533 / 2531 are valid runs.
