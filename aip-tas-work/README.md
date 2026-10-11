@@ -13,8 +13,8 @@ Make a tool-assisted run of the KoG version of **AiP-Gores** that beats Teero's 
   (https://www.youtube.com/watch?v=eHJJNU-hQoU): direction keys, jump, aim, fire per 60-fps frame, no hook.
 
 ## Status (Oct 7)
-- **Best full run: 2529 race ticks (50.58 s), 7 ticks faster than Teero's 2536**, `tas-work/kog_full_best.txt`
-  (= `kog_full_2529.txt`), server-checked (TasReplay: start tick 68, finish tick 2597, no freeze; TasServer: no death, no freeze, no double start). Grenade
+- **Best full run: 2528 race ticks (50.56 s), 8 ticks faster than Teero's 2536**, `tas-work/kog_full_best.txt`
+  (= `kog_full_2528.txt`), server-checked (TasReplay: start tick 68, finish tick 2596, no freeze; TasServer: no death, no freeze, no double start). Grenade
   pickup at race tick 966. 36 ticks on 2606 from the section planner (`tas-work/plan/xplan.py`, overlapping stages)
   + `x_graft`, automated by `tas-work/plan/xsweep.py`: right U-turn 1 (2605), the final maze (2604), U-turn 1 again
   (2603, 2602), the final maze again (2600), 1825-2000 with the low-loss hook aims and braking cost in `x_ds`
@@ -27,7 +27,7 @@ Make a tool-assisted run of the KoG version of **AiP-Gores** that beats Teero's 
 - Previous best: 2613 (52.26 s, cray), pickup at 971.
 - **Best pre-grenade run: pickup at race tick 962** (a dive, searched for the earliest pickup only),
   `pre_grenade_kog/kog_pregren_best.txt`, server-checked.
-- Teero: pickup ~980, finish 2536. 7 ticks ahead of Teero overall: ~16 ahead at the pickup, ~9 behind after it.
+- Teero: pickup ~980, finish 2536. 8 ticks ahead of Teero overall: ~16 ahead at the pickup, ~8 behind after it.
 
 ### The 962 graft (2613 -> 2608)
 The 962 dive follows the same line as the 968 dive the 2613 run was built on, ~5.6-5.9 ticks earlier (measured along

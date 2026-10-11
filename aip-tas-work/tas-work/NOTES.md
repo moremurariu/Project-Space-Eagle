@@ -1512,4 +1512,6 @@ dir, jump, cursor aim, shots with aim, certainties; best effort, not exact) and 
 - optloop round 52 on 2530, shaft-exit window 1567-1699: stage 2 (beam 10000) 1778.06 at the rt-1779 gate, no graft;
   stage 3 (beam 16000) from 1751 (28 ticks before the gate) 1857.63 at the rt-1859 gate -> x_graft D=1 at cut 1794:
   **2529 (50.58 s)**, 7 ticks faster than Teero, server-checked (TasReplay finish tick 2597; TasServer).
-- optloop round 53 (../../../../../tmp/claude-0/-home-user-Project-Space-Eagle/bf839c41-4cac-52da-8623-74ac5407b85c/scratchpad/oloop/r53): 2529 -> **2528 (50.56 s)**, server-checked (windows on the run's turns, kv 0.3).
+- optloop round 53 on 2529, window 2019-2259 (S-bend exit to the hop): an archived x_opt plan, stage 2 (beam 10000)
+  2452.13 at the rt-2455 gate -> multigraft D=1 at cut 2424: **2528 (50.56 s)**, 8 ticks faster than Teero,
+  server-checked (TasReplay finish tick 2596; srvcheck full run: no freeze, no double start).

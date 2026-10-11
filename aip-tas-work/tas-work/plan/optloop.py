@@ -121,8 +121,8 @@ for r in range(R0, R0 + ROUNDS):
             subprocess.run(['cp', os.path.join(rd, 'run.txt'), dst])
             subprocess.run(['cp', os.path.join(rd, 'run.txt'), BEST])
             with open(os.path.join(TW, 'NOTES.md'), 'a') as nf:
-                nf.write('- optloop round %d (%s): %d -> **%d (%.2f s)**, server-checked (windows on the run\'s turns, kv %s).\n'
-                         % (r, os.path.relpath(rd, TW), f0, f1, f1 / 50.0, kv))
+                nf.write('- optloop round %d on %d: **%d (%.2f s)**, server-checked (windows on the run\'s turns, kv %s).\n'
+                         % (r, f0, f1, f1 / 50.0, kv))
             msg = ('Full run %d (%.2f s): optloop round %d (x_opt windows on the turns + x_ds re-search + graft)\n\n'
                    'Server-checked: TasReplay, no freeze, no double start.\n\n'
                    'Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n'
