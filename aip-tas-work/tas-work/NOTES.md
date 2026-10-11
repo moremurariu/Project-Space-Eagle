@@ -1819,3 +1819,19 @@ approach shot, x_pfscan pre-fires, point-blank) and evaluates each with the two-
   reproduces the double kick (1599.98 at the rt-1600 gate).
 - plan/dblkick.py (new): every kick of the run doubled - the previous shot becomes a lob onto the kick's explosion
   point (approach kicks are worth little, exit speed is worth 3.6-6.4 ticks per +12 px/t).
+
+## Cross-platform validity (Oct 11): 2534 / 2533 / 2531 do not finish on FMA builds
+- The user's server replay (TasReplay.Run, upstream c5fbbbfda, physics identical to our 470eead4a) froze 2531, 2533
+  and 2534 at input line 2167/2168 (race ~2099, (774, 3328)); 2535, 2536, 2537, 2539, 2547 finished. Their x was 1 px
+  smaller from ~line 2164: the 1-px GetMapIndices sample i=27 of the 2166 -> 2167 move landed 0.6 px inside freeze
+  tile (24, 102); ours misses it by 0.4 px.
+- Cause: fused multiply-add. A testrunner built with gcc `-mfma -ffp-contract=fast` (ddnet-up/build-fma) reproduces
+  the user's positions and verdicts exactly (2531 / 2533 / 2534 frozen, 2535-2547 finish). powf last-bit changes
+  (LD_PRELOAD shim, +-1 ulp, double pow, exp(log)) change nothing. For 2531 the plain and FMA replays first differ at
+  line 2069 (vx -40.953 vs -40.957, one 1/256 step); by ~2164 x differs by 1 px.
+- Every recent run has ~50 ticks where a 1-px shift of the move would hit freeze with DDNet's sampling (robcheck.py),
+  so the runs are knife-edge everywhere; divergence between builds is rare and run-specific, so the check is to
+  replay on the other builds, not a blanket margin.
+- **srvfin.sh now replays on every build present (plain gcc, gcc FMA, clang FMA contract=on) and passes a run only if
+  all finish with the same time and no frozen tick.** kog_full_best.txt reset to **2535 (50.70 s)**, the best run valid
+  on both builds; kog_full_2534 / 2533 / 2531 are kept for their lines but are NOT valid runs.
