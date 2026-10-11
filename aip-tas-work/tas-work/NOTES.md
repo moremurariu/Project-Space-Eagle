@@ -1784,3 +1784,7 @@ approach shot, x_pfscan pre-fires, point-blank) and evaluates each with the two-
 - plan/teerofp.py (new): Teero's shots mapped by place onto the run (teero/shots_sim.tsv) as a fire plan + light
   tracking, x_ds from CUT to END, lead by place, carry.py on a whole-tick lead.
 - carry hop with Teero's lob onto the block over the right channel (fire plan + tracking) (runs/fp/carry_h05/s2_v0.txt): **2531 (50.62 s)**, server-checked.
+  (2531: carry.py from the hop line's rt-2280 state, beam 30000: stage 0 to 2459 is 2533's own line exactly 2.00
+  ticks early by place from 2295 to 2430 (same speeds), stage 1 2.3 ahead at 2525, stage 2 finishes 2531. A splice
+  of stage 1 onto 2533 shifted 2 ticks at 2474 finished 2531 in CFastG / x_trace but froze on the server replay
+  (41 frozen ticks): the server check is not optional.)
