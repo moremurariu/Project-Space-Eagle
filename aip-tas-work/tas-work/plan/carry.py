@@ -61,10 +61,15 @@ def apexes(T):
     return out
 
 
-def xds(prefix, gate, out, var):
+# x0=a=1;b=2: extra x_ds arguments for stage 0 only (a Teero-structure lead keeps its light tracking / fire plan
+# through the next turn: the S-bend approach lead of Oct 11, 1.2 ahead at 1940, was 8 behind untracked at 1992)
+X0 = [a for a in kw.get('x0', '').split(';') if a]
+
+
+def xds(prefix, gate, out, var, extra=()):
     g = 'gate=finish' if gate >= FIN - 3 else 'gate=rt%d' % gate
     cmd = [os.path.join(BIN, 'x_ds'), MAP, 'inc=' + run, 'prefix=' + prefix, g, 'incforce=0', 'threads=1', 'beam=' + BEAM,
-           'verbose=0', 'out=' + out] + var.split()
+           'verbose=0', 'out=' + out] + var.split() + list(extra)
     with open(out + '.log', 'w') as lf:
         subprocess.run(cmd, stdout=lf, stderr=subprocess.STDOUT)
     m = re.search(r'GATE t ([0-9.]+)', open(out + '.log').read())
@@ -127,7 +132,8 @@ for st in range(STAGES):
     pre = os.path.join(d, 's%d_c%d.txt' % (st, cut))
     open(pre, 'w').writelines(open(line).readlines()[:cut + 68])
     with ThreadPoolExecutor(CORES) as ex:
-        res = list(ex.map(lambda iv: (xds(pre, g, os.path.join(d, 's%d_v%d.txt' % (st, iv[0])), iv[1]), os.path.join(d, 's%d_v%d.txt' % (st, iv[0]))), enumerate(VAR)))
+        res = list(ex.map(lambda iv: (xds(pre, g, os.path.join(d, 's%d_v%d.txt' % (st, iv[0])), iv[1], X0 if st == 0 else ()),
+                                      os.path.join(d, 's%d_v%d.txt' % (st, iv[0]))), enumerate(VAR)))
     ok = sorted(r for r in res if r[0] is not None)
     log('stage %d from %d to %d: %s' % (st, cut, g, ' '.join('%.2f' % r[0] for r in ok) or 'NOGATE'))
     if not ok:

@@ -113,14 +113,18 @@ def xds(out, var, extra):
     return os.path.exists(out) and 'GATE t' in open(out + '.log').read()
 
 
-jobs = []
+jobs, BEST_EX = [], {}
 for tw in TWS:
     for v in VS:
         out = os.path.join(d, 'l%d_%d_t%s_v%s.txt' % (CUT, END, tw, v))
-        ex = ['tref=' + os.path.join(TW, 'teero_track.txt'), 'ttrack=' + tw, 'toff=%.2f' % toff]
+        # tw 'pF': position-only reference (tpath, beam share F) where his timing is out of reach (time tracking with
+        # the fixed offset killed every lineage at the shaft entry, where he is 5-8 px/t faster)
+        ex = (['tpath=' + os.path.join(TW, 'teero_track.txt'), 'tpfrac=' + tw[1:]] if tw.startswith('p') else
+              ['tref=' + os.path.join(TW, 'teero_track.txt'), 'ttrack=' + tw, 'toff=%.2f' % toff])
         if plan:
             ex += ['fireplan=' + plan, 'fpw=' + FPW, 'fpg=' + FPG]
         jobs.append((out, VAR[v], ex))
+        BEST_EX[out] = [a for a in ex if not a.startswith(('fpw', 'fpg'))]
 with ThreadPoolExecutor(CORES) as ex:
     ok = list(ex.map(lambda j: (xds(*j), j[0]), jobs))
 best = None
@@ -141,8 +145,10 @@ for good, out in ok:
 if best and best[0] >= MIN and kw.get('carry', '1') == '1':
     cd = best[2][:-4] + '_carry'
     log('carry %s from %d (lead %.2f)' % (os.path.basename(best[2]), best[1] - 4, best[0]))
+    # stage 0 of the carry keeps the line's own light tracking (and the fire plan's later windows)
+    x0 = [a for a in BEST_EX.get(best[2], []) if not a.startswith('fireplan')] + (['fireplan=' + plan, 'fpw=' + FPW, 'fpg=' + FPG] if plan else [])
     subprocess.run(['python3', os.path.join(HERE, 'carry.py'), cd, best[2], str(best[1] - 4), 'cores=%d' % CORES, 'stages=6',
-                    'what=Teero structure %d-%d (fire plan + light tracking), carried' % (CUT, END)], capture_output=True)
+                    'x0=' + ';'.join(x0), 'what=Teero structure %d-%d (fire plan + light tracking), carried' % (CUT, END)], capture_output=True)
     cl = open(os.path.join(cd, 'log')).read() if os.path.exists(os.path.join(cd, 'log')) else ''
     log('  carry: %s' % ' | '.join(l[9:] for l in cl.strip().splitlines()[-3:]))
 log('done')
