@@ -83,7 +83,10 @@ for r in range(R0, R0 + ROUNDS):
         for za, zb in FRAGILE:
             if za <= g2 <= zb:
                 g2 = min(zb + 25, fin + 20)
-        wins.append('%d:%d:%d:%d' % (cut, end, end - 10, g2))
+        # no speed reward for x_opt where the window ends in front of a fragile section or the final maze (Oct 11: a
+        # line 2.05 ahead entering the maze at 23.9 px/t instead of 17.6 ended 1 behind at the finish)
+        slow = end >= fin - 110 or any(za - 15 <= end <= zb for za, zb in FRAGILE)
+        wins.append('%d:%d:%d:%d' % (cut, end, end - 10, g2) + (':0' if slow else ''))
     rng.shuffle(wins)
     kv = KVS[r % len(KVS)]
     f0 = finish(os.path.join(rd, 'run.txt'))

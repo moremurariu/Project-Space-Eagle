@@ -14,7 +14,8 @@ TW = os.path.dirname(HERE)
 BIN = os.path.join(TW, '..', 'ddnet', 'build-sim')
 MAP = os.path.join(TW, 'AiP-Gores.map')
 run, d = os.path.abspath(sys.argv[1]), os.path.abspath(sys.argv[2])
-wins = [tuple(map(int, a.split(':'))) for a in sys.argv[3:] if a.count(':') == 3]
+# WIN = CUT:END:C2:G2[:KV] (KV: this window's x_opt speed weight; 0 where speed at END is useless or harmful)
+wins = [tuple(a.split(':')) for a in sys.argv[3:] if a.count(':') in (3, 4) and '=' not in a]
 kw = dict(a.split('=', 1) for a in sys.argv[3:] if '=' in a)
 ITERS, TH, PAR = kw.get('iters', '4000000'), kw.get('threads', '2'), int(kw.get('par', 2))
 KV, SEED = kw.get('kv', '0.3'), int(kw.get('seed', 1))
@@ -168,10 +169,12 @@ def chain(line, gate, tag):
 
 FIN = finish(run)
 log('optsweep on %s (finish %s), windows %s' % (run, FIN, wins))
-for k, (cut, end, c2, g2) in enumerate(wins):
+for k, wn in enumerate(wins):
+    cut, end, c2, g2 = map(int, wn[:4])
+    kvw = wn[4] if len(wn) > 4 else KV
     tag = os.path.join(d, 'w%d_%d' % (cut, end))
     out = subprocess.run([os.path.join(BIN, 'x_opt'), MAP, 'run=' + run, 'cut=%d' % cut, 'end=%d' % end, 'tail=20', 'iters=' + ITERS,
-                          'threads=' + TH, 'seed=%d' % (SEED + k), 't0=' + T0, 'kv=' + KV, 'out=' + tag + '_o.txt'], capture_output=True, text=True).stdout
+                          'threads=' + TH, 'seed=%d' % (SEED + k), 't0=' + T0, 'kv=' + kvw, 'out=' + tag + '_o.txt'], capture_output=True, text=True).stdout
     m = re.search(r'RESULT score ([-0-9.]+) lead ([-0-9.]+) lat ([0-9.]+) \|v\| ([0-9.]+) \(run ([0-9.]+)\)', out)
     log('window %d-%d: x_opt %s' % (cut, end, m.group(0) if m else 'no result'))
     if not m or float(m.group(1)) < 0.3:
