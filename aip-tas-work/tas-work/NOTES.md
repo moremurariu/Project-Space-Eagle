@@ -1788,3 +1788,34 @@ approach shot, x_pfscan pre-fires, point-blank) and evaluates each with the two-
   ticks early by place from 2295 to 2430 (same speeds), stage 1 2.3 ahead at 2525, stage 2 finishes 2531. A splice
   of stage 1 onto 2533 shifted 2 ticks at 2474 finished 2531 in CFastG / x_trace but froze on the server replay
   (41 frozen ticks): the server check is not optional.)
+- teerofp sweep 1 on 2531 (fire plan of his shots by place + tracking 0.5 / 1, seeds 21 / 23, beam 16000), lead by
+  place at the end: post-hop straight 2275-2400 -0.3..-2.9; 2290-2460 far behind (the maze); shaft entry 1478-1620 and
+  1440-1580: time tracking kills every lineage at ~1505 (he is 5-8 px/t faster there; a fixed time offset is out of
+  reach) -> position-only mode (tws=p0.3: tpath) queued; top-left corner 2085-2180 4-12 behind; S-bend approach
+  1830-1960 **1.20 ahead at 1940**, but the untracked carry through the S-bend turn is 8.3 behind at 1992 (carry.py
+  now takes x0= extra args for stage 0: teerofp's carry keeps the tracking and the plan through the next turn);
+  2380-2500 behind; pickup 1000-1110 -0.45..-1.0; U-turn 1 1140-1280 -0.9..-1.2.
+- After the hop, his corridor descent (2265-2320 on 2531, the freeze-floored slope at tiles 124-150) gains him 3
+  ticks: his |v| rises 30.6 -> 36.5 (the 260 px drop is worth exactly that) while ours stays at 33: we pulse the hook
+  on the corridor ceiling every other tick to stay ~13 px above the floor freeze, which removes the gravity energy.
+- Sweeps 2-4 (teerofp on 2531): the hop again (cuts 2170 / 2180, the run has his structure now) far behind; shaft
+  entry with position-only tracking (tws=p0.3/p0.5): NOGATE from 1440 (his 1452 / 1475 windows infeasible from our
+  gun phase), the run reproduced from 1478; top-left NOGATE; S-bend through the turn (1830-2000 / 2020, 1860-2010)
+  -0.8..-12; corridor after the hop (2250-2330) **0.5-0.7 ahead at 2310 with +3 px/t** (tracking 0.5), carried: one
+  stage-0 line read 2453.46 at the rt-2457 gate (3.5 ahead) but was 8.6 behind by place (the progress projection
+  slid along the maze's zigzag) -> **x_ds gatelat=L** (new): a gate arrival must be within L px of the incumbent's path;
+  carry / teerofp / teeroguide / dblkick / optsweep / rejoin pass gatelat=64.
+- The idle gun before the shaft: optloop round 21 (window 1223-1437, chained) found a line with an extra shot
+  (f1491, |f| 5.9, +5 px/t at 1494) and a point-blank turn kick at 1520 (the run: lob f1501 -> 1523) that is the
+  run's line **exactly 2 ticks early from 1525 to 1545** - but its gun is busy until 1545, so the shaft lob (fired
+  1539 in the run) is impossible: dead at the shaft. Schedules that keep both (extra 1484-1490, turn lob 1509-1515,
+  shaft lob 1536-1540, point-blank 1561-1565; from the run or the chain line, with tracking of the chain line + the
+  run 2 ticks early) all end 10-16 behind: the searches never place the shaft lob ("with old retro 0": a retro lob
+  needs a free, hook-press-free ancestor tick at exactly the right distance, and the run presses the hook every
+  other tick there).
+- **x_ds fireplan lob targets** (new): `T+G@X:Y` - inside that window the search fires forward pre-fires aimed at
+  (X, Y) (+-10 px, every flight time 2-90 whose trajectory first collides within 40 px of it), and the window takes
+  only such a lob (or a retro shot exploding there). Sanity: 2531 from 1520 with fireplan=1539+30@3264:3358,1564
+  reproduces the double kick (1599.98 at the rt-1600 gate).
+- plan/dblkick.py (new): every kick of the run doubled - the previous shot becomes a lob onto the kick's explosion
+  point (approach kicks are worth little, exit speed is worth 3.6-6.4 ticks per +12 px/t).
