@@ -109,3 +109,15 @@ HL vs Binance 7d funding rank corr = 0.53. The edge needs Binance funding AND a 
 OKX swap funding (40/40 coins, last ~3 months) vs Binance: rank corr 0.50, top-quartile overlap 48%.
 → `xs_funding` PAUSED (positions closed at −0.43% total). Binance fapi is geo-blocked so the validated
 signal can't be computed live. Next: re-test HL signal on all 40 coins once the fetcher has them.
+
+### r14 ML cross-sectional model (LightGBM, walk-forward yearly, 40 coins, 2021-2026) — REJECTED (v1)
+20 features from Binance spot only (multi-horizon returns, realised vol, volume z-scores, taker-buy share,
+BTC beta/residual, distance to 30d high/low, BTC regime); target = rank of next-24h relative log return.
+- Predictive power is real: mean daily rank IC 0.045-0.095 every year (IC t-stat 3-7.5 annualised).
+- Gross top-minus-bottom quintile spread: 2021 12bp/d, 2022 9, 2023 1, 2024 16, 2025 33, 2026 −21bp/d.
+- Net backtests all strongly negative (−17% to −34% CAGR) even with score smoothing + no-trade buffers
+  (turnover 86-330x/yr). Diagnosis: the rank/log target rewards predicting *volatility drag* — the short side
+  loads on high-vol coins whose median return is low but whose mean simple return isn't (σ²/2 ≈ 12bp/day at
+  5% daily vol), so rank-IC does not convert into P&L. (Also fixed a bug: inverse-vol sizing on rank-normalised
+  vol put almost all weight in one coin.)
+- v2 ideas (backlog): regress clipped *simple* returns, vol-scaled target, real inverse-vol sizing, weekly horizon.

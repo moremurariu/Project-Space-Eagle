@@ -7,8 +7,8 @@
 3. **Crash-rebound refinements**: market-wide vs idiosyncratic crashes, volume/funding filters, BTC-regime
    filter, scale-in, using 1m data for realistic real-time triggers (Binance 1m klines).
 4. ~~TradFi trend on HL xyz~~ — r07 + r08 (Yahoo history incl. metals, TOM, VIX) all rejected. Revisit: weekend lead-lag (xyz trades 24/7), index seasonality.
-5. **ML cross-sectional model** (LightGBM, walk-forward): features = multi-horizon returns, vol, funding,
-   volume z-scores, BTC beta; target = next 24h residual return. Strict purged walk-forward.
+5. ML cross-sectional v2 (r14 v1 rejected: rank-IC real but captures volatility drag): simple-return /
+   vol-scaled regression target, true inverse-vol sizing, weekly horizon to cut turnover.
 6. **Ensemble / risk allocator**: allocate capital across books by trailing risk-adjusted performance
    (with shrinkage), portfolio-level vol targeting and drawdown control.
 7. **Open interest + funding regime** signals for BTC/ETH timing (OI spikes + extreme funding → fade).
