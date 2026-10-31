@@ -6,7 +6,7 @@
    (DVOL vs realised) as regime filter for trend / crash-rebound; DVOL spikes as timing; skew from option chain.
 3. **Crash-rebound refinements**: market-wide vs idiosyncratic crashes, volume/funding filters, BTC-regime
    filter, scale-in, using 1m data for realistic real-time triggers (Binance 1m klines).
-4. ~~TradFi trend on HL xyz~~ — tested r07, rejected (Sharpe ~0). Revisit: weekend lead-lag (xyz trades 24/7), index seasonality.
+4. ~~TradFi trend on HL xyz~~ — r07 + r08 (Yahoo history incl. metals, TOM, VIX) all rejected. Revisit: weekend lead-lag (xyz trades 24/7), index seasonality.
 5. **ML cross-sectional model** (LightGBM, walk-forward): features = multi-horizon returns, vol, funding,
    volume z-scores, BTC beta; target = next 24h residual return. Strict purged walk-forward.
 6. **Ensemble / risk allocator**: allocate capital across books by trailing risk-adjusted performance

@@ -54,3 +54,14 @@ from 10y yield, gold (PAXG, 2020+). Costs 0.09%/side + 5.5% APR financing for lo
 Breakout/EWMAC blend, 12% vol target: Sharpe 2000-09 ≈ 0.0, 2010-19 ≈ -0.1…-0.4, 2020-26 ≈ 0.15;
 long-only 2020-26 ≈ 0.45 but negative 2010-19. Too few markets for trend to work; not promoted.
 Possible revisit: equity-index carry/seasonality or crypto-equity lead-lag (xyz trades 24/7 incl. weekends).
+
+### r08 TradFi retest with Yahoo history (gold/silver/copper/S&P since 1928/NDX/DXY/VIX) — REJECTED
+Data: `data_imports/yahoo/` (one-off import by a full-network agent; =F series not roll-adjusted).
+- Trend, 11 markets (metals, S&P, NDX, DXY, WTI, Brent, EUR, JPY, natgas), 12% vol target, 0.12%/side +
+  5.5% APR long financing: Sharpe 2000-09 0.10-0.21, 2010-19 -0.19…-0.38, 2020-26 0.04-0.45 (long-only best).
+  Metals only: ~0.1-0.3. Cost drag ≈ 4-6%/yr at 30-50x turnover is most of the problem.
+- S&P turn-of-month (last day + first 3): Sharpe 0.54 (1928-59) → 0.31 → -0.04 (1990-09) → -0.09 (2010-26). Arbitraged away.
+- VIX regime: fwd 20d S&P return rises monotonically with VIX in 2010-26 (0.5% at VIX<15 → 7.6% at VIX>40)
+  but not in 1990-09; as a timing rule Sharpe 0.16-0.26 vs buy & hold 0.75. Not promoted.
+Takeaway: with HL xyz costs and a short instrument list, TradFi trend/seasonality doesn't clear the bar.
+Remaining TradFi angle worth testing: weekend price discovery on xyz perps vs Monday open (24/7 venue).
