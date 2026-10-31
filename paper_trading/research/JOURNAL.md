@@ -148,3 +148,11 @@ vol is likely understated by the premium proxy) → not adopted.
 Sensitivity: drop ewmac → 1.41; also scale majors trend ×0.6 → **1.52 Sharpe, 19.5% CAGR, −5.9% MaxDD**.
 → Retired `trend_ewmac_majors_lo`; `trend_breakout_majors` vol target 0.40 → 0.25. (Chosen on the same OOS window —
 treat the uplift as optimistic; rationale is risk balance + removing a redundant book.)
+
+### r16/r17 crash-rebound conditioning (−10% 4h events, entry lag 1h, hold 24h) — no change
+Event study (3,869 pooled events, overlapping): BTC near its 50d MA ("flat") → rebounds ≈ 0 (+40/+62bp) vs
++400…+920bp when BTC trends; coin already −20% over 24h → +955/+778bp vs ~+250bp; volume spikes inconsistent.
+Backtest (fees + 0.1% slip): regime filter OOS 0.78→1.02 but IS 0.90→0.65 (drops most of 2021's rebound);
+deep-capitulation ×1.5 sizing ≈ no effect; market-wide + regime + deep: OOS 1.33 vs 1.20 but IS 0.68 vs 0.83.
+Inconsistent across periods → live crash books unchanged. (Event-study edges shrink once overlap and the 100%
+gross cap are applied.)
