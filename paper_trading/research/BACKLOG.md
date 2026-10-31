@@ -9,8 +9,8 @@
 4. ~~TradFi trend on HL xyz~~ — r07 + r08 (Yahoo history incl. metals, TOM, VIX) all rejected. Revisit: weekend lead-lag (xyz trades 24/7), index seasonality.
 5. ML cross-sectional v2 (r14 v1 rejected: rank-IC real but captures volatility drag): simple-return /
    vol-scaled regression target, true inverse-vol sizing, weekly horizon to cut turnover.
-6. **Ensemble / risk allocator**: allocate capital across books by trailing risk-adjusted performance
-   (with shrinkage), portfolio-level vol targeting and drawdown control.
+6. Ensemble / allocator: r15 done (equal-weight + risk balancing adopted). Later: dynamic allocation from LIVE
+   book returns once ~2 months of data exist; portfolio-level drawdown control.
 7. **Open interest + funding regime** signals for BTC/ETH timing (OI spikes + extreme funding → fade).
 8. **Prediction markets (Polymarket)** — forward collector live since 2026-10-31 20:05 (`ptrade/data/polymarket.py`,
    hourly near-expiry + daily top-500 snapshots → `state/polymarket/`). After ~3-4 weeks: join with resolved outcomes

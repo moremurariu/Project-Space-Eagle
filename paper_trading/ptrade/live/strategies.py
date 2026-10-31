@@ -101,8 +101,17 @@ class DailySignal(Strategy):
     def weights(self, P: pd.DataFrame) -> pd.DataFrame:  # pragma: no cover
         raise NotImplementedError
 
+    paused = False
+    pause_reason = ""
+
     def run(self, book, mkt, data, now, fast):
         if fast:
+            return
+        if self.paused:
+            if book.positions:
+                n = rebalance(book, mkt, {}, now, "retired: " + self.pause_reason[:80])
+                print(f"[{self.name}] retired -> closed {n} positions")
+            book.meta["paused"] = self.pause_reason
             return
         P = data.panel if self.symbols is None else data.panel[self.symbols]
         w = self.weights(P).dropna(how="all")
@@ -123,11 +132,12 @@ class DailySignal(Strategy):
 
 class TrendBreakoutMajors(DailySignal):
     name = "trend_breakout_majors"
-    description = "Donchian breakout (20/55/120d) long/short on BTC/ETH/SOL, inverse-vol, 40% vol target, daily."
+    description = ("Donchian breakout (20/55/120d) long/short on BTC/ETH/SOL, inverse-vol, 25% vol target, daily "
+                   "(cut from 40% on 2026-10-31 to balance risk across books, r15).")
     symbols = MAJORS
 
     def weights(self, P):
-        return S.trend_breakout(P, long_only=False, port_vol_target=0.4)
+        return S.trend_breakout(P, long_only=False, port_vol_target=0.25)
 
 
 class TrendBreakoutAltsLO(DailySignal):
@@ -140,8 +150,11 @@ class TrendBreakoutAltsLO(DailySignal):
 
 class TrendEWMACMajorsLO(DailySignal):
     name = "trend_ewmac_majors_lo"
-    description = "Long-only multi-speed EWMA crossover on BTC/ETH/SOL, 30% vol target, daily."
+    description = "RETIRED — long-only multi-speed EWMA crossover on BTC/ETH/SOL, 30% vol target, daily."
     symbols = MAJORS
+    paused = True
+    pause_reason = ("RETIRED 2026-10-31 (r15): weakest live book (OOS Sharpe 0.33) and redundant with the other trend "
+                    "books (corr 0.56-0.67); dropping it lifts the combined backtest Sharpe 1.22 -> 1.41.")
 
     def weights(self, P):
         return S.trend_ewmac(P, long_only=True, port_vol_target=0.3)

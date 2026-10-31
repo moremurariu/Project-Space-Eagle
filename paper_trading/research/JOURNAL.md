@@ -131,3 +131,20 @@ Historical calibration from APIs is biased (trades API: no time filter, offset c
 markets; CLOB prices-history empty once resolved). Started an hourly forward collector inside the full cycle:
 markets ending within 7 days hourly + top-500 daily (bid/ask/last/24h volume/liquidity). Calibration study once a
 few hundred snapshotted markets have resolved.
+
+### r15 portfolio view of live strategies (daily streams, 2024-01 → 2026-10)
+| Stream | CAGR | Vol | Sharpe | MaxDD |
+|---|---:|---:|---:|---:|
+| trend_brk_majors (L/S, pvt 0.4) | 12.7% | 42.4% | 0.49 | −51% |
+| trend_brk_univ_lo | 9.9% | 21.0% | 0.56 | −23% |
+| trend_ewmac_maj_lo | 5.5% | 27.7% | 0.33 | −33% |
+| crash (lag 1h) | 24.3% | 22.5% | 1.08 | −15% |
+| crash_mkt (lag 1h) | 33.3% | 25.5% | 1.25 | −12% |
+| dn_carry (HL, 15/5) | 13.2% | 1.4% | 9.2 | −0.4% |
+| BTC hold | 23.9% | 46.8% | 0.69 | −53% |
+Correlations: trend↔crash ≈ 0, carry ↔ everything ≈ 0, trend books inter-corr 0.45-0.67, crash↔crash_mkt 0.66.
+Equal-weight books: Sharpe 1.22, CAGR 18.8%, MaxDD −14%. Inverse-vol: Sharpe 2.2 but dominated by carry (whose
+vol is likely understated by the premium proxy) → not adopted.
+Sensitivity: drop ewmac → 1.41; also scale majors trend ×0.6 → **1.52 Sharpe, 19.5% CAGR, −5.9% MaxDD**.
+→ Retired `trend_ewmac_majors_lo`; `trend_breakout_majors` vol target 0.40 → 0.25. (Chosen on the same OOS window —
+treat the uplift as optimistic; rationale is risk balance + removing a redundant book.)

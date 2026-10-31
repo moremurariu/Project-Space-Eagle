@@ -1,39 +1,39 @@
 {
- "cash": 181999.65096568284,
+ "cash": 151330.70432404598,
  "created": "2026-10-31T15:34:06.149723+00:00",
- "description": "Donchian breakout (20/55/120d) long/short on BTC/ETH/SOL, inverse-vol, 40% vol target, daily.",
- "fees": 36.91420344258755,
- "funding": 5.001963375256073,
+ "description": "Donchian breakout (20/55/120d) long/short on BTC/ETH/SOL, inverse-vol, 25% vol target, daily (cut from 40% on 2026-10-31 to balance risk across books, r15).",
+ "fees": 50.709482852798345,
+ "funding": 6.027068283717857,
  "initial": 100000.0,
  "meta": {
   "last_signal": "2026-10-30T23:00:00+00:00",
   "last_targets": {
-   "BTC": -0.1249,
-   "ETH": -0.4202,
-   "SOL": -0.2753
+   "BTC": -0.078,
+   "ETH": -0.2626,
+   "SOL": -0.1721
   }
  },
  "name": "trend_breakout_majors",
  "positions": {
   "BTC": {
    "avg_px": 77461.626725,
-   "funded_through": "2026-10-31T20:00:00+00:00",
+   "funded_through": "2026-10-31T21:00:00+00:00",
    "opened": "2026-10-31T15:34:06.149723+00:00",
-   "qty": -0.16118974503386974
+   "qty": -0.10085521911307457
   },
   "ETH": {
    "avg_px": 2248.6375625,
-   "funded_through": "2026-10-31T20:00:00+00:00",
+   "funded_through": "2026-10-31T21:00:00+00:00",
    "opened": "2026-10-31T15:34:06.149723+00:00",
-   "qty": -18.684750904647693
+   "qty": -11.672245782577873
   },
   "SOL": {
    "avg_px": 95.895704975,
-   "funded_through": "2026-10-31T20:00:00+00:00",
+   "funded_through": "2026-10-31T21:00:00+00:00",
    "opened": "2026-10-31T15:34:06.149723+00:00",
-   "qty": -287.0859609517346
+   "qty": -180.28323674360746
   }
  },
- "realized": 0.0,
- "slippage": 4.1017832494477044
+ "realized": 27.939014270064398,
+ "slippage": 5.672543943749816
 }
