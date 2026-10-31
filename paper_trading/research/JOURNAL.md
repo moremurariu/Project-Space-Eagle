@@ -125,3 +125,9 @@ BTC beta/residual, distance to 30d high/low, BTC regime); target = rank of next-
 ### 2026-10-31 19:04 — ops + Polymarket probe
 - New `python -m ptrade.live.wakeup` bundles sync / catch-up / daemon + fetcher restart / status (HOURLY.md updated).
 - Polymarket data access mapped (see backlog #8); resolved-market price history must be rebuilt from trades.
+
+### 2026-10-31 20:03 — Polymarket forward data collection started
+Historical calibration from APIs is biased (trades API: no time filter, offset cap 10k → only the latest trades of big
+markets; CLOB prices-history empty once resolved). Started an hourly forward collector inside the full cycle:
+markets ending within 7 days hourly + top-500 daily (bid/ask/last/24h volume/liquidity). Calibration study once a
+few hundred snapshotted markets have resolved.

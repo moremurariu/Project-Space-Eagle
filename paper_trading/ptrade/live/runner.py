@@ -80,6 +80,11 @@ def run_cycle(fast: bool = False, only: list[str] | None = None) -> dict:
             book.save()
         if not fast:
             write_report(mkt, now)
+            try:  # forward data collection for prediction-market research
+                from ..data import polymarket
+                summary["polymarket_rows"] = polymarket.collect(now)
+            except Exception as e:  # noqa: BLE001
+                summary["errors"]["polymarket_collect"] = str(e)[:200]
         LAST_RUN.write_text(json.dumps({**summary, "kind": "fast" if fast else "full"}, indent=1))
     return summary
 
