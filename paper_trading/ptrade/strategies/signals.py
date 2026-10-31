@@ -239,3 +239,36 @@ def intraday_reversal(prices_h: pd.DataFrame, lookback_h: int = 24, rebalance_h:
         row[r.index[-k:]] = -gross / 2 / k
         out.iloc[i] = row
     return out
+
+
+# ----------------------------------------------------------------------------- daily-data trend (TradFi)
+
+def trend_daily(d: pd.DataFrame, periods: int = 252, lookbacks=(20, 55, 120), speeds=((16, 64), (32, 128), (64, 256)),
+                asset_vol_target: float = 0.15, port_vol_target: float | None = 0.12, long_only: bool = False,
+                max_gross: float = 4.0, max_w: float = 1.5, blend: float = 0.5) -> pd.DataFrame:
+    """Daily trend weights from daily closes: blend of Donchian breakout and EWMAC forecasts (each ~[-1, 1]),
+    inverse-vol sized to `asset_vol_target`, equal risk across assets, optional portfolio vol target."""
+    rets = d.pct_change(fill_method=None)
+    sigs = []
+    for lb in lookbacks:
+        hi = d.rolling(lb, min_periods=lb).max()
+        lo = d.rolling(lb, min_periods=lb).min()
+        sigs.append(((d - (hi + lo) / 2) / ((hi - lo) / 2)).ewm(span=max(2, lb // 4)).mean())
+    brk = sum(sigs) / len(sigs)
+    ew = None
+    for fast, slow in speeds:
+        f = ewmac_forecast(d, fast, slow)
+        f = f.div(f.abs().expanding(min_periods=100).mean(), axis=0)
+        ew = f if ew is None else ew.add(f, fill_value=0)
+    ew = (ew / len(speeds)).clip(-2, 2) / 2
+    fc = blend * brk + (1 - blend) * ew
+    if long_only:
+        fc = fc.clip(lower=0)
+    avol = ewm_vol(rets, 36) * np.sqrt(periods)
+    w = fc * (asset_vol_target / avol)
+    n_active = w.notna().sum(axis=1).replace(0, np.nan)
+    w = w.div(n_active, axis=0).mul(np.sqrt(n_active), axis=0).fillna(0.0)  # diversification-aware
+    w = w.clip(-max_w, max_w)
+    if port_vol_target:
+        w = portfolio_vol_target(w, rets.fillna(0), port_vol_target, periods, span=60, max_lev=max_gross)
+    return cap_gross(w, max_gross)

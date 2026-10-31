@@ -47,3 +47,10 @@ Trend worked brilliantly 2019-2023, much weaker in the choppier 2024-26 regime. 
 ### Live books started 2026-10-31 15:34 UTC ($100k each)
 trend_breakout_majors, trend_breakout_universe_lo, trend_ewmac_majors_lo, xs_funding, dn_funding_carry,
 crash_rebound, claude_discretionary, benchmark_btc_hold.
+
+### r07 TradFi trend on HL xyz instruments (FRED daily history, 2000-2026) — REJECTED
+Instruments: SP500 (2016+), NDX→XYZ100, WTI→CL, Brent, EURUSD, USDJPY, Henry Hub→NATGAS, TLT proxy
+from 10y yield, gold (PAXG, 2020+). Costs 0.09%/side + 5.5% APR financing for longs.
+Breakout/EWMAC blend, 12% vol target: Sharpe 2000-09 ≈ 0.0, 2010-19 ≈ -0.1…-0.4, 2020-26 ≈ 0.15;
+long-only 2020-26 ≈ 0.45 but negative 2010-19. Too few markets for trend to work; not promoted.
+Possible revisit: equity-index carry/seasonality or crypto-equity lead-lag (xyz trades 24/7 incl. weekends).
