@@ -121,3 +121,7 @@ BTC beta/residual, distance to 30d high/low, BTC regime); target = rank of next-
   5% daily vol), so rank-IC does not convert into P&L. (Also fixed a bug: inverse-vol sizing on rank-normalised
   vol put almost all weight in one coin.)
 - v2 ideas (backlog): regress clipped *simple* returns, vol-scaled target, real inverse-vol sizing, weekly horizon.
+
+### 2026-10-31 19:04 — ops + Polymarket probe
+- New `python -m ptrade.live.wakeup` bundles sync / catch-up / daemon + fetcher restart / status (HOURLY.md updated).
+- Polymarket data access mapped (see backlog #8); resolved-market price history must be rebuilt from trades.

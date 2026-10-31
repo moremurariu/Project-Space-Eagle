@@ -3,25 +3,13 @@
 Claude is woken every hour by a scheduled task. Each wake-up, do the following (keep the turn short unless
 there is real research to do).
 
-## 1. Make sure the code/state is current (container may be fresh)
+## 1-2. Sync, revive, catch up (one command)
 ```bash
-cd /home/user/Project-Space-Eagle
-git checkout claude/sleepy-clarke-uk181s 2>/dev/null; git pull --rebase origin claude/sleepy-clarke-uk181s
-cd paper_trading
-python -c "import pyarrow, scipy, lightgbm" 2>/dev/null || pip install -q -r requirements.txt
+cd /home/user/Project-Space-Eagle/paper_trading && python -m ptrade.live.wakeup
 ```
-
-## 2. Make sure the daemon is alive (it runs the hourly full cycle + 3-minute crash scans + git push)
-The container is suspended between wake-ups and background processes die with it, so expect to restart
-the daemon on most wake-ups. Crash-rebound catches up on drops missed while asleep (late entry, exit still
-24h after the event, skipped if <12h of hold would remain).
-```bash
-python -m ptrade.live.daemon --status
-# if "alive": false  ->
-python -m ptrade.live.runner            # catch-up full cycle now
-nohup python -m ptrade.live.daemon > cache/daemon.log 2>&1 &
-```
-(If the HL funding cache is empty in a fresh container nothing breaks; live strategies fetch what they need.)
+It pulls the branch, runs a catch-up full cycle if the daemon died (container sleeps between wake-ups),
+restarts the daemon and the HL funding fetcher, and prints the status table, errors and crash-scan state.
+(Fresh container: `pip install -q -r requirements.txt` first if imports fail.)
 
 ## 3. Review
 - `head -30 reports/STATUS.md` — equity, drawdowns, exposures.

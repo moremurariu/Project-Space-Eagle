@@ -75,3 +75,15 @@ ts,book,key,hours,amount
 2026-10-31T18:00:00+00:00,dn_funding_carry,kPEPE,1,0.1881
 2026-10-31T18:00:00+00:00,claude_discretionary,BTC,1,-0.3756
 2026-10-31T18:00:00+00:00,claude_discretionary,ETH,1,-0.1879
+2026-10-31T19:00:00+00:00,trend_breakout_majors,BTC,1,0.1564
+2026-10-31T19:00:00+00:00,trend_breakout_majors,ETH,1,0.5269
+2026-10-31T19:00:00+00:00,trend_breakout_majors,SOL,1,0.3444
+2026-10-31T19:00:00+00:00,trend_ewmac_majors_lo,BTC,1,-0.1572
+2026-10-31T19:00:00+00:00,dn_funding_carry,ENA,1,0.1854
+2026-10-31T19:00:00+00:00,dn_funding_carry,HYPE,1,1.3268
+2026-10-31T19:00:00+00:00,dn_funding_carry,PENDLE,1,0.1865
+2026-10-31T19:00:00+00:00,dn_funding_carry,UNI,1,0.7721
+2026-10-31T19:00:00+00:00,dn_funding_carry,ZEC,1,0.1865
+2026-10-31T19:00:00+00:00,dn_funding_carry,kPEPE,1,0.1888
+2026-10-31T19:00:00+00:00,claude_discretionary,BTC,1,-0.3754
+2026-10-31T19:00:00+00:00,claude_discretionary,ETH,1,-0.1880

@@ -12,7 +12,11 @@
 6. **Ensemble / risk allocator**: allocate capital across books by trailing risk-adjusted performance
    (with shrinkage), portfolio-level vol targeting and drawdown control.
 7. **Open interest + funding regime** signals for BTC/ETH timing (OI spikes + extreme funding → fade).
-8. **Prediction markets (Polymarket gamma API)**: systematic favourite-longshot / time-decay strategies.
+8. **Prediction markets (Polymarket)** — APIs reachable, no key: gamma (metadata + resolved outcomes; offset cap
+   2500), CLOB (books; `prices-history` is EMPTY for resolved markets), data-api `trades?market=<conditionId>`
+   (works, paginated) → rebuild prices from trades. Plan: store conditionId in `research/fetch_polymarket.py`,
+   sample last trade before T−1d/T−7d/T−30d per resolved market → calibration curve (favourite-longshot bias),
+   then a live paper book buying mispriced buckets. Also start forward hourly snapshots of active markets.
 9. **Pairs / cointegration** within sectors (L1s, DeFi, memes), hourly mean reversion with costs.
 10. **News/LLM sentiment**: headline-shock event study (exchange hacks, ETF flows, macro prints).
 11. Weekend vs weekday trend behaviour; volatility-regime switching between trend and mean reversion.
