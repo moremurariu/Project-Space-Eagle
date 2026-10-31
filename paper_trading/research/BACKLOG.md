@@ -2,8 +2,8 @@
 
 1. **HL-native funding backtests**: once `research/fetch_hl_funding.py` has cached HL funding, backtest
    DN carry and XS funding on actual HL rates (incl. premium/basis P&L) and tune thresholds.
-2. **Deribit implied-vol signals** (new data, `ptrade/data/deribit.py`): DVOL hourly since 2021 → vol-risk-premium
-   (DVOL vs realised) as regime filter for trend / crash-rebound; DVOL spikes as timing; skew from option chain.
+2. Deribit DVOL: r09/r10 done (standalone rejected; market-wide crash filter promoted). Left: option-chain skew,
+   DVOL as sizing input for trend books.
 3. **Crash-rebound refinements**: market-wide vs idiosyncratic crashes, volume/funding filters, BTC-regime
    filter, scale-in, using 1m data for realistic real-time triggers (Binance 1m klines).
 4. ~~TradFi trend on HL xyz~~ — r07 + r08 (Yahoo history incl. metals, TOM, VIX) all rejected. Revisit: weekend lead-lag (xyz trades 24/7), index seasonality.

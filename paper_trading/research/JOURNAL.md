@@ -65,3 +65,22 @@ Data: `data_imports/yahoo/` (one-off import by a full-network agent; =F series n
   but not in 1990-09; as a timing rule Sharpe 0.16-0.26 vs buy & hold 0.75. Not promoted.
 Takeaway: with HL xyz costs and a short instrument list, TradFi trend/seasonality doesn't clear the bar.
 Remaining TradFi angle worth testing: weekend price discovery on xyz perps vs Monday open (24/7 venue).
+
+### r09 Deribit DVOL signals (2021-03 → 2026-10, hourly)
+- VRP (DVOL − 30d realised) quintiles vs BTC fwd 7d: no consistent pattern across 2021-23 / 2024-26.
+- 24h DVOL change quintiles vs BTC fwd 24h: monotonic in both periods (q0 −0.16/−0.12%, q4 +0.39/+0.27%).
+  As a standalone "long BTC after vol spike" rule (expanding-quantile threshold, lag 1h): q80 IS 0.27 / OOS
+  −0.02 Sharpe; q90 IS 0.05-0.39 / OOS 0.36-0.49. Not robust → rejected as standalone.
+- Crash events (−8% 4h) rebound far more when context is market-wide: BTC 4h < median → +506/+718bp fwd
+  24h vs +233/+213bp; high DVOL → +447/+991bp vs +150/+350bp. Consistent in both periods.
+
+### r10 crash-rebound v2 (lag 1h, 0.045% fee + 0.1% slippage)
+| Variant | IS Sharpe | IS MaxDD | OOS Sharpe | OOS CAGR | OOS MaxDD |
+|---|---:|---:|---:|---:|---:|
+| baseline thr −10% (live `crash_rebound`) | 0.90 | −46% | 0.78 | 21% | −29% |
+| thr −8% | 0.68 | −56% | 0.91 | 34% | −35% |
+| **thr −10% & BTC 4h < −3% (market-wide)** | 0.83 | −47% | **1.20** | 31% | −21% |
+| thr −10% & BTC 4h < −5% | 1.05 | −34% | 1.18 | 18% | −16% |
+| size 22.5% market-wide / 7.5% idiosyncratic | 0.89 | −45% | 0.69 | 17% | −27% |
+→ Promoted `crash_rebound_mkt` (market-wide filter, BTC 4h < −3%) as a parallel live book alongside the
+unfiltered one, to compare live.

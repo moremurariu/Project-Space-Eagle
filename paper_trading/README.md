@@ -18,6 +18,7 @@ taker fees, order-book-walk slippage, and exact hourly funding from the HL API.
 | `xs_funding` | Market-neutral: long lowest-funding / short highest-funding perps | daily |
 | `dn_funding_carry` | Delta-neutral basis: short perp + long spot on high-funding coins | daily |
 | `crash_rebound` | Buy liquidation-cascade overshoots (>10% 4h drop), hold 24h | every 3 min |
+| `crash_rebound_mkt` | Same, only when BTC also fell >3% in those 4h (market-wide cascades) | every 3 min |
 | `claude_discretionary` | Claude's own judgment from news / positioning (`state/discretionary.json`) | ad hoc |
 | `benchmark_btc_hold` | BTC buy & hold benchmark | — |
 

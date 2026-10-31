@@ -250,10 +250,15 @@ class CrashRebound(Strategy):
             close_t = t + pd.Timedelta(hours=1)
             if close_t <= since or close_t <= now - pd.Timedelta(hours=self.hold_h):
                 continue
+            btc = float(row.get("BTCUSDT", float("nan")))
             for sym, v in row.items():
                 if pd.notna(v) and v < self.thr:
-                    out[sym] = (float(v), close_t)
+                    out[sym] = (float(v), close_t, btc)
         return out
+
+    def _accept(self, btc_4h: float) -> bool:
+        """Event filter hook (base strategy accepts every crash)."""
+        return True
 
     def run(self, book, mkt, data, now, fast):
         exits = book.meta.setdefault("exit_at", {})
@@ -270,16 +275,18 @@ class CrashRebound(Strategy):
         except Exception as e:  # noqa: BLE001
             print(f"[{self.name}] ticker failed: {e}")
             chg = {}
-        events = {sym: (r, now) for sym, r in chg.items() if r < self.thr}
+        btc_now = chg.get("BTCUSDT", float("nan"))
+        events = {sym: (r, now, btc_now) for sym, r in chg.items() if r < self.thr}
         if (now - prev_scan) > pd.Timedelta(minutes=10):
-            for sym, (r, t) in self._missed_events(data, prev_scan, now).items():
-                events.setdefault(sym, (r, t))
+            for sym, ev in self._missed_events(data, prev_scan, now).items():
+                events.setdefault(sym, ev)
+        events = {k: v for k, v in events.items() if self._accept(v[2])}
         book.meta["last_scan"] = now.isoformat()
         if chg:
             book.meta["worst_4h"] = {UNIVERSE[s]: round(v * 100, 2) for s, v in sorted(chg.items(), key=lambda x: x[1])[:5]}
         prices = mkt.prices(set(book.positions))
         gross, _ = book.exposure(prices)
-        for sym, (r, t_ev) in sorted(events.items(), key=lambda x: x[1][0]):
+        for sym, (r, t_ev, _btc) in sorted(events.items(), key=lambda x: x[1][0]):
             coin = UNIVERSE[sym]
             if not mkt.has(coin):
                 continue
@@ -298,6 +305,17 @@ class CrashRebound(Strategy):
             rebalance(book, mkt, {coin: w}, now, f"crash-rebound entry 4h={r*100:.1f}%{late}", close_others=False)
             gross += w
             print(f"[{self.name}] ENTER {coin} after {r*100:.1f}% 4h drop{late}")
+
+
+class CrashReboundMarketWide(CrashRebound):
+    name = "crash_rebound_mkt"
+    description = ("Crash rebound, market-wide cascades only: coin down >10% over 4h AND BTC down >3% over the "
+                   "same 4h (forced-liquidation overshoot; skips idiosyncratic news-driven drops). r10: OOS "
+                   "Sharpe 1.20 vs 0.78 for the unfiltered version at 1h lag.")
+    btc_thr = -0.03
+
+    def _accept(self, btc_4h: float) -> bool:
+        return btc_4h == btc_4h and btc_4h < self.btc_thr  # NaN-safe
 
 
 class BTCHold(Strategy):
@@ -337,7 +355,7 @@ class Discretionary(Strategy):
 
 def all_strategies() -> list[Strategy]:
     return [TrendBreakoutMajors(), TrendBreakoutAltsLO(), TrendEWMACMajorsLO(), XSFunding(), DeltaNeutralCarry(),
-            CrashRebound(), Discretionary(), BTCHold()]
+            CrashRebound(), CrashReboundMarketWide(), Discretionary(), BTCHold()]
 
 
 _ = (np, HL_MULT)  # kept for future use
