@@ -59,7 +59,14 @@ def main():
         return
     last_full_hour = None
     last_fast = 0.0
-    print(f"daemon started pid={os.getpid()}", flush=True)
+    try:  # don't redo a full cycle that already ran this hour (e.g. manual catch-up)
+        lr = json.loads((ROOT / "state" / "last_run.json").read_text())
+        if lr.get("kind") == "full":
+            last_full_hour = pd.Timestamp(lr["ts"]).floor("h")
+    except Exception:  # noqa: BLE001
+        pass
+    HEARTBEAT.write_text(json.dumps({"pid": os.getpid(), "t": time.time(), "last_full_hour": str(last_full_hour)}))
+    print(f"daemon started pid={os.getpid()} last_full_hour={last_full_hour}", flush=True)
     while True:
         now = pd.Timestamp.now(tz="UTC")
         hour = now.floor("h")
