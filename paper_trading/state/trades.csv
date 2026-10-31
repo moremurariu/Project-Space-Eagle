@@ -38,3 +38,23 @@ ts,book,key,side,qty,mid,fill_px,notional,fee,slip_cost,reason
 2026-10-31T15:34:06.149723+00:00,benchmark_btc_hold,BTC/spot,buy,1.2911539,77450.1,77488.825,100050.00,70.0350,50.0000,benchmark buy
 2026-10-31T15:37:04.144057+00:00,claude_discretionary,ETH,buy,6.6668148,2249.95,2250.0625,15000.75,6.7503,0.7500,discretionary: Record $6.3B Binance hack pushed Fear&Greed 51->30 but BTC is flat ~77.5k (+0.1% 24h) and ETH +1%: resilience under very
 2026-10-31T15:37:04.144057+00:00,claude_discretionary,BTC,buy,0.38694948,77529.5,77535.261,30002.23,13.5010,2.2291,discretionary: Record $6.3B Binance hack pushed Fear&Greed 51->30 but BTC is flat ~77.5k (+0.1% 24h) and ETH +1%: resilience under very
+2026-10-31T17:41:39.561191+00:00,xs_funding,BNB,sell,-12.800834,705.58,705.41426,9029.89,4.0635,2.1217,paused: live funding signal failed validation
+2026-10-31T17:41:39.561191+00:00,xs_funding,TRX,sell,-27666.988,0.308095,0.30802577,8522.15,3.8350,1.9153,paused: live funding signal failed validation
+2026-10-31T17:41:39.561191+00:00,xs_funding,ETC,sell,-851.3724,7.1174,7.111586,6054.61,2.7246,4.9498,paused: live funding signal failed validation
+2026-10-31T17:41:39.561191+00:00,xs_funding,ADA,sell,-25240.649,0.19352,0.19347507,4883.44,2.1975,1.1340,paused: live funding signal failed validation
+2026-10-31T17:41:39.561191+00:00,xs_funding,ATOM,sell,-2818.0135,1.5122,1.5105141,4256.65,1.9155,4.7510,paused: live funding signal failed validation
+2026-10-31T17:41:39.561191+00:00,xs_funding,ALGO,sell,-42254.607,0.095609,0.095545797,4037.25,1.8168,2.6706,paused: live funding signal failed validation
+2026-10-31T17:41:39.561191+00:00,xs_funding,JUP,sell,-14970.927,0.258865,0.25871491,3873.20,1.7429,2.2469,paused: live funding signal failed validation
+2026-10-31T17:41:39.561191+00:00,xs_funding,OP,sell,-30483.619,0.11301,0.11294534,3442.98,1.5493,1.9712,paused: live funding signal failed validation
+2026-10-31T17:41:39.561191+00:00,xs_funding,WLD,sell,-7719.3089,0.39857,0.39848872,3076.06,1.3842,0.6274,paused: live funding signal failed validation
+2026-10-31T17:41:39.561191+00:00,xs_funding,TIA,sell,-5205.55,0.4805,0.48026363,2500.04,1.1250,1.2304,paused: live funding signal failed validation
+2026-10-31T17:41:39.561191+00:00,xs_funding,ENA,buy,16396.751,0.191555,0.19160481,3141.70,1.4138,0.8166,paused: live funding signal failed validation
+2026-10-31T17:41:39.561191+00:00,xs_funding,kPEPE,buy,668740.58,0.004993,0.004994363,3339.93,1.5030,0.9115,paused: live funding signal failed validation
+2026-10-31T17:41:39.561191+00:00,xs_funding,ZEC,buy,2.8802053,1285.85,1285.9143,3703.70,1.6667,0.1852,paused: live funding signal failed validation
+2026-10-31T17:41:39.561191+00:00,xs_funding,LDO,buy,11220.91,0.33609,0.3362577,3773.12,1.6979,1.8817,paused: live funding signal failed validation
+2026-10-31T17:41:39.561191+00:00,xs_funding,CRV,buy,13582.899,0.28521,0.28531491,3875.40,1.7439,1.4250,paused: live funding signal failed validation
+2026-10-31T17:41:39.561191+00:00,xs_funding,PENDLE,buy,2131.9493,1.87135,1.8721169,3991.26,1.7961,1.6350,paused: live funding signal failed validation
+2026-10-31T17:41:39.561191+00:00,xs_funding,UNI,buy,610.58163,7.06045,7.0618097,4311.81,1.9403,0.8302,paused: live funding signal failed validation
+2026-10-31T17:41:39.561191+00:00,xs_funding,TAO,buy,19.705967,238.26,238.37723,4697.45,2.1139,2.3100,paused: live funding signal failed validation
+2026-10-31T17:41:39.561191+00:00,xs_funding,XRP,buy,5899.4525,1.25475,1.2548127,7402.71,3.3312,0.3701,paused: live funding signal failed validation
+2026-10-31T17:41:39.561191+00:00,xs_funding,BTC,buy,0.15150564,77601.5,77605.38,11757.65,5.2909,0.5879,paused: live funding signal failed validation

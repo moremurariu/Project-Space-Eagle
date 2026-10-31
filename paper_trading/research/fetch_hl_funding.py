@@ -15,7 +15,8 @@ n = int(sys.argv[1]) if len(sys.argv) > 1 else 50
 start = pd.Timestamp(sys.argv[2] if len(sys.argv) > 2 else "2024-01-01", tz="UTC")
 meta = hl.meta_and_ctxs()
 meta = meta[~meta.delisted].sort_values("day_ntl_vlm", ascending=False)
-coins = list(meta.index[:n])
+from ptrade.universe import UNIVERSE  # noqa: E402
+coins = list(dict.fromkeys(list(UNIVERSE.values()) + list(meta.index[:n])))
 for c in coins:
     path = CACHE / f"hl_funding_{c}.parquet"
     df = pd.read_parquet(path) if path.exists() else pd.DataFrame(columns=["funding", "premium"])

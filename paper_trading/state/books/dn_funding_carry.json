@@ -1,29 +1,29 @@
 {
- "cash": 99819.76794420711,
+ "cash": 99823.09121183801,
  "created": "2026-10-31T15:34:06.149723+00:00",
- "description": "Delta-neutral: short HL perp + long spot (priced at HL oracle) on coins whose trailing-7d funding APR > 10% (exit < 3%), top 6, <=15% notional each, daily.",
+ "description": "Delta-neutral: short HL perp + long spot (priced at HL oracle) on coins whose trailing-7d funding APR > 15% (exit < 5%), top 6, <=15% notional each, daily. r11 (HL data 2024-26): 13.7% CAGR, 1.4% vol, max DD -1.4%.",
  "fees": 103.52420821358858,
- "funding": 3.950758903033952,
+ "funding": 7.274026533939716,
  "initial": 100000.0,
  "meta": {
   "holdings_apr": {
    "ENA": 11.6,
-   "HYPE": 18.9,
-   "PENDLE": 13.7,
-   "UNI": 11.5,
+   "HYPE": 19.7,
+   "PENDLE": 14.0,
+   "UNI": 12.5,
    "ZEC": 11.2,
    "kPEPE": 11.7
   },
   "last_day": "2026-10-31",
   "top_apr": {
-   "BTC": 10.1,
-   "CRV": 10.5,
+   "CRV": 10.4,
    "ENA": 11.6,
-   "HYPE": 18.9,
+   "HYPE": 19.7,
    "LDO": 10.9,
-   "PENDLE": 13.7,
+   "PENDLE": 14.0,
+   "RENDER": 10.2,
    "TAO": 10.9,
-   "UNI": 11.5,
+   "UNI": 12.5,
    "ZEC": 11.2,
    "kPEPE": 11.7
   }
@@ -32,7 +32,7 @@
  "positions": {
   "ENA": {
    "avg_px": 0.19329533475,
-   "funded_through": "2026-10-31T16:00:00+00:00",
+   "funded_through": "2026-10-31T17:00:00+00:00",
    "opened": "2026-10-31T15:34:06.149723+00:00",
    "qty": -77597.57895553659
   },
@@ -44,7 +44,7 @@
   },
   "HYPE": {
    "avg_px": 87.624118575,
-   "funded_through": "2026-10-31T16:00:00+00:00",
+   "funded_through": "2026-10-31T17:00:00+00:00",
    "opened": "2026-10-31T15:34:06.149723+00:00",
    "qty": -171.17718550471594
   },
@@ -56,7 +56,7 @@
   },
   "PENDLE": {
    "avg_px": 1.8731059205429261,
-   "funded_through": "2026-10-31T16:00:00+00:00",
+   "funded_through": "2026-10-31T17:00:00+00:00",
    "opened": "2026-10-31T15:34:06.149723+00:00",
    "qty": -8000.213339022374
   },
@@ -68,7 +68,7 @@
   },
   "UNI": {
    "avg_px": 7.030085817849384,
-   "funded_through": "2026-10-31T16:00:00+00:00",
+   "funded_through": "2026-10-31T17:00:00+00:00",
    "opened": "2026-10-31T15:34:06.149723+00:00",
    "qty": -2133.424359439336
   },
@@ -80,7 +80,7 @@
   },
   "ZEC": {
    "avg_px": 1287.4856224999999,
-   "funded_through": "2026-10-31T16:00:00+00:00",
+   "funded_through": "2026-10-31T17:00:00+00:00",
    "opened": "2026-10-31T15:34:06.149723+00:00",
    "qty": -11.650033008426858
   },
@@ -92,7 +92,7 @@
   },
   "kPEPE": {
    "avg_px": 0.004985940337351703,
-   "funded_through": "2026-10-31T16:00:00+00:00",
+   "funded_through": "2026-10-31T17:00:00+00:00",
    "opened": "2026-10-31T15:34:06.149723+00:00",
    "qty": -3006614.5520144315
   },

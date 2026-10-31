@@ -152,8 +152,19 @@ class XSFunding(Strategy):
     description = ("Market-neutral: long lowest / short highest trailing-7d HL funding (quartiles), "
                    "inverse-vol, gross 1.0, daily at 00 UTC.")
 
+    paused = True
+    pause_reason = ("PAUSED 2026-10-31: r11/r12 showed the edge is in Binance funding across 40 coins (OOS Sharpe "
+                    "1.24); the HL-funding signal available live backtests at Sharpe -1.5 on 15 coins, and OKX "
+                    "is only ~0.5 rank-correlated with Binance. Re-test on HL funding for all 40 coins before resuming.")
+
     def run(self, book, mkt, data, now, fast):
         if fast:
+            return
+        if self.paused:
+            if book.positions:
+                n = rebalance(book, mkt, {}, now, "paused: live funding signal failed validation")
+                print(f"[{self.name}] paused -> closed {n} positions")
+            book.meta["paused"] = self.pause_reason
             return
         day = now.strftime("%Y-%m-%d")
         if book.meta.get("last_day") == day:
@@ -189,8 +200,9 @@ class XSFunding(Strategy):
 class DeltaNeutralCarry(Strategy):
     name = "dn_funding_carry"
     description = ("Delta-neutral: short HL perp + long spot (priced at HL oracle) on coins whose trailing-7d "
-                   "funding APR > 10% (exit < 3%), top 6, <=15% notional each, daily.")
-    entry, exit_, top_k, max_per, max_tot = 0.10, 0.03, 6, 0.15, 0.90
+                   "funding APR > 15% (exit < 5%), top 6, <=15% notional each, daily. r11 (HL data 2024-26): "
+                   "13.7% CAGR, 1.4% vol, max DD -1.4%.")
+    entry, exit_, top_k, max_per, max_tot = 0.15, 0.05, 6, 0.15, 0.90
 
     def run(self, book, mkt, data, now, fast):
         if fast:

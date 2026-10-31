@@ -84,3 +84,28 @@ Remaining TradFi angle worth testing: weekend price discovery on xyz perps vs Mo
 | size 22.5% market-wide / 7.5% idiosyncratic | 0.89 | −45% | 0.69 | 17% | −27% |
 → Promoted `crash_rebound_mkt` (market-wide filter, BTC 4h < −3%) as a parallel live book alongside the
 unfiltered one, to compare live.
+
+### r11 HL-native funding backtests (23 coins with cached HL funding, 2024-01 → 2026-10)
+HL cross-sectional mean funding APR by quarter: 2024Q1 46%, Q2 9%, Q3 4%, Q4 25%, 2025Q1 4%, Q2 5%, Q3 14%,
+Q4 2%, 2026Q1 2%, Q2 6%, Q3 11%, Q4 9%.
+DN carry (short perp + long spot, P&L = funding − Δpremium, 0.20%/side for both legs):
+| Rule | CAGR | Vol | MaxDD | 2024 | 2025 | 2026 |
+|---|---:|---:|---:|---:|---:|---:|
+| entry 10% / exit 3% (old live) | 9.4% | 1.6% | −1.9% | 22.5% | 4.6% | 0.7% |
+| **entry 15% / exit 5%** | **13.7%** | 1.4% | −1.4% | 25.8% | 7.7% | 6.3% |
+| entry 20% / exit 8% | 13.0% | 1.3% | −1.3% | 24.9% | 7.1% | 5.6% |
+| entry 10%/3%, 72h lookback | 1.5% | 2.0% | −9.8% | 14.8% | −2.9% | −6.4% |
+| always-on BTC+ETH, 0.9 notional | 12.7% | — | — | | | |
+→ live DN carry moved to entry 15% / exit 5%. Short lookbacks chase noise; 7d is right.
+Caveat: basis P&L proxied by HL `premium` changes; real spot-leg execution elsewhere adds friction.
+
+Directional XS funding with the **HL** funding signal (15 coins): Sharpe −1.5 (CAGR −32%) — opposite of r06.
+
+### r12 diagnosing XS funding (2024+)
+A Binance signal, 40 coins: Sharpe 1.24 · B Binance signal, same 15 coins: −0.08 · C HL signal, 15 coins:
+−1.52 · D HL signal reversed: +0.60 (2026 negative) · E Binance signal w/ HL funding paid: −0.11.
+HL vs Binance 7d funding rank corr = 0.53. The edge needs Binance funding AND a broad universe.
+### r13 OKX as live proxy for Binance funding — NO
+OKX swap funding (40/40 coins, last ~3 months) vs Binance: rank corr 0.50, top-quartile overlap 48%.
+→ `xs_funding` PAUSED (positions closed at −0.43% total). Binance fapi is geo-blocked so the validated
+signal can't be computed live. Next: re-test HL signal on all 40 coins once the fetcher has them.

@@ -87,7 +87,7 @@ def write_report(mkt, now: pd.Timestamp):
     lines += ["## Strategy notes", ""]
     for b in books:
         m = {k: v for k, v in b.meta.items() if k in ("last_signal", "last_day", "holdings_apr", "worst_4h", "last_error",
-                                                     "rationale", "exit_at", "top_apr")}
+                                                     "rationale", "exit_at", "top_apr", "paused")}
         lines.append(f"- **{b.name}** — {b.description}")
         if m:
             lines.append(f"  - `{json.dumps(m, default=str)[:600]}`")

@@ -15,7 +15,7 @@ taker fees, order-book-walk slippage, and exact hourly funding from the HL API.
 | `trend_breakout_majors` | Donchian breakout L/S on BTC/ETH/SOL, vol-targeted | daily |
 | `trend_breakout_universe_lo` | Long-only breakout across 40 liquid coins | daily |
 | `trend_ewmac_majors_lo` | Long-only multi-speed EWMA crossover on majors | daily |
-| `xs_funding` | Market-neutral: long lowest-funding / short highest-funding perps | daily |
+| `xs_funding` | **Paused** — long lowest / short highest funding; live HL signal failed validation (r11-r13) | — |
 | `dn_funding_carry` | Delta-neutral basis: short perp + long spot on high-funding coins | daily |
 | `crash_rebound` | Buy liquidation-cascade overshoots (>10% 4h drop), hold 24h | every 3 min |
 | `crash_rebound_mkt` | Same, only when BTC also fell >3% in those 4h (market-wide cascades) | every 3 min |
