@@ -17,6 +17,7 @@ meta = hl.meta_and_ctxs()
 meta = meta[~meta.delisted].sort_values("day_ntl_vlm", ascending=False)
 from ptrade.universe import UNIVERSE  # noqa: E402
 coins = list(dict.fromkeys(list(UNIVERSE.values()) + list(meta.index[:n])))
+coins.sort(key=lambda c: (CACHE / f"hl_funding_{c}.parquet").exists())  # missing coins first
 for c in coins:
     path = CACHE / f"hl_funding_{c}.parquet"
     df = pd.read_parquet(path) if path.exists() else pd.DataFrame(columns=["funding", "premium"])

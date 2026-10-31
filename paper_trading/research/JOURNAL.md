@@ -156,3 +156,12 @@ Backtest (fees + 0.1% slip): regime filter OOS 0.78→1.02 but IS 0.90→0.65 (d
 deep-capitulation ×1.5 sizing ≈ no effect; market-wide + regime + deep: OOS 1.33 vs 1.20 but IS 0.68 vs 0.83.
 Inconsistent across periods → live crash books unchanged. (Event-study edges shrink once overlap and the 100%
 gross cap are applied.)
+
+### r18 Binance positioning metrics (OI, long/short ratios, taker ratio) — REJECTED as standalone
+New data: `binance.load_metrics()` ← data.binance.vision daily `metrics` archives (5-min OI, top-trader and global
+long/short ratios, taker L/S volume; published with ~1 day lag) — cached hourly for BTC/ETH/SOL since 2022-01.
+Daily features lagged a full extra day for publication; Spearman IC vs fwd 1/3/7d, pooled BTC/ETH/SOL:
+- Sign-consistent but tiny: retail L/S z (−0.06/−0.01 at 1d, −0.02/−0.04 at 7d), top-vs-retail (+0.05/+0.02),
+  OI 7d change (−0.04/−0.00 at 1d, −0.09/−0.02 at 7d) — 2022-23 / 2024-26.
+- Unstable: top-trader position z (−0.11 → +0.01 at 7d), taker ratio flips sign.
+Too weak for a standalone book; keep as candidate features for an ML/composite model (backlog #5).

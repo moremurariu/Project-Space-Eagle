@@ -134,3 +134,41 @@ def load_funding(symbol: str, start: str = "2019-09") -> pd.Series:
     out = out[~out.index.duplicated(keep="last")].sort_index()
     out.to_parquet(path)
     return out["rate"]
+
+
+# ---------------------------------------------------------------- futures positioning metrics (OI, long/short ratios)
+
+def _metrics_day(symbol: str, day: str) -> pd.DataFrame | None:
+    url = f"{ARCHIVE}/futures/um/daily/metrics/{symbol}/{symbol}-metrics-{day}.zip"
+    try:
+        r = get(url, retries=2)
+    except Exception:  # noqa: BLE001
+        return None
+    with zipfile.ZipFile(io.BytesIO(r.content)) as z:
+        df = pd.read_csv(io.BytesIO(z.read(z.namelist()[0])))
+    df["t"] = pd.to_datetime(df["create_time"], utc=True)
+    cols = {"sum_open_interest": "oi", "sum_open_interest_value": "oi_usd",
+            "count_toptrader_long_short_ratio": "top_ls_accounts", "sum_toptrader_long_short_ratio": "top_ls_positions",
+            "count_long_short_ratio": "ls_accounts", "sum_taker_long_short_vol_ratio": "taker_ls"}
+    return df.set_index("t")[list(cols)].rename(columns=cols).astype(float)
+
+
+def load_metrics(symbol: str, start: str = "2022-01-01", workers: int = 8) -> pd.DataFrame:
+    """Binance USDT-M positioning metrics (5-min, published daily with ~1 day lag), resampled to hourly. Cached."""
+    path = CACHE / f"binance_metrics_{symbol}.parquet"
+    have = pd.read_parquet(path) if path.exists() else None
+    last_day = pd.Timestamp.now(tz="UTC").normalize() - pd.Timedelta(days=1)
+    first = pd.Timestamp(start, tz="UTC") if have is None or not len(have) else have.index[-1].normalize() + pd.Timedelta(days=1)
+    days = [d.strftime("%Y-%m-%d") for d in pd.date_range(first, last_day, freq="D")]
+    parts = [have] if have is not None else []
+    if days:
+        with ThreadPoolExecutor(workers) as ex:
+            for df in ex.map(lambda d: _metrics_day(symbol, d), days):
+                if df is not None and len(df):
+                    parts.append(df.resample("h").last())
+    if not parts:
+        return pd.DataFrame()
+    out = pd.concat(parts)
+    out = out[~out.index.duplicated(keep="last")].sort_index()
+    out.to_parquet(path)
+    return out

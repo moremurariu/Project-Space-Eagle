@@ -11,7 +11,7 @@
    vol-scaled regression target, true inverse-vol sizing, weekly horizon to cut turnover.
 6. Ensemble / allocator: r15 done (equal-weight + risk balancing adopted). Later: dynamic allocation from LIVE
    book returns once ~2 months of data exist; portfolio-level drawdown control.
-7. **Open interest + funding regime** signals for BTC/ETH timing (OI spikes + extreme funding → fade).
+7. OI / positioning: r18 done (weak, rejected standalone). `binance.load_metrics` available as ML features.
 8. **Prediction markets (Polymarket)** — forward collector live since 2026-10-31 20:05 (`ptrade/data/polymarket.py`,
    hourly near-expiry + daily top-500 snapshots → `state/polymarket/`). After ~3-4 weeks: join with resolved outcomes
    (`resolved_outcome`) → calibration by price bucket & time-to-expiry (favourite-longshot, near-certain carry).
