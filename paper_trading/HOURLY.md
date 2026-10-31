@@ -12,6 +12,9 @@ python -c "import pyarrow, scipy, lightgbm" 2>/dev/null || pip install -q -r req
 ```
 
 ## 2. Make sure the daemon is alive (it runs the hourly full cycle + 3-minute crash scans + git push)
+The container is suspended between wake-ups and background processes die with it, so expect to restart
+the daemon on most wake-ups. Crash-rebound catches up on drops missed while asleep (late entry, exit still
+24h after the event, skipped if <12h of hold would remain).
 ```bash
 python -m ptrade.live.daemon --status
 # if "alive": false  ->

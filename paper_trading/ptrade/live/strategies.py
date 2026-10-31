@@ -239,40 +239,65 @@ class CrashRebound(Strategy):
                     out[d["symbol"]] = last / o - 1
         return out
 
+    def _missed_events(self, data, since: pd.Timestamp, now: pd.Timestamp) -> dict:
+        """4h drops at hourly closes since the last scan (catch-up when scans were missed, e.g. container asleep)."""
+        if data is None or getattr(data, "panel", None) is None:
+            return {}
+        P = data.panel.iloc[-36:]
+        r4 = P / P.shift(4) - 1
+        out = {}
+        for t, row in r4.iterrows():
+            close_t = t + pd.Timedelta(hours=1)
+            if close_t <= since or close_t <= now - pd.Timedelta(hours=self.hold_h):
+                continue
+            for sym, v in row.items():
+                if pd.notna(v) and v < self.thr:
+                    out[sym] = (float(v), close_t)
+        return out
+
     def run(self, book, mkt, data, now, fast):
         exits = book.meta.setdefault("exit_at", {})
+        prev_scan = pd.Timestamp(book.meta.get("last_scan") or (now - pd.Timedelta(hours=6)).isoformat())
         # 1) exits
         for coin, ts in list(exits.items()):
             if pd.Timestamp(ts) <= now:
                 if coin in book.positions:
                     rebalance(book, mkt, {coin: 0.0}, now, "crash-rebound exit (24h)", close_others=False)
                 exits.pop(coin, None)
-        # 2) entries
+        # 2) events: real-time rolling 4h window + catch-up on hourly closes since the previous scan
         try:
             chg = self._rolling_4h()
         except Exception as e:  # noqa: BLE001
             print(f"[{self.name}] ticker failed: {e}")
-            return
+            chg = {}
+        events = {sym: (r, now) for sym, r in chg.items() if r < self.thr}
+        if (now - prev_scan) > pd.Timedelta(minutes=10):
+            for sym, (r, t) in self._missed_events(data, prev_scan, now).items():
+                events.setdefault(sym, (r, t))
         book.meta["last_scan"] = now.isoformat()
-        book.meta["worst_4h"] = {UNIVERSE[s]: round(v * 100, 2) for s, v in sorted(chg.items(), key=lambda x: x[1])[:5]}
+        if chg:
+            book.meta["worst_4h"] = {UNIVERSE[s]: round(v * 100, 2) for s, v in sorted(chg.items(), key=lambda x: x[1])[:5]}
         prices = mkt.prices(set(book.positions))
         gross, _ = book.exposure(prices)
-        for sym, r in sorted(chg.items(), key=lambda x: x[1]):
-            if r >= self.thr:
-                break
+        for sym, (r, t_ev) in sorted(events.items(), key=lambda x: x[1][0]):
             coin = UNIVERSE[sym]
             if not mkt.has(coin):
                 continue
-            exits[coin] = (now + pd.Timedelta(hours=self.hold_h)).isoformat()
+            exit_t = t_ev + pd.Timedelta(hours=self.hold_h)
+            if coin in exits:
+                exit_t = max(exit_t, pd.Timestamp(exits[coin]))
+            if exit_t - now < pd.Timedelta(hours=12) and coin not in book.positions:
+                continue  # too late to enter
+            exits[coin] = exit_t.isoformat()
             if coin in book.positions:
                 continue
-            room = self.max_gross - gross
-            w = min(self.per_w, room)
+            w = min(self.per_w, self.max_gross - gross)
             if w < 0.02:
                 continue
-            rebalance(book, mkt, {coin: w}, now, f"crash-rebound entry 4h={r*100:.1f}%", close_others=False)
+            late = "" if t_ev == now else f" (late, event {t_ev:%H:%M})"
+            rebalance(book, mkt, {coin: w}, now, f"crash-rebound entry 4h={r*100:.1f}%{late}", close_others=False)
             gross += w
-            print(f"[{self.name}] ENTER {coin} after {r*100:.1f}% 4h drop")
+            print(f"[{self.name}] ENTER {coin} after {r*100:.1f}% 4h drop{late}")
 
 
 class BTCHold(Strategy):
