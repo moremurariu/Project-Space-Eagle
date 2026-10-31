@@ -1,0 +1,20 @@
+{
+ "cash": -120.03499999998894,
+ "created": "2026-10-31T15:34:06.149723+00:00",
+ "description": "Benchmark: 100% BTC spot buy & hold (priced at HL oracle).",
+ "fees": 70.03499999999998,
+ "funding": 0.0,
+ "initial": 100000.0,
+ "meta": {},
+ "name": "benchmark_btc_hold",
+ "positions": {
+  "BTC/spot": {
+   "avg_px": 77488.82505,
+   "funded_through": "2026-10-31T15:00:00+00:00",
+   "opened": "2026-10-31T15:34:06.149723+00:00",
+   "qty": 1.2911539171673114
+  }
+ },
+ "realized": 0.0,
+ "slippage": 49.999999999991786
+}

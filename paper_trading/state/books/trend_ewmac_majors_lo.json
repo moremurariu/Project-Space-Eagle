@@ -1,0 +1,25 @@
+{
+ "cash": 87442.92646767062,
+ "created": "2026-10-31T15:34:06.149723+00:00",
+ "description": "Long-only multi-speed EWMA crossover on BTC/ETH/SOL, 30% vol target, daily.",
+ "fees": 5.64814142590656,
+ "funding": 0.0,
+ "initial": 100000.0,
+ "meta": {
+  "last_signal": "2026-10-30T23:00:00+00:00",
+  "last_targets": {
+   "BTC": 0.1255
+  }
+ },
+ "name": "trend_ewmac_majors_lo",
+ "positions": {
+  "BTC": {
+   "avg_px": 77469.373275,
+   "funded_through": "2026-10-31T15:00:00+00:00",
+   "opened": "2026-10-31T15:34:06.149723+00:00",
+   "qty": 0.16201790282139683
+  }
+ },
+ "realized": 0.0,
+ "slippage": 0.6275398925514172
+}

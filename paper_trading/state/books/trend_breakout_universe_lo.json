@@ -1,0 +1,22 @@
+{
+ "cash": 100000.0,
+ "created": "2026-10-31T15:34:06.149723+00:00",
+ "description": "Long-only Donchian breakout on 40-coin universe, inverse-vol, 40% vol target, daily.",
+ "fees": 0.0,
+ "funding": 0.0,
+ "initial": 100000.0,
+ "meta": {
+  "last_signal": "2026-10-30T23:00:00+00:00",
+  "last_targets": {
+   "BCH": 0.0078,
+   "INJ": 0.0079,
+   "NEAR": 0.0009,
+   "ZEC": 0.0082,
+   "kPEPE": 0.0191
+  }
+ },
+ "name": "trend_breakout_universe_lo",
+ "positions": {},
+ "realized": 0.0,
+ "slippage": 0.0
+}
