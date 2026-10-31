@@ -5,7 +5,6 @@
 2. **Crash-rebound refinements**: market-wide vs idiosyncratic crashes, volume/funding filters, BTC-regime
    filter, scale-in, using 1m data for realistic real-time triggers (Binance 1m klines).
 3. ~~TradFi trend on HL xyz~~ — tested r07, rejected (Sharpe ~0). Revisit: weekend lead-lag (xyz trades 24/7), index seasonality.
-   DXY using long daily history (FRED / other sources) — classic managed-futures diversification.
 4. **ML cross-sectional model** (LightGBM, walk-forward): features = multi-horizon returns, vol, funding,
    volume z-scores, BTC beta; target = next 24h residual return. Strict purged walk-forward.
 5. **Ensemble / risk allocator**: allocate capital across books by trailing risk-adjusted performance
