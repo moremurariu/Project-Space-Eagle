@@ -211,3 +211,8 @@ unstable). Possible use: tilt inside a composite model.
 ### r24 weekend effects — REJECTED
 Fri→Mon (00 UTC) moves vs Mon→Wed: BTC corr +0.09 (2019-23) / −0.03 (2024-26); cross-sectional weekend winners
 minus losers over Mon-Tue +20bp (t 0.55) / −5bp (t −0.16). No continuation or reversal edge. Day-of-week means noisy.
+
+### r25 pairs mean reversion (8 economically-linked pairs, log-ratio z-score, β from 60d) — REJECTED
+Equal-weight pair portfolio: window 20d/entry 2.0 → IS 0.05 / OOS 0.36; 60d/2.0 → IS −0.64 / OOS 0.56;
+20d/2.5 → IS −0.74 / OOS 0.13. OOS positives driven by a single pair (UNI/AAVE 0.9-1.9) → data-mining risk;
+ETH/BTC and ARB/OP negative OOS. Crypto relative-value spreads trend more than they revert at daily horizons.
