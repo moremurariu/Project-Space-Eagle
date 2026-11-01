@@ -1,9 +1,9 @@
 {
- "cash": 97791.79183697385,
+ "cash": 97791.76401666761,
  "created": "2026-10-31T15:34:06.149723+00:00",
  "description": "Long-only Donchian breakout on 40-coin universe, inverse-vol, 40% vol target, daily.",
  "fees": 0.9932150411313524,
- "funding": -0.07041213757666491,
+ "funding": -0.09823244381225524,
  "initial": 100000.0,
  "meta": {
   "last_signal": "2026-10-31T23:00:00+00:00",
@@ -19,7 +19,7 @@
  "positions": {
   "kPEPE": {
    "avg_px": 0.0049565002523468266,
-   "funded_through": "2026-11-01T03:00:00+00:00",
+   "funded_through": "2026-11-01T04:00:00+00:00",
    "opened": "2026-11-01T00:04:13.885254+00:00",
    "qty": 445303.02097783634
   }

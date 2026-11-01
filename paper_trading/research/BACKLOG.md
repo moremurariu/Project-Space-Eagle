@@ -18,4 +18,4 @@
    Trades API only exposes the latest 10k trades/market (offset cap) and CLOB history is empty after resolution.
 9. **Pairs / cointegration** within sectors (L1s, DeFi, memes), hourly mean reversion with costs.
 10. **News/LLM sentiment**: headline-shock event study (exchange hacks, ETF flows, macro prints).
-11. Weekend vs weekday trend behaviour; volatility-regime switching between trend and mean reversion.
+11. ~~Weekend effects~~ (r24 rejected). Left: volatility-regime switching between trend and mean reversion.

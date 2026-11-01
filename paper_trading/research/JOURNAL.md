@@ -207,3 +207,7 @@ Per-coin 14d z-score of HL premium (perp vs oracle), entry 1h after, cross-secti
 - z > 3: +63/+4/+38bp (24h); z < −3: −36/+59/−32bp (24h) — 2025 flips the short side.
 Edge ≈ one round trip of costs (~10bp+); not worth a book. Consistent with r12 (HL positioning ≈ momentum-ish,
 unstable). Possible use: tilt inside a composite model.
+
+### r24 weekend effects — REJECTED
+Fri→Mon (00 UTC) moves vs Mon→Wed: BTC corr +0.09 (2019-23) / −0.03 (2024-26); cross-sectional weekend winners
+minus losers over Mon-Tue +20bp (t 0.55) / −5bp (t −0.16). No continuation or reversal edge. Day-of-week means noisy.
