@@ -165,3 +165,10 @@ Daily features lagged a full extra day for publication; Spearman IC vs fwd 1/3/7
   OI 7d change (−0.04/−0.00 at 1d, −0.09/−0.02 at 7d) — 2022-23 / 2024-26.
 - Unstable: top-trader position z (−0.11 → +0.01 at 7d), taker ratio flips sign.
 Too weak for a standalone book; keep as candidate features for an ML/composite model (backlog #5).
+
+### 2026-11-01 00:04 — daily rebalance + fixes
+- Daily signals applied: trend majors net −0.58 (2 trades), universe long-only opened first small position (+0.02),
+  DN carry kept HYPE/PENDLE/UNI/ENA/kPEPE/ZEC (all ≥ 5% exit threshold).
+- Polymarket gamma API now caps pages at 100 → collector paginates (499 binary markets in the daily snapshot).
+- Discretionary unchanged (BTC 0.30 / ETH 0.15): Binance reports 90% of stolen assets replenished, BTC steady
+  ~77.5k, F&G 34 — contrarian-long thesis intact.

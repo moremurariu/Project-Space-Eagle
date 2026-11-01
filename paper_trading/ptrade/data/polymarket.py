@@ -22,11 +22,24 @@ OUT = STATE / "polymarket"
 FIELDS = ["ts", "id", "condition_id", "question", "end", "best_bid", "best_ask", "last", "v24", "liquidity", "neg_risk"]
 
 
-def active_markets(limit: int = 500) -> pd.DataFrame:
-    page = get(GAMMA, params={"active": "true", "closed": "false", "limit": limit, "order": "volume24hr",
-                              "ascending": "false"}, retries=2).json()
+def active_markets(limit: int = 500, page_size: int = 100) -> pd.DataFrame:
+    """Top `limit` active markets by 24h volume (the API caps pages at 100, so paginate)."""
+    page = []
+    for off in range(0, limit, page_size):
+        try:
+            chunk = get(GAMMA, params={"active": "true", "closed": "false", "limit": page_size, "offset": off,
+                                       "order": "volume24hr", "ascending": "false"}, retries=2).json()
+        except Exception:  # noqa: BLE001
+            break
+        if not chunk:
+            break
+        page.extend(chunk)
     rows = []
+    seen = set()
     for m in page:
+        if m.get("id") in seen:
+            continue
+        seen.add(m.get("id"))
         try:
             outs = json.loads(m.get("outcomes") or "[]")
         except Exception:  # noqa: BLE001
