@@ -254,3 +254,10 @@ an always-on host for faster scanning is NOT worth it.
 Baseline (realised-vol target): 2021-23 Sharpe 0.84 / DD −33%; 2024-26 0.60 / −35%.
 × (median DVOL/DVOL)^0.5: 0.76 / −36% | 0.63 / −34%. ×(…)^1.0: 0.73 / −39% | 0.67 / −33%.
 Helps recent period slightly, hurts 2021-23 → inconsistent; realised-vol targeting kept.
+
+### 2026-11-01 15:05 — forward news dataset started (24h into live trading)
+Historical timestamped crypto news isn't available from free APIs here (GDELT 429, RSS = latest items only), so every
+full cycle now appends deduplicated headlines from 7 RSS feeds (cointelegraph, coindesk, decrypt, theblock, dlnews,
+bitcoinmagazine, cryptoslate) to `state/news/headlines_YYYY-MM.csv` (seen_at, published, source, title). First pull:
+164 headlines. Enables a headline-shock event study (hacks, ETF flows, macro, listings) once weeks of data accrue —
+optionally with LLM-classified sentiment/topic per headline.

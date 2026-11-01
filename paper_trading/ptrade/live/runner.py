@@ -85,6 +85,11 @@ def run_cycle(fast: bool = False, only: list[str] | None = None) -> dict:
                 summary["polymarket_rows"] = polymarket.collect(now)
             except Exception as e:  # noqa: BLE001
                 summary["errors"]["polymarket_collect"] = str(e)[:200]
+            try:  # forward news dataset
+                from ..data import sentiment
+                summary["news_rows"] = sentiment.collect_headlines(now)
+            except Exception as e:  # noqa: BLE001
+                summary["errors"]["news_collect"] = str(e)[:200]
         LAST_RUN.write_text(json.dumps({**summary, "kind": "fast" if fast else "full"}, indent=1))
     return summary
 
