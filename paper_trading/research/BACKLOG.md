@@ -1,7 +1,7 @@
 # Research backlog (top = next)
 
-1. **XS funding re-test on HL rates for all 40 coins** (fetcher now includes the full universe). r11-r13 done:
-   DN carry retuned to 15%/5%; xs_funding paused. Also try HL funding *momentum* (reversed) on full universe.
+1. **XS funding live signal**: edge needs *Binance* funding (Sharpe 1.1-1.4, survives 72h lag; r19). Premium-index
+   reconstruction too noisy (r20). Try 1-min premium klines for exact averaging, or monthly-archive lag decay test.
 2. Deribit DVOL: r09/r10 done (standalone rejected; market-wide crash filter promoted). Left: option-chain skew,
    DVOL as sizing input for trend books.
 3. **Crash-rebound refinements**: market-wide vs idiosyncratic crashes, volume/funding filters, BTC-regime

@@ -172,3 +172,16 @@ Too weak for a standalone book; keep as candidate features for an ML/composite m
 - Polymarket gamma API now caps pages at 100 → collector paginates (499 binary markets in the daily snapshot).
 - Discretionary unchanged (BTC 0.30 / ETH 0.15): Binance reports 90% of stolen assets replenished, BTC steady
   ~77.5k, F&G 34 — contrarian-long thesis intact.
+
+### r12b/r19/r20 XS funding: the edge is real but the live signal is out of reach (still PAUSED)
+- r12b (HL funding now cached for 35/40 coins): Binance-funding signal Sharpe 1.14 on those 35; HL-funding signal
+  0.01; HL reversed −1.15 → HL funding carries no XS information; the edge is Binance-specific.
+- r19 lag robustness (Binance actual funding): signal lag 0/24/36/48/72h → Sharpe 1.49/1.28/1.05/1.36/1.24 (2021+),
+  1.24/1.12/1.16/1.35/1.37 (2024+). The 7d funding signal is slow, so a 1-3 day stale signal is fine.
+- r20 reconstruct Binance funding from daily `premiumIndexKlines` archives (~1 day lag; new loader
+  `binance.load_premium_index`, 40 coins cached from 2024-01): rank corr of 7d sums vs actual only 0.76
+  (quartile overlap 61% top / 74% bottom); strategy on reconstructed signal Sharpe 0.72 (lag 0) / 0.23 (lag 48h);
+  with per-coin 4h/8h settlement intervals 0.80 / 0.60. Not good enough — the edge lives at the extremes where
+  Binance's 1-min weighted premium averaging and rate caps matter. xs_funding stays paused.
+- Next options: (a) ask for a non-geo-blocked network path to Binance fapi (would make `fundingRate` live),
+  (b) try 1-min `premiumIndexKlines` for exact averaging, (c) monthly funding archives with ≤30d lag (test decay).

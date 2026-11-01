@@ -10,6 +10,7 @@ import time
 import zipfile
 from concurrent.futures import ThreadPoolExecutor
 
+import numpy as np
 import pandas as pd
 
 from ..config import CACHE, HOUR_MS
@@ -171,4 +172,70 @@ def load_metrics(symbol: str, start: str = "2022-01-01", workers: int = 8) -> pd
     out = pd.concat(parts)
     out = out[~out.index.duplicated(keep="last")].sort_index()
     out.to_parquet(path)
+    return out
+
+
+# ---------------------------------------------------------------- premium index (→ reconstructed funding, live-able)
+
+def _premium_file(symbol: str, kind: str, period: str) -> pd.DataFrame | None:
+    url = (f"{ARCHIVE}/futures/um/{kind}/premiumIndexKlines/{symbol}/1h/{symbol}-1h-{period}.zip")
+    try:
+        r = get(url, retries=2)
+    except Exception:  # noqa: BLE001
+        return None
+    with zipfile.ZipFile(io.BytesIO(r.content)) as z:
+        raw = z.read(z.namelist()[0]).decode()
+    lines = [ln for ln in raw.strip().splitlines() if ln and ln[0].isdigit()]
+    if not lines:
+        return None
+    df = pd.DataFrame([ln.split(",")[:5] for ln in lines], columns=["t", "open", "high", "low", "close"])
+    df["t"] = pd.to_datetime(df["t"].astype("int64"), unit="ms", utc=True)
+    return df.set_index("t").astype(float)
+
+
+def load_premium_index(symbol: str, start: str = "2024-01", workers: int = 8) -> pd.DataFrame:
+    """Hourly premium-index klines for a USDT-M perp: monthly archives for complete months + daily for the rest
+    (daily files appear with ~1 day lag). Cached."""
+    path = CACHE / f"binance_premium_{symbol}.parquet"
+    have = pd.read_parquet(path) if path.exists() else None
+    now = pd.Timestamp.now(tz="UTC")
+    this_month = now.tz_localize(None).to_period("M")
+    done_months = set()
+    if have is not None and len(have):
+        cnt = have.groupby(have.index.tz_localize(None).to_period("M")).size()
+        done_months = {str(m) for m, n in cnt.items() if n >= 24 * 27}
+    months = [str(m) for m in pd.period_range(start, this_month - 1, freq="M") if str(m) not in done_months]
+    jobs = [("monthly", m) for m in months]
+    # current month (and last month if its monthly file isn't out yet) via daily files
+    have_days = set() if have is None else {d.strftime("%Y-%m-%d") for d in have.index.normalize().unique()}
+    for d in pd.date_range((this_month - 1).start_time.tz_localize("UTC"), now.normalize() - pd.Timedelta(days=1), freq="D"):
+        ds = d.strftime("%Y-%m-%d")
+        if ds not in have_days:
+            jobs.append(("daily", ds))
+    parts = [have] if have is not None else []
+    with ThreadPoolExecutor(workers) as ex:
+        for df in ex.map(lambda j: _premium_file(symbol, *j), jobs):
+            if df is not None and len(df):
+                parts.append(df)
+    if not parts:
+        return pd.DataFrame()
+    out = pd.concat(parts)
+    out = out[~out.index.duplicated(keep="last")].sort_index()
+    out.to_parquet(path)
+    return out
+
+
+def reconstruct_funding(prem: pd.DataFrame, interval_h: int = 8, interest: float = 0.0001,
+                        clamp: float = 0.0005, cap: float = 0.02) -> pd.Series:
+    """Approximate Binance funding per settlement from hourly premium index:
+    F = clamp(P + clamp(I - P, ±0.05%), ±cap), P = linearly-weighted mean premium over the interval.
+    Returned as an hourly series with the rate on settlement hours (00/08/16 UTC) and 0 elsewhere."""
+    p = (prem["open"] + prem["close"]) / 2
+    w = np.arange(1, interval_h + 1, dtype=float)
+    wavg = p.rolling(interval_h).apply(lambda x: float(np.dot(x, w) / w.sum()), raw=True)
+    f = (wavg + (interest - wavg).clip(-clamp, clamp)).clip(-cap, cap)
+    settle = f.index + pd.Timedelta(hours=1)  # bar opening at 23:00 closes at the 00:00 settlement
+    out = pd.Series(0.0, index=prem.index)
+    mask = (settle.hour % interval_h) == 0
+    out[mask] = f[mask]
     return out

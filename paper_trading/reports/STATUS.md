@@ -1,20 +1,20 @@
-# Paper trading status — 2026-11-01 00:04 UTC
+# Paper trading status — 2026-11-01 01:03 UTC
 
-BTC 77,500 · ETH 2,254.7 · venue: Hyperliquid (paper) · capital per book $100k
+BTC 77,664 · ETH 2,261.3 · venue: Hyperliquid (paper) · capital per book $100k
 
 | Book | Equity | Total | 24h | 7d | Max DD | Sharpe (ann.) | Gross | Net | Pos | Fees | Funding |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
-| benchmark_btc_hold | $99,956 | -0.04% | -0.04% | -0.04% | -0.26% | nan | 1.00 | +1.00 | 1 | $120 | $0 |
-| claude_discretionary | $99,992 | -0.01% | -0.01% | -0.01% | -0.15% | nan | 0.45 | +0.45 | 2 | $23 | $-5 |
+| benchmark_btc_hold | $100,160 | +0.16% | +0.16% | +0.16% | -0.26% | nan | 1.00 | +1.00 | 1 | $120 | $0 |
+| claude_discretionary | $100,099 | +0.10% | +0.10% | +0.10% | -0.15% | nan | 0.45 | +0.45 | 2 | $23 | $-6 |
 | crash_rebound | $100,000 | +0.00% | +0.00% | +0.00% | +0.00% | nan | 0.00 | +0.00 | 0 | $0 | $0 |
 | crash_rebound_mkt | $100,000 | +0.00% | +0.00% | +0.00% | +0.00% | nan | 0.00 | +0.00 | 0 | $0 | $0 |
-| dn_funding_carry | $99,877 | -0.12% | -0.12% | -0.12% | -0.19% | nan | 1.78 | +0.00 | 12 | $184 | $23 |
-| trend_breakout_majors | $99,996 | -0.00% | -0.00% | -0.00% | -0.28% | nan | 0.58 | -0.58 | 3 | $60 | $8 |
-| trend_breakout_universe_lo | $99,999 | -0.00% | -0.00% | -0.00% | -0.00% | nan | 0.02 | +0.02 | 1 | $1 | $0 |
+| dn_funding_carry | $99,883 | -0.12% | -0.12% | -0.12% | -0.19% | nan | 1.79 | +0.00 | 12 | $184 | $25 |
+| trend_breakout_majors | $99,835 | -0.16% | -0.16% | -0.16% | -0.28% | nan | 0.58 | -0.58 | 3 | $60 | $8 |
+| trend_breakout_universe_lo | $100,021 | +0.02% | +0.02% | +0.02% | -0.00% | nan | 0.02 | +0.02 | 1 | $1 | $-0 |
 | trend_ewmac_majors_lo | $99,979 | -0.02% | -0.02% | -0.02% | -0.05% | nan | 0.00 | +0.00 | 0 | $13 | $-1 |
 | xs_funding | $99,566 | -0.43% | -0.43% | -0.43% | -0.43% | nan | 0.00 | +0.00 | 0 | $155 | $5 |
 
-**Combined (ex-benchmark): $799,409 on $800,000 → -0.07%**
+**Combined (ex-benchmark): $799,384 on $800,000 → -0.08%**
 
 ## Positions
 
@@ -22,45 +22,45 @@ BTC 77,500 · ETH 2,254.7 · venue: Hyperliquid (paper) · capital per book $100
 
 | Key | Qty | Avg px | Px | uPnL | Weight |
 |---|---:|---:|---:|---:|---:|
-| BTC/spot | 1.29115 | 77488.8 | 77509 | $26 | +1.001 |
+| BTC/spot | 1.29115 | 77488.8 | 77667 | $230 | +1.001 |
 
 **claude_discretionary**
 
 | Key | Qty | Avg px | Px | uPnL | Weight |
 |---|---:|---:|---:|---:|---:|
-| BTC | 0.386949 | 77535.3 | 77499.5 | $-14 | +0.300 |
-| ETH | 6.66681 | 2250.06 | 2254.65 | $31 | +0.150 |
+| BTC | 0.386949 | 77535.3 | 77664.5 | $50 | +0.300 |
+| ETH | 6.66681 | 2250.06 | 2261.35 | $75 | +0.151 |
 
 **dn_funding_carry**
 
 | Key | Qty | Avg px | Px | uPnL | Weight |
 |---|---:|---:|---:|---:|---:|
-| UNI/spot | 2136.3 | 7.02501 | 7.0615 | $78 | +0.151 |
-| UNI | -2133.42 | 7.03009 | 7.07075 | $-87 | -0.151 |
-| HYPE/spot | 171.426 | 87.5453 | 87.8868 | $59 | +0.151 |
-| HYPE | -171.177 | 87.6241 | 87.9555 | $-57 | -0.151 |
-| kPEPE/spot | 3.00661e+06 | 0.00499149 | 0.00496 | $-95 | +0.149 |
-| kPEPE | -3.00661e+06 | 0.00498594 | 0.004956 | $90 | -0.149 |
-| PENDLE/spot | 8017.1 | 1.87289 | 1.8407 | $-258 | +0.148 |
-| PENDLE | -8000.21 | 1.87311 | 1.8435 | $237 | -0.148 |
-| ENA | -77597.6 | 0.193295 | 0.18898 | $335 | -0.147 |
-| ENA/spot | 77635.7 | 0.193307 | 0.188813 | $-349 | +0.147 |
-| ZEC/spot | 11.6568 | 1287.44 | 1252.52 | $-407 | +0.146 |
-| ZEC | -11.65 | 1287.49 | 1252.15 | $412 | -0.146 |
+| UNI/spot | 2136.3 | 7.02501 | 7.077 | $111 | +0.151 |
+| HYPE/spot | 171.426 | 87.5453 | 88.1875 | $110 | +0.151 |
+| UNI | -2133.42 | 7.03009 | 7.086 | $-119 | -0.151 |
+| HYPE | -171.177 | 87.6241 | 88.2735 | $-111 | -0.151 |
+| kPEPE/spot | 3.00661e+06 | 0.00499149 | 0.005009 | $53 | +0.151 |
+| kPEPE | -3.00661e+06 | 0.00498594 | 0.005007 | $-63 | -0.151 |
+| PENDLE/spot | 8017.1 | 1.87289 | 1.863 | $-79 | +0.150 |
+| PENDLE | -8000.21 | 1.87311 | 1.86565 | $60 | -0.149 |
+| ENA/spot | 77635.7 | 0.193307 | 0.18919 | $-320 | +0.147 |
+| ENA | -77597.6 | 0.193295 | 0.189205 | $317 | -0.147 |
+| ZEC/spot | 11.6568 | 1287.44 | 1257.96 | $-344 | +0.147 |
+| ZEC | -11.65 | 1287.49 | 1257.75 | $346 | -0.147 |
 
 **trend_breakout_majors**
 
 | Key | Qty | Avg px | Px | uPnL | Weight |
 |---|---:|---:|---:|---:|---:|
-| ETH | -11.6722 | 2248.64 | 2254.65 | $-70 | -0.263 |
-| SOL | -209.351 | 95.827 | 95.4055 | $88 | -0.200 |
-| BTC | -0.145851 | 77472.1 | 77499.5 | $-4 | -0.113 |
+| ETH | -11.6722 | 2248.64 | 2261.35 | $-148 | -0.264 |
+| SOL | -209.351 | 95.827 | 95.6885 | $29 | -0.201 |
+| BTC | -0.145851 | 77472.1 | 77664.5 | $-28 | -0.113 |
 
 **trend_breakout_universe_lo**
 
 | Key | Qty | Avg px | Px | uPnL | Weight |
 |---|---:|---:|---:|---:|---:|
-| kPEPE | 445303 | 0.0049565 | 0.004956 | $-0 | +0.022 |
+| kPEPE | 445303 | 0.0049565 | 0.005007 | $22 | +0.022 |
 
 ## Strategy notes
 
@@ -68,9 +68,9 @@ BTC 77,500 · ETH 2,254.7 · venue: Hyperliquid (paper) · capital per book $100
 - **claude_discretionary** — Claude's discretionary book: targets set by hand in state/discretionary.json after reviewing news, funding, positioning and charts. Measures whether judgment adds value.
   - `{"rationale": "Record $6.3B Binance hack pushed Fear&Greed 51->30 but BTC is flat ~77.5k (+0.1% 24h) and ETH +1%: resilience under very bad news + fear spike = mild contrarian long. Reassess if BTC < 74k or if stolen-fund selling hits the tape."}`
 - **crash_rebound** — Buy coins after a >10% drop over a rolling 4h window (liquidation-cascade overshoot), 15% per position, max gross 100%, hold 24h (re-trigger extends). Checked every few minutes.
-  - `{"exit_at": {}, "worst_4h": {"ATOM": -0.99, "LINK": -1.99, "PENDLE": -1.12, "TRX": -1.43, "ZEC": -2.0}}`
+  - `{"exit_at": {}, "worst_4h": {"LINK": -1.16, "RENDER": -0.06, "UNI": -0.31, "XLM": -0.35, "ZEC": -1.04}}`
 - **crash_rebound_mkt** — Crash rebound, market-wide cascades only: coin down >10% over 4h AND BTC down >3% over the same 4h (forced-liquidation overshoot; skips idiosyncratic news-driven drops). r10: OOS Sharpe 1.20 vs 0.78 for the unfiltered version at 1h lag.
-  - `{"exit_at": {}, "worst_4h": {"ATOM": -0.99, "LINK": -1.99, "PENDLE": -1.12, "TRX": -1.43, "ZEC": -2.0}}`
+  - `{"exit_at": {}, "worst_4h": {"LINK": -1.16, "RENDER": -0.06, "UNI": -0.31, "XLM": -0.35, "ZEC": -1.04}}`
 - **dn_funding_carry** — Delta-neutral: short HL perp + long spot (priced at HL oracle) on coins whose trailing-7d funding APR > 15% (exit < 5%), top 6, <=15% notional each, daily. r11 (HL data 2024-26): 13.7% CAGR, 1.4% vol, max DD -1.4%.
   - `{"holdings_apr": {"ENA": 11.6, "HYPE": 20.9, "PENDLE": 14.5, "UNI": 14.2, "ZEC": 11.2, "kPEPE": 11.5}, "last_day": "2026-11-01", "top_apr": {"BTC": 10.1, "ENA": 11.6, "HYPE": 20.9, "LDO": 10.9, "PENDLE": 14.5, "RENDER": 10.4, "TAO": 10.9, "UNI": 14.2, "ZEC": 11.2, "kPEPE": 11.5}}`
 - **trend_breakout_majors** — Donchian breakout (20/55/120d) long/short on BTC/ETH/SOL, inverse-vol, 25% vol target, daily (cut from 40% on 2026-10-31 to balance risk across books, r15).
