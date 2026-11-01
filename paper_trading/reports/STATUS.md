@@ -1,20 +1,20 @@
-# Paper trading status — 2026-11-01 11:04 UTC
+# Paper trading status — 2026-11-01 12:04 UTC
 
-BTC 77,994 · ETH 2,268.2 · venue: Hyperliquid (paper) · capital per book $100k
+BTC 77,960 · ETH 2,268.3 · venue: Hyperliquid (paper) · capital per book $100k
 
 | Book | Equity | Total | 24h | 7d | Max DD | Sharpe (ann.) | Gross | Net | Pos | Fees | Funding |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
-| benchmark_btc_hold | $100,604 | +0.60% | +0.61% | +0.61% | -0.26% | nan | 1.00 | +1.00 | 1 | $120 | $0 |
-| claude_discretionary | $100,260 | +0.26% | +0.26% | +0.26% | -0.15% | nan | 0.30 | +0.30 | 1 | $31 | $-11 |
+| benchmark_btc_hold | $100,556 | +0.56% | +0.56% | +0.56% | -0.27% | nan | 1.00 | +1.00 | 1 | $120 | $0 |
+| claude_discretionary | $100,246 | +0.25% | +0.25% | +0.25% | -0.15% | nan | 0.30 | +0.30 | 1 | $31 | $-12 |
 | crash_rebound | $100,000 | +0.00% | +0.00% | +0.00% | +0.00% | nan | 0.00 | +0.00 | 0 | $0 | $0 |
 | crash_rebound_mkt | $100,000 | +0.00% | +0.00% | +0.00% | +0.00% | nan | 0.00 | +0.00 | 0 | $0 | $0 |
-| dn_funding_carry | $99,917 | -0.08% | -0.08% | -0.08% | -0.19% | nan | 1.79 | +0.00 | 12 | $184 | $47 |
-| trend_breakout_majors | $99,781 | -0.22% | -0.22% | -0.22% | -0.43% | nan | 0.58 | -0.58 | 3 | $60 | $15 |
-| trend_breakout_universe_lo | $99,980 | -0.02% | -0.02% | -0.02% | -0.06% | nan | 0.02 | +0.02 | 1 | $1 | $-0 |
+| dn_funding_carry | $99,914 | -0.09% | -0.09% | -0.09% | -0.19% | nan | 1.78 | +0.00 | 12 | $184 | $48 |
+| trend_breakout_majors | $99,820 | -0.18% | -0.18% | -0.18% | -0.43% | nan | 0.58 | -0.58 | 3 | $60 | $15 |
+| trend_breakout_universe_lo | $99,979 | -0.02% | -0.02% | -0.02% | -0.06% | nan | 0.02 | +0.02 | 1 | $1 | $-0 |
 | trend_ewmac_majors_lo | $99,979 | -0.02% | -0.02% | -0.02% | -0.05% | nan | 0.00 | +0.00 | 0 | $13 | $-1 |
-| xs_funding | $99,445 | -0.56% | -0.55% | -0.55% | -0.60% | nan | 1.00 | -0.00 | 20 | $231 | $8 |
+| xs_funding | $99,399 | -0.60% | -0.60% | -0.60% | -0.60% | nan | 1.00 | -0.00 | 20 | $231 | $9 |
 
-**Combined (ex-benchmark): $799,362 on $800,000 → -0.08%**
+**Combined (ex-benchmark): $799,336 on $800,000 → -0.08%**
 
 ## Positions
 
@@ -22,69 +22,69 @@ BTC 77,994 · ETH 2,268.2 · venue: Hyperliquid (paper) · capital per book $100
 
 | Key | Qty | Avg px | Px | uPnL | Weight |
 |---|---:|---:|---:|---:|---:|
-| BTC/spot | 1.29115 | 77488.8 | 78011 | $674 | +1.001 |
+| BTC/spot | 1.29115 | 77488.8 | 77973.4 | $626 | +1.001 |
 
 **claude_discretionary**
 
 | Key | Qty | Avg px | Px | uPnL | Weight |
 |---|---:|---:|---:|---:|---:|
-| BTC | 0.386949 | 77535.3 | 77994.5 | $178 | +0.301 |
+| BTC | 0.386949 | 77535.3 | 77960.5 | $165 | +0.301 |
 
 **dn_funding_carry**
 
 | Key | Qty | Avg px | Px | uPnL | Weight |
 |---|---:|---:|---:|---:|---:|
-| UNI/spot | 2136.3 | 7.02501 | 7.2475 | $475 | +0.155 |
-| UNI | -2133.42 | 7.03009 | 7.25305 | $-476 | -0.155 |
-| HYPE/spot | 171.426 | 87.5453 | 87.667 | $21 | +0.150 |
-| HYPE | -171.177 | 87.6241 | 87.7205 | $-16 | -0.150 |
-| PENDLE/spot | 8017.1 | 1.87289 | 1.867 | $-47 | +0.150 |
-| PENDLE | -8000.21 | 1.87311 | 1.8682 | $39 | -0.150 |
-| kPEPE/spot | 3.00661e+06 | 0.00499149 | 0.00492 | $-215 | +0.148 |
-| kPEPE | -3.00661e+06 | 0.00498594 | 0.004915 | $213 | -0.148 |
-| ENA | -77597.6 | 0.193295 | 0.18748 | $451 | -0.146 |
-| ENA/spot | 77635.7 | 0.193307 | 0.187343 | $-463 | +0.146 |
-| ZEC | -11.65 | 1287.49 | 1244.35 | $503 | -0.145 |
-| ZEC/spot | 11.6568 | 1287.44 | 1243.6 | $-511 | +0.145 |
+| UNI/spot | 2136.3 | 7.02501 | 7.19765 | $369 | +0.154 |
+| UNI | -2133.42 | 7.03009 | 7.2039 | $-371 | -0.154 |
+| HYPE/spot | 171.426 | 87.5453 | 87.858 | $54 | +0.151 |
+| HYPE | -171.177 | 87.6241 | 87.9215 | $-51 | -0.151 |
+| PENDLE/spot | 8017.1 | 1.87289 | 1.8695 | $-27 | +0.150 |
+| PENDLE | -8000.21 | 1.87311 | 1.87025 | $23 | -0.150 |
+| kPEPE/spot | 3.00661e+06 | 0.00499149 | 0.004913 | $-236 | +0.148 |
+| kPEPE | -3.00661e+06 | 0.00498594 | 0.004911 | $225 | -0.148 |
+| ZEC/spot | 11.6568 | 1287.44 | 1243.5 | $-512 | +0.145 |
+| ZEC | -11.65 | 1287.49 | 1244.15 | $505 | -0.145 |
+| ENA/spot | 77635.7 | 0.193307 | 0.18654 | $-525 | +0.145 |
+| ENA | -77597.6 | 0.193295 | 0.18663 | $517 | -0.145 |
 
 **trend_breakout_majors**
 
 | Key | Qty | Avg px | Px | uPnL | Weight |
 |---|---:|---:|---:|---:|---:|
-| ETH | -11.6722 | 2248.64 | 2268.25 | $-229 | -0.265 |
-| SOL | -209.351 | 95.827 | 95.3665 | $96 | -0.200 |
-| BTC | -0.145851 | 77472.1 | 77994.5 | $-76 | -0.114 |
+| ETH | -11.6722 | 2248.64 | 2268.35 | $-230 | -0.265 |
+| SOL | -209.351 | 95.827 | 95.2005 | $131 | -0.200 |
+| BTC | -0.145851 | 77472.1 | 77960.5 | $-71 | -0.114 |
 
 **trend_breakout_universe_lo**
 
 | Key | Qty | Avg px | Px | uPnL | Weight |
 |---|---:|---:|---:|---:|---:|
-| kPEPE | 445303 | 0.0049565 | 0.004915 | $-18 | +0.022 |
+| kPEPE | 445303 | 0.0049565 | 0.004911 | $-20 | +0.022 |
 
 **xs_funding**
 
 | Key | Qty | Avg px | Px | uPnL | Weight |
 |---|---:|---:|---:|---:|---:|
-| TRX | 33945.6 | 0.309116 | 0.31061 | $51 | +0.106 |
-| BTC | -0.126699 | 77678.6 | 77994.5 | $-40 | -0.099 |
-| XRP | -4952.8 | 1.24999 | 1.25515 | $-26 | -0.063 |
-| SOL | -62.7547 | 95.5057 | 95.3665 | $9 | -0.060 |
-| LTC | -94.481 | 55.7821 | 55.983 | $-19 | -0.053 |
-| ATOM | 3529.46 | 1.49903 | 1.4689 | $-106 | +0.052 |
-| DOT | 5139.12 | 0.947302 | 0.95032 | $16 | +0.049 |
-| LINK | -413.69 | 11.6357 | 11.772 | $-56 | -0.049 |
-| JUP | 18737.6 | 0.259095 | 0.259665 | $11 | +0.049 |
-| CRV | 16741.8 | 0.2834 | 0.28477 | $23 | +0.048 |
-| BCH | -15.6591 | 284.686 | 282.95 | $27 | -0.045 |
-| OP | 38094.9 | 0.112812 | 0.11474 | $73 | +0.044 |
-| APT | 6645.5 | 0.635161 | 0.6384 | $22 | +0.043 |
-| ADA | -21784.9 | 0.192522 | 0.193775 | $-27 | -0.042 |
-| kPEPE | 801611 | 0.00503502 | 0.004915 | $-96 | +0.040 |
-| WLD | 9717.81 | 0.39876 | 0.40071 | $19 | +0.039 |
-| RENDER | -2079.13 | 1.56364 | 1.5787 | $-31 | -0.033 |
-| TIA | 6583.75 | 0.474572 | 0.4806 | $40 | +0.032 |
-| ZEC | -2.48068 | 1254.49 | 1244.35 | $25 | -0.031 |
-| ENA | -14089.9 | 0.188043 | 0.18748 | $8 | -0.027 |
+| TRX | 33945.6 | 0.309116 | 0.31063 | $51 | +0.106 |
+| BTC | -0.126699 | 77678.6 | 77960.5 | $-36 | -0.099 |
+| XRP | -4952.8 | 1.24999 | 1.25385 | $-19 | -0.062 |
+| SOL | -62.7547 | 95.5057 | 95.2005 | $19 | -0.060 |
+| LTC | -94.481 | 55.7821 | 55.9315 | $-14 | -0.053 |
+| ATOM | 3529.46 | 1.49903 | 1.4681 | $-109 | +0.052 |
+| DOT | 5139.12 | 0.947302 | 0.94645 | $-4 | +0.049 |
+| JUP | 18737.6 | 0.259095 | 0.259515 | $8 | +0.049 |
+| LINK | -413.69 | 11.6357 | 11.7075 | $-30 | -0.049 |
+| CRV | 16741.8 | 0.2834 | 0.28376 | $6 | +0.048 |
+| BCH | -15.6591 | 284.686 | 282.6 | $33 | -0.045 |
+| OP | 38094.9 | 0.112812 | 0.11366 | $32 | +0.044 |
+| APT | 6645.5 | 0.635161 | 0.6365 | $9 | +0.043 |
+| ADA | -21784.9 | 0.192522 | 0.193215 | $-15 | -0.042 |
+| kPEPE | 801611 | 0.00503502 | 0.004911 | $-99 | +0.040 |
+| WLD | 9717.81 | 0.39876 | 0.3975 | $-12 | +0.039 |
+| RENDER | -2079.13 | 1.56364 | 1.5811 | $-36 | -0.033 |
+| TIA | 6583.75 | 0.474572 | 0.48144 | $45 | +0.032 |
+| ZEC | -2.48068 | 1254.49 | 1244.15 | $26 | -0.031 |
+| ENA | -14089.9 | 0.188043 | 0.18663 | $20 | -0.026 |
 
 ## Strategy notes
 
@@ -92,9 +92,9 @@ BTC 77,994 · ETH 2,268.2 · venue: Hyperliquid (paper) · capital per book $100
 - **claude_discretionary** — Claude's discretionary book: targets set by hand in state/discretionary.json after reviewing news, funding, positioning and charts. Measures whether judgment adds value.
   - `{"rationale": "Keep BTC 0.30 (resilient after the $6.3B Binance hack; F&G ~34; Binance withdrawals reopening = normalisation). Cut ETH 0.15 -> 0: FBI attributes the hack to Lazarus, who historically launder via ETH over weeks (post-Bybit Feb-2025 ETH lagged) -> ETH supply overhang. Revisit after US midterms (Nov 3) or if BTC < 74k."}`
 - **crash_rebound** — Buy coins after a >10% drop over 4h measured on closed hourly bars (liquidation-cascade overshoot), 15% per position, max gross 100%, hold 24h (re-trigger extends). Hourly only: r28 showed 5-minute scanning catches falling knives (MaxDD −60% vs −28%).
-  - `{"exit_at": {}, "worst_4h": {"AAVE": -1.38, "ATOM": -1.94, "AVAX": -1.33, "JUP": -1.25, "PENDLE": -1.79}}`
+  - `{"exit_at": {}, "worst_4h": {"ATOM": -1.61, "AVAX": -1.31, "PENDLE": -1.84, "WLD": -0.97, "kPEPE": -2.0}}`
 - **crash_rebound_mkt** — Crash rebound, market-wide cascades only: coin down >10% over 4h AND BTC down >3% over the same 4h (forced-liquidation overshoot; skips idiosyncratic news-driven drops). r10: OOS Sharpe 1.20 vs 0.78 for the unfiltered version at 1h lag.
-  - `{"exit_at": {}, "worst_4h": {"AAVE": -1.38, "ATOM": -1.94, "AVAX": -1.33, "JUP": -1.25, "PENDLE": -1.79}}`
+  - `{"exit_at": {}, "worst_4h": {"ATOM": -1.61, "AVAX": -1.31, "PENDLE": -1.84, "WLD": -0.97, "kPEPE": -2.0}}`
 - **dn_funding_carry** — Delta-neutral: short HL perp + long spot (priced at HL oracle) on coins whose trailing-7d funding APR > 15% (exit < 5%), top 6, <=15% notional each, daily. r11 (HL data 2024-26): 13.7% CAGR, 1.4% vol, max DD -1.4%.
   - `{"holdings_apr": {"ENA": 11.6, "HYPE": 20.9, "PENDLE": 14.5, "UNI": 14.2, "ZEC": 11.2, "kPEPE": 11.5}, "last_day": "2026-11-01", "top_apr": {"BTC": 10.1, "ENA": 11.6, "HYPE": 20.9, "LDO": 10.9, "PENDLE": 14.5, "RENDER": 10.4, "TAO": 10.9, "UNI": 14.2, "ZEC": 11.2, "kPEPE": 11.5}}`
 - **trend_breakout_majors** — Donchian breakout (20/55/120d) long/short on BTC/ETH/SOL, inverse-vol, 25% vol target, daily (cut from 40% on 2026-10-31 to balance risk across books, r15).
