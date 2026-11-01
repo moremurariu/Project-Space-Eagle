@@ -2,7 +2,7 @@
 
 Resolved-market price history is not available from the CLOB API and the trades API only exposes the most recent
 ~10k trades per market, so we collect our own forward dataset:
-- every full cycle: markets ending within 7 days (near-expiry dynamics), top 500 by 24h volume
+- every full cycle: markets ending within 48h (near-expiry dynamics), from the top 500 by 24h volume
 - once a day (00 UTC cycle): the full top-500 snapshot
 Files: state/polymarket/snap_YYYY-MM-DD.csv.gz (append-only, small).
 """
@@ -59,7 +59,7 @@ def collect(now: pd.Timestamp) -> int:
         return 0
     end = pd.to_datetime(df["end"], errors="coerce", utc=True)
     days_left = (end - now).dt.total_seconds() / 86400
-    keep = df[(days_left > -1) & (days_left < 7)] if now.hour != 0 else df
+    keep = df[(days_left > -0.5) & (days_left < 2)] if now.hour != 0 else df
     keep = keep.copy()
     keep.insert(0, "ts", now.floor("min").isoformat())
     OUT.mkdir(parents=True, exist_ok=True)
