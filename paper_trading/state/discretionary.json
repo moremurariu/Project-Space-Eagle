@@ -1,6 +1,6 @@
 {
-  "updated": "2026-10-31T15:40Z",
-  "targets": {"BTC": 0.30, "ETH": 0.15},
-  "rationale": "Record $6.3B Binance hack pushed Fear&Greed 51->30 but BTC is flat ~77.5k (+0.1% 24h) and ETH +1%: resilience under very bad news + fear spike = mild contrarian long. Reassess if BTC < 74k or if stolen-fund selling hits the tape.",
-  "review_by": "2026-11-02"
+  "updated": "2026-11-01T11:06Z",
+  "targets": {"BTC": 0.30, "ETH": 0.0},
+  "rationale": "Keep BTC 0.30 (resilient after the $6.3B Binance hack; F&G ~34; Binance withdrawals reopening = normalisation). Cut ETH 0.15 -> 0: FBI attributes the hack to Lazarus, who historically launder via ETH over weeks (post-Bybit Feb-2025 ETH lagged) -> ETH supply overhang. Revisit after US midterms (Nov 3) or if BTC < 74k.",
+  "review_by": "2026-11-04"
 }

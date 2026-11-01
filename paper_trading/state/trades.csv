@@ -85,3 +85,4 @@ ts,book,key,side,qty,mid,fill_px,notional,fee,slip_cost,reason
 2026-11-01T02:12:08.481963+00:00,xs_funding,DOT,buy,5139.1238,0.94692,0.94730162,4868.30,2.1907,1.9612,daily xs-funding (Binance recon)
 2026-11-01T02:12:08.481963+00:00,xs_funding,ATOM,buy,3529.4608,1.4977,1.4990321,5290.77,2.3808,4.7015,daily xs-funding (Binance recon)
 2026-11-01T02:12:08.481963+00:00,xs_funding,TRX,buy,33945.588,0.30901,0.3091158,10493.12,4.7219,3.5915,daily xs-funding (Binance recon)
+2026-11-01T11:04:47.390899+00:00,claude_discretionary,ETH,sell,-6.6668148,2268.25,2268.1366,15121.25,6.8046,0.7561,discretionary: Keep BTC 0.30 (resilient after the $6.3B Binance hack; F&G ~34; Binance withdrawals reopening = normalisation). Cut ETH 
