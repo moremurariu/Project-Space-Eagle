@@ -7,13 +7,13 @@
  "initial": 100000.0,
  "meta": {
   "exit_at": {},
-  "last_scan": "2026-11-01T16:04:39.594474+00:00",
+  "last_scan": "2026-11-01T17:04:05.819830+00:00",
   "worst_4h": {
-   "ENA": -0.96,
-   "LINK": -1.13,
-   "NEAR": -1.12,
-   "ONDO": -1.05,
-   "kPEPE": -1.83
+   "AAVE": -0.84,
+   "ENA": -0.75,
+   "LINK": -0.61,
+   "NEAR": -1.55,
+   "PENDLE": -0.7
   }
  },
  "name": "crash_rebound_mkt",
