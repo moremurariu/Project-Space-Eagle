@@ -249,3 +249,8 @@ entry 5 min later, hold 24h, 15%/position, fees + 0.1% slippage.
 Continuous scanning enters mid-cascade (falling knives) → much deeper drawdowns. Hourly-close signals are as good
 or better risk-adjusted. → Live crash books switched to hourly-bar signals only (no more 3-minute ticker scans);
 an always-on host for faster scanning is NOT worth it.
+
+### r29 trend majors sized by implied vol (Deribit DVOL vs its 1y median) — REJECTED
+Baseline (realised-vol target): 2021-23 Sharpe 0.84 / DD −33%; 2024-26 0.60 / −35%.
+× (median DVOL/DVOL)^0.5: 0.76 / −36% | 0.63 / −34%. ×(…)^1.0: 0.73 / −39% | 0.67 / −33%.
+Helps recent period slightly, hurts 2021-23 → inconsistent; realised-vol targeting kept.

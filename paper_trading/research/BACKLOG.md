@@ -2,8 +2,7 @@
 
 1. XS funding: DONE (r21-r22) — live on Binance funding reconstructed from 1m premium archives. Monitor live vs
    backtest; if Coinalyze key arrives, cross-check reconstruction against live Binance rates.
-2. Deribit DVOL: r09/r10 done (standalone rejected; market-wide crash filter promoted). Left: option-chain skew,
-   DVOL as sizing input for trend books.
+2. Deribit DVOL: r09/r10/r29 done (standalone + sizing rejected; market-wide crash filter promoted). Left: option skew.
 3. Crash-rebound: r10/r16/r17/r28 done (market-wide book promoted; hourly-close signals beat 5m scanning).
    Left: scale-in entries, live-vs-backtest tracking once events occur.
 4. ~~TradFi trend on HL xyz~~ — r07 + r08 (Yahoo history incl. metals, TOM, VIX) all rejected. Revisit: weekend lead-lag (xyz trades 24/7), index seasonality.
