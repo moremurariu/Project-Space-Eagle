@@ -185,3 +185,18 @@ Too weak for a standalone book; keep as candidate features for an ML/composite m
   Binance's 1-min weighted premium averaging and rate caps matter. xs_funding stays paused.
 - Next options: (a) ask for a non-geo-blocked network path to Binance fapi (would make `fundingRate` live),
   (b) try 1-min `premiumIndexKlines` for exact averaging, (c) monthly funding archives with ≤30d lag (test decay).
+
+### r21/r22 Binance funding reconstructed from 1-minute premium index → xs_funding RESUMED (2026-11-01 02:20)
+- r21: per-settlement reconstruction F = P + clamp(I − P, ±0.05%), P = linearly time-weighted 1m premium over the
+  interval, per-coin interval (4h/8h) and interest baseline from the latest actual archives. Aug-Sep 2026, 40 coins:
+  median corr 0.99 per settlement, MAE ≈ 0.05bp (BNB the outlier: ~0 interest component).
+- New module `ptrade/data/funding_recon.py` (monthly 1m archives + daily files with ~1-2 day lag; cached per
+  month/day as settlement series). 40 coins built from 2024-01 in ~5 min.
+- r22 (2024-01 → 2026-10, HL funding *paid* since positions live on HL): 7d-sum rank corr vs actual 0.983.
+  | Signal | lag 0h | lag 24h | lag 48h |
+  |---|---:|---:|---:|
+  | actual Binance funding | 1.34 | 1.15 | 1.38 |
+  | reconstructed (1m) | **1.44** (26% CAGR, DD −15%) | 0.82 | 1.20 (21%, −18%) |
+  Positive every year 2024/2025/2026 in all variants. Live lag ≈ 48h (yesterday's 1m file not yet published at the
+  00 UTC rebalance) → expect Sharpe ~1.
+- `xs_funding` switched to this signal and unpaused; holds (no trades) if < 20 coins have funding data ≤ 4 days old.

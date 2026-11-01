@@ -162,13 +162,33 @@ class TrendEWMACMajorsLO(DailySignal):
 
 class XSFunding(Strategy):
     name = "xs_funding"
-    description = ("Market-neutral: long lowest / short highest trailing-7d HL funding (quartiles), "
-                   "inverse-vol, gross 1.0, daily at 00 UTC.")
+    description = ("Market-neutral: long lowest / short highest trailing-7d *Binance* funding (quartiles, 40 coins), "
+                   "inverse-vol, gross 1.0, daily. Binance funding is reconstructed from 1-minute premium-index "
+                   "archives (~1-2 day lag; r21 corr 0.99/settlement). r22 backtest 2024-26 w/ HL funding paid: "
+                   "Sharpe 1.44 / 0.82 / 1.20 at 0 / 24 / 48h lag.")
+    paused = False
+    pause_reason = ""
+    max_staleness = pd.Timedelta(days=4)
 
-    paused = True
-    pause_reason = ("PAUSED 2026-10-31: r11/r12 showed the edge is in Binance funding across 40 coins (OOS Sharpe "
-                    "1.24); the HL-funding signal available live backtests at Sharpe -1.5 on 15 coins, and OKX "
-                    "is only ~0.5 rank-correlated with Binance. Re-test on HL funding for all 40 coins before resuming.")
+    def _binance_funding_7d(self, now) -> tuple[pd.Series, pd.Timestamp | None]:
+        from ..data import funding_recon
+        start = (now - pd.Timedelta(days=45)).strftime("%Y-%m")
+        sums, last = {}, []
+        for sym in UNIVERSE:
+            nm = "1000PEPEUSDT" if sym == "PEPEUSDT" else sym
+            try:
+                r = funding_recon.build(nm, start=start, workers=4)
+            except Exception as e:  # noqa: BLE001
+                print(f"[{self.name}] recon failed {nm}: {e}")
+                continue
+            if not len(r):
+                continue
+            t_last = r.index[-1]
+            if now - t_last > self.max_staleness:
+                continue
+            sums[sym] = float(r[r.index > t_last - pd.Timedelta(hours=168)].sum())
+            last.append(t_last)
+        return pd.Series(sums), (min(last) if last else None)
 
     def run(self, book, mkt, data, now, fast):
         if fast:
@@ -179,20 +199,16 @@ class XSFunding(Strategy):
                 print(f"[{self.name}] paused -> closed {n} positions")
             book.meta["paused"] = self.pause_reason
             return
+        book.meta.pop("paused", None)
         day = now.strftime("%Y-%m-%d")
         if book.meta.get("last_day") == day:
             return
-        coins = [c for c in UNIVERSE.values() if mkt.has(c)]
-        F = hl_funding_panel(coins, hours=24 * 8)
-        inv = {v: k for k, v in UNIVERSE.items()}
-        F.columns = [inv[c] for c in F.columns]
+        trail, asof = self._binance_funding_7d(now)
         P = data.panel.iloc[-24 * 45:]
-        F = F.reindex(P.index)
-        F.index = P.index
-        trail = F.iloc[-168:].sum(min_count=100)
-        trail = trail[P.iloc[-1].notna()].dropna()
-        if len(trail) < 8:
-            print(f"[{self.name}] not enough funding data")
+        trail = trail[[c for c in trail.index if c in P.columns and pd.notna(P[c].iloc[-1])]]
+        if len(trail) < 20:
+            print(f"[{self.name}] only {len(trail)} coins with fresh funding data -> holding positions")
+            book.meta["warning"] = f"{now.isoformat()} stale/insufficient funding data ({len(trail)} coins)"
             return
         vol = P.pct_change(fill_method=None).iloc[-24 * 30:].std()
         k = max(1, int(round(len(trail) * 0.25)))
@@ -203,11 +219,14 @@ class XSFunding(Strategy):
         w[longs] = iv[longs] / iv[longs].sum() * 0.5
         w[shorts] = -iv[shorts] / iv[shorts].sum() * 0.5
         targets = {k_: v for k_, v in binance_to_hl_weights(w).items() if mkt.has(k_)}
-        n = rebalance(book, mkt, targets, now, "daily xs-funding", buffer=0.01)
+        n = rebalance(book, mkt, targets, now, "daily xs-funding (Binance recon)", buffer=0.01)
+        book.meta.pop("warning", None)
         book.meta["last_day"] = day
+        book.meta["signal_asof"] = str(asof)
         book.meta["last_targets"] = {k_: round(v, 4) for k_, v in targets.items() if abs(v) > 1e-4}
-        book.meta["trail_funding_apr"] = {UNIVERSE[s]: round(float(v) / 168 * 8760 * 100, 1) for s, v in r.items()}
-        print(f"[{self.name}] rebalanced: {n} trades; longs={list(longs)} shorts={list(shorts)}")
+        book.meta["trail_funding_apr"] = {UNIVERSE[s]: round(float(v) * 365 / 7 * 100, 1) for s, v in r.items()}
+        print(f"[{self.name}] rebalanced: {n} trades; asof {asof}; longs={[UNIVERSE[x] for x in longs]} "
+              f"shorts={[UNIVERSE[x] for x in shorts]}")
 
 
 class DeltaNeutralCarry(Strategy):

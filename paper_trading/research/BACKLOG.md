@@ -1,7 +1,7 @@
 # Research backlog (top = next)
 
-1. **XS funding live signal**: edge needs *Binance* funding (Sharpe 1.1-1.4, survives 72h lag; r19). Premium-index
-   reconstruction too noisy (r20). Try 1-min premium klines for exact averaging, or monthly-archive lag decay test.
+1. XS funding: DONE (r21-r22) — live on Binance funding reconstructed from 1m premium archives. Monitor live vs
+   backtest; if Coinalyze key arrives, cross-check reconstruction against live Binance rates.
 2. Deribit DVOL: r09/r10 done (standalone rejected; market-wide crash filter promoted). Left: option-chain skew,
    DVOL as sizing input for trend books.
 3. **Crash-rebound refinements**: market-wide vs idiosyncratic crashes, volume/funding filters, BTC-regime
