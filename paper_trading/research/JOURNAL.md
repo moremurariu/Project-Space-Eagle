@@ -200,3 +200,10 @@ Too weak for a standalone book; keep as candidate features for an ML/composite m
   Positive every year 2024/2025/2026 in all variants. Live lag ≈ 48h (yesterday's 1m file not yet published at the
   00 UTC rebalance) → expect Sharpe ~1.
 - `xs_funding` switched to this signal and unpaused; holds (no trades) if < 20 coins have funding data ≤ 4 days old.
+
+### r23 HL hourly premium extremes (live-available) → relative forward returns — not promoted
+Per-coin 14d z-score of HL premium (perp vs oracle), entry 1h after, cross-sectionally demeaned forward returns:
+- z 2..3: +16/+12/+30bp (24h) and +21/+28/+23bp (72h) in 2024/2025/2026 → mild *momentum*, consistent sign.
+- z > 3: +63/+4/+38bp (24h); z < −3: −36/+59/−32bp (24h) — 2025 flips the short side.
+Edge ≈ one round trip of costs (~10bp+); not worth a book. Consistent with r12 (HL positioning ≈ momentum-ish,
+unstable). Possible use: tilt inside a composite model.
