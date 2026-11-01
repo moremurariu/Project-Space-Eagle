@@ -13,7 +13,7 @@ taker fees, order-book-walk slippage, and exact hourly funding from the HL API.
 | Book | Idea | Cadence |
 |---|---|---|
 | `trend_breakout_majors` | Donchian breakout L/S on BTC/ETH/SOL, 25% vol target | daily |
-| `trend_breakout_universe_lo` | Long-only breakout across 40 liquid coins | daily |
+| `trend_breakout_universe_lo` | Long-only breakout across 40 liquid coins, scaled by 30d efficiency-ratio (trendiness) gate | daily |
 | `trend_ewmac_majors_lo` | **Retired** (r15: weakest, redundant with other trend books) | — |
 | `xs_funding` | Market-neutral: long lowest / short highest 7d *Binance* funding (reconstructed from 1m premium archives, r21-r22) | daily |
 | `dn_funding_carry` | Delta-neutral basis: short perp + long spot on coins with 7d funding >15% APR | daily |

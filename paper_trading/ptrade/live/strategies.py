@@ -142,10 +142,12 @@ class TrendBreakoutMajors(DailySignal):
 
 class TrendBreakoutAltsLO(DailySignal):
     name = "trend_breakout_universe_lo"
-    description = "Long-only Donchian breakout on 40-coin universe, inverse-vol, 40% vol target, daily."
+    description = ("Long-only Donchian breakout on 40-coin universe, inverse-vol, 40% vol target, daily; positions "
+                   "scaled by 30d efficiency-ratio gate [0.1, 0.3] (r27: Sharpe IS 1.38→1.46, OOS 0.53→0.67, lower DD).")
 
     def weights(self, P):
-        return S.trend_breakout(P, long_only=True, port_vol_target=0.4)
+        w = S.trend_breakout(P, long_only=True, port_vol_target=0.4)
+        return w * S.efficiency_gate(P, 30, 0.1, 0.3).reindex(columns=w.columns).where(w.notna())
 
 
 class TrendEWMACMajorsLO(DailySignal):

@@ -18,4 +18,4 @@
    Trades API only exposes the latest 10k trades/market (offset cap) and CLOB history is empty after resolution.
 9. ~~Pairs / cointegration~~ (r25 rejected: IS negative, OOS driven by one pair).
 10. **News/LLM sentiment**: headline-shock event study (exchange hacks, ETF flows, macro prints).
-11. ~~Weekend effects~~ (r24 rejected). Left: volatility-regime switching between trend and mean reversion.
+11. ~~Weekend effects~~ (r24 rejected). Trend regime gate: r27 promoted ER30 gate for universe LO.

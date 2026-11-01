@@ -272,3 +272,13 @@ def trend_daily(d: pd.DataFrame, periods: int = 252, lookbacks=(20, 55, 120), sp
     if port_vol_target:
         w = portfolio_vol_target(w, rets.fillna(0), port_vol_target, periods, span=60, max_lev=max_gross)
     return cap_gross(w, max_gross)
+
+
+def efficiency_gate(prices_h: pd.DataFrame, n: int = 30, lo: float = 0.1, hi: float = 0.3, hour: int = 0) -> pd.DataFrame:
+    """Per-asset trendiness multiplier in [0, 1] from the Kaufman efficiency ratio over n daily bars
+    (|net move| / sum |daily moves|), mapped linearly from lo→0 to hi→1. Placed on the hourly grid like the
+    daily signals (rows only at the daily rebalance bar)."""
+    d = to_daily(prices_h, hour)
+    er = (d - d.shift(n)).abs() / d.diff().abs().rolling(n).sum()
+    g = ((er - lo) / (hi - lo)).clip(0, 1)
+    return daily_to_hourly(g, prices_h.index)

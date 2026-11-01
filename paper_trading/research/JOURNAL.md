@@ -223,3 +223,16 @@ inverse-vol sizing, walk-forward yearly 2021-2026. q=0.2: CAGR 3.3%, Sharpe 0.25
 +26/+28/−8%); q=0.3: Sharpe 0.19. Huge improvement over v1 (−17…−34% CAGR) but too weak/unstable to trade.
 Next ML attempt only with new information sources (reconstructed Binance funding, positioning, HL premium) once the
 reconstructed funding history is long enough to train on.
+
+### r27 trend books gated by Kaufman efficiency ratio (trendiness) — PROMOTED for universe LO
+Gate = clip((ER_n − lo)/(hi − lo), 0, 1) per asset, multiplied into daily trend weights.
+| Book | Variant | IS Sharpe / MaxDD | OOS Sharpe / MaxDD |
+|---|---|---|---|
+| majors L/S (pvt .25) | baseline | 1.71 / −33% | 0.60 / −35% |
+| | ER30 [.1,.3] | 1.81 / −21% | 0.56 / −26% |
+| | ER30 [.15,.4] | 1.60 / −20% | 0.64 / −18% |
+| universe LO | baseline | 1.38 / −35% | 0.53 / −24% |
+| | **ER30 [.1,.3]** | **1.46 / −20%** | **0.67 / −20%** |
+| | ER30 [.15,.4] | 1.32 / −15% | 0.86 / −17% |
+ER60 worse everywhere. Universe LO with ER30 [0.1, 0.3] improves Sharpe and drawdown in BOTH periods → live
+(`signals.efficiency_gate`). Majors: Sharpe mixed → unchanged.
