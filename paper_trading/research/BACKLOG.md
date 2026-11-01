@@ -7,8 +7,8 @@
 3. **Crash-rebound refinements**: market-wide vs idiosyncratic crashes, volume/funding filters, BTC-regime
    filter, scale-in, using 1m data for realistic real-time triggers (Binance 1m klines).
 4. ~~TradFi trend on HL xyz~~ — r07 + r08 (Yahoo history incl. metals, TOM, VIX) all rejected. Revisit: weekend lead-lag (xyz trades 24/7), index seasonality.
-5. ML cross-sectional v2 (r14 v1 rejected: rank-IC real but captures volatility drag): simple-return /
-   vol-scaled regression target, true inverse-vol sizing, weekly horizon to cut turnover.
+5. ML cross-sectional: v1 rejected (r14), v2 marginal (r26, Sharpe 0.25). v3 needs new features (Binance funding recon,
+   positioning, HL premium) once enough history exists.
 6. Ensemble / allocator: r15 done (equal-weight + risk balancing adopted). Later: dynamic allocation from LIVE
    book returns once ~2 months of data exist; portfolio-level drawdown control.
 7. OI / positioning: r18 done (weak, rejected standalone). `binance.load_metrics` available as ML features.

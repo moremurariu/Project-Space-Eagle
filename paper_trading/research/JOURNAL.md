@@ -216,3 +216,10 @@ minus losers over Mon-Tue +20bp (t 0.55) / −5bp (t −0.16). No continuation o
 Equal-weight pair portfolio: window 20d/entry 2.0 → IS 0.05 / OOS 0.36; 60d/2.0 → IS −0.64 / OOS 0.56;
 20d/2.5 → IS −0.74 / OOS 0.13. OOS positives driven by a single pair (UNI/AAVE 0.9-1.9) → data-mining risk;
 ETH/BTC and ARB/OP negative OOS. Crypto relative-value spreads trend more than they revert at daily horizons.
+
+### r26 ML cross-sectional v2 — marginal, not promoted
+Fixes from r14 diagnosis: target = vol-scaled, demeaned 7d *simple* return (clipped ±3), weekly rebalance, true
+inverse-vol sizing, walk-forward yearly 2021-2026. q=0.2: CAGR 3.3%, Sharpe 0.25, MaxDD −40% (yearly −29/+10/+4/
++26/+28/−8%); q=0.3: Sharpe 0.19. Huge improvement over v1 (−17…−34% CAGR) but too weak/unstable to trade.
+Next ML attempt only with new information sources (reconstructed Binance funding, positioning, HL premium) once the
+reconstructed funding history is long enough to train on.
