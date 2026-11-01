@@ -4,8 +4,8 @@
    backtest; if Coinalyze key arrives, cross-check reconstruction against live Binance rates.
 2. Deribit DVOL: r09/r10 done (standalone rejected; market-wide crash filter promoted). Left: option-chain skew,
    DVOL as sizing input for trend books.
-3. **Crash-rebound refinements**: market-wide vs idiosyncratic crashes, volume/funding filters, BTC-regime
-   filter, scale-in, using 1m data for realistic real-time triggers (Binance 1m klines).
+3. Crash-rebound: r10/r16/r17/r28 done (market-wide book promoted; hourly-close signals beat 5m scanning).
+   Left: scale-in entries, live-vs-backtest tracking once events occur.
 4. ~~TradFi trend on HL xyz~~ — r07 + r08 (Yahoo history incl. metals, TOM, VIX) all rejected. Revisit: weekend lead-lag (xyz trades 24/7), index seasonality.
 5. ML cross-sectional: v1 rejected (r14), v2 marginal (r26, Sharpe 0.25). v3 needs new features (Binance funding recon,
    positioning, HL premium) once enough history exists.

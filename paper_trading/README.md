@@ -17,8 +17,8 @@ taker fees, order-book-walk slippage, and exact hourly funding from the HL API.
 | `trend_ewmac_majors_lo` | **Retired** (r15: weakest, redundant with other trend books) | — |
 | `xs_funding` | Market-neutral: long lowest / short highest 7d *Binance* funding (reconstructed from 1m premium archives, r21-r22) | daily |
 | `dn_funding_carry` | Delta-neutral basis: short perp + long spot on coins with 7d funding >15% APR | daily |
-| `crash_rebound` | Buy liquidation-cascade overshoots (>10% 4h drop), hold 24h | every 3 min |
-| `crash_rebound_mkt` | Same, only when BTC also fell >3% in those 4h (market-wide cascades) | every 3 min |
+| `crash_rebound` | Buy liquidation-cascade overshoots (>10% 4h drop on closed hourly bars), hold 24h | hourly |
+| `crash_rebound_mkt` | Same, only when BTC also fell >3% in those 4h (market-wide cascades) | hourly |
 | `claude_discretionary` | Claude's own judgment from news / positioning (`state/discretionary.json`) | ad hoc |
 | `benchmark_btc_hold` | BTC buy & hold benchmark | — |
 

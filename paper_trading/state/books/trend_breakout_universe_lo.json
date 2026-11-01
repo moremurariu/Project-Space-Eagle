@@ -1,9 +1,9 @@
 {
- "cash": 97791.66435965343,
+ "cash": 97791.63652821461,
  "created": "2026-10-31T15:34:06.149723+00:00",
  "description": "Long-only Donchian breakout on 40-coin universe, inverse-vol, 40% vol target, daily; positions scaled by 30d efficiency-ratio gate [0.1, 0.3] (r27: Sharpe IS 1.38\u21921.46, OOS 0.53\u21920.67, lower DD).",
  "fees": 0.9932150411313524,
- "funding": -0.19788945798842064,
+ "funding": -0.22572089679953541,
  "initial": 100000.0,
  "meta": {
   "last_signal": "2026-10-31T23:00:00+00:00",
@@ -19,7 +19,7 @@
  "positions": {
   "kPEPE": {
    "avg_px": 0.0049565002523468266,
-   "funded_through": "2026-11-01T09:00:00+00:00",
+   "funded_through": "2026-11-01T10:00:00+00:00",
    "opened": "2026-11-01T00:04:13.885254+00:00",
    "qty": 445303.02097783634
   }

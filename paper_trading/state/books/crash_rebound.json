@@ -1,19 +1,19 @@
 {
  "cash": 100000.0,
  "created": "2026-10-31T15:34:06.149723+00:00",
- "description": "Buy coins after a >10% drop over a rolling 4h window (liquidation-cascade overshoot), 15% per position, max gross 100%, hold 24h (re-trigger extends). Checked every few minutes.",
+ "description": "Buy coins after a >10% drop over 4h measured on closed hourly bars (liquidation-cascade overshoot), 15% per position, max gross 100%, hold 24h (re-trigger extends). Hourly only: r28 showed 5-minute scanning catches falling knives (MaxDD \u221260% vs \u221228%).",
  "fees": 0.0,
  "funding": 0.0,
  "initial": 100000.0,
  "meta": {
   "exit_at": {},
-  "last_scan": "2026-11-01T09:04:06.434269+00:00",
+  "last_scan": "2026-11-01T10:08:10.831942+00:00",
   "worst_4h": {
-   "AAVE": -2.47,
-   "ATOM": -1.4,
-   "INJ": -1.26,
-   "PENDLE": -1.62,
-   "SEI": -1.1
+   "AAVE": -2.33,
+   "ATOM": -1.53,
+   "OP": -1.47,
+   "PENDLE": -1.58,
+   "SEI": -1.61
   }
  },
  "name": "crash_rebound",

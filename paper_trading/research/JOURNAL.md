@@ -236,3 +236,16 @@ Gate = clip((ER_n − lo)/(hi − lo), 0, 1) per asset, multiplied into daily tr
 | | ER30 [.15,.4] | 1.32 / −15% | 0.86 / −17% |
 ER60 worse everywhere. Universe LO with ER30 [0.1, 0.3] improves Sharpe and drawdown in BOTH periods → live
 (`signals.efficiency_gate`). Majors: Sharpe mixed → unchanged.
+
+### r28 crash-rebound: continuous 5-minute scanning vs hourly-close scanning (5m data, 2024-01 → 2026-09)
+Spot 5m klines for 40 coins (monthly archives, `research/fetch_5m.py`). Rolling 4h drop < −10% at 5m resolution,
+entry 5 min later, hold 24h, 15%/position, fees + 0.1% slippage.
+| Scan | Filter | Sharpe | CAGR | MaxDD | entries |
+|---|---|---:|---:|---:|---:|
+| every 5m | none | 0.77 | 27% | −60% | 797 |
+| hourly closes | none | 0.56 | 13% | −28% | 531 |
+| every 5m | market-wide | 0.63 | 16% | −65% | 607 |
+| **hourly closes** | **market-wide** | **0.95** | **24%** | **−24%** | 411 |
+Continuous scanning enters mid-cascade (falling knives) → much deeper drawdowns. Hourly-close signals are as good
+or better risk-adjusted. → Live crash books switched to hourly-bar signals only (no more 3-minute ticker scans);
+an always-on host for faster scanning is NOT worth it.

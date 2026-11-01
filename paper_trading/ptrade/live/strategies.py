@@ -267,9 +267,10 @@ class DeltaNeutralCarry(Strategy):
 
 class CrashRebound(Strategy):
     name = "crash_rebound"
-    description = ("Buy coins after a >10% drop over a rolling 4h window (liquidation-cascade overshoot), "
-                   "15% per position, max gross 100%, hold 24h (re-trigger extends). Checked every few minutes.")
-    fast = True
+    description = ("Buy coins after a >10% drop over 4h measured on closed hourly bars (liquidation-cascade "
+                   "overshoot), 15% per position, max gross 100%, hold 24h (re-trigger extends). Hourly only: r28 showed "
+                   "5-minute scanning catches falling knives (MaxDD −60% vs −28%).")
+    fast = False
     thr, hold_h, per_w, max_gross = -0.10, 24, 0.15, 1.0
 
     def _rolling_4h(self) -> dict[str, float]:
@@ -316,17 +317,13 @@ class CrashRebound(Strategy):
                     rebalance(book, mkt, {coin: 0.0}, now, "crash-rebound exit (24h)", close_others=False)
                 exits.pop(coin, None)
         # 2) events: real-time rolling 4h window + catch-up on hourly closes since the previous scan
-        try:
-            chg = self._rolling_4h()
-        except Exception as e:  # noqa: BLE001
-            print(f"[{self.name}] ticker failed: {e}")
-            chg = {}
-        btc_now = chg.get("BTCUSDT", float("nan"))
-        events = {sym: (r, now, btc_now) for sym, r in chg.items() if r < self.thr}
-        if (now - prev_scan) > pd.Timedelta(minutes=10):
-            for sym, ev in self._missed_events(data, prev_scan, now).items():
-                events.setdefault(sym, ev)
+        if fast:
+            return
+        # signals on closed hourly bars only (incl. any bars missed while the container slept)
+        events = self._missed_events(data, prev_scan, now)
         events = {k: v for k, v in events.items() if self._accept(v[2])}
+        P = data.panel.iloc[-6:]
+        chg = (P.iloc[-1] / P.iloc[-5] - 1).dropna().to_dict()
         book.meta["last_scan"] = now.isoformat()
         if chg:
             book.meta["worst_4h"] = {UNIVERSE[s]: round(v * 100, 2) for s, v in sorted(chg.items(), key=lambda x: x[1])[:5]}
