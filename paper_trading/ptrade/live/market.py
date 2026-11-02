@@ -9,6 +9,7 @@ from ..config import HL_TAKER_FEE
 from ..data import hyperliquid as hl
 
 SPOT_FEE = 0.0007          # HL spot taker (base tier); used for hedge legs
+HIP3_FEE = 0.0009          # HIP-3 (xyz) perps: conservative 2x base taker
 MAX_SLIP = 0.01
 
 
@@ -70,7 +71,9 @@ class Market:
 
     @staticmethod
     def fee(key: str) -> float:
-        return SPOT_FEE if key.endswith("/spot") else HL_TAKER_FEE
+        if key.endswith("/spot"):
+            return SPOT_FEE
+        return HIP3_FEE if ":" in key else HL_TAKER_FEE
 
     # funding ------------------------------------------------------------
     def funding_since(self, coin: str, since: pd.Timestamp) -> pd.Series:

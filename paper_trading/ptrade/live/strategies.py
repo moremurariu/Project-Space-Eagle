@@ -413,6 +413,68 @@ class BTCHold(Strategy):
         rebalance(book, mkt, {"BTC/spot": 1.0}, now, "benchmark buy")
 
 
+class XYZWeekendFade(Strategy):
+    name = "xyz_weekend_fade"
+    description = ("EXPERIMENTAL (r32, only 29 weekends of history): HL xyz single-stock/index perps trade 24/7; Monday "
+                   "reverses ~half of the weekend move cross-sectionally. Sunday 23:00 UTC: long the weekend losers, "
+                   "short the winners, weights ∝ −(weekend move − mean), ≤10%/name, gross 1; exit at Monday's US close.")
+    NON_EQUITY = {"GOLD", "SILVER", "CL", "BRENTOIL", "COPPER", "NATGAS", "PLATINUM", "PALLADIUM", "JPY", "EUR",
+                  "URANIUM", "ALUMINIUM", "DXY", "VIX", "CORN", "WHEAT", "TTF"}
+    top_n, min_names, cap = 45, 10, 0.10
+
+    @staticmethod
+    def _ny_close(date) -> pd.Timestamp:
+        """16:00 New York (DST-aware) on calendar date `date`, in UTC."""
+        return pd.Timestamp(date.year, date.month, date.day, 16, tz="America/New_York").tz_convert("UTC")
+
+    def run(self, book, mkt, data, now, fast):
+        if fast:
+            return
+        # exit
+        if book.positions:
+            exit_at = book.meta.get("exit_at")
+            if exit_at and now >= pd.Timestamp(exit_at):
+                n = rebalance(book, mkt, {}, now, "weekend fade exit (Mon US close)")
+                book.meta.pop("exit_at", None)
+                print(f"[{self.name}] exit: {n} trades")
+            return
+        # entry window: Sunday 23:00 UTC .. Monday 02:59 UTC (catch-up if the container slept)
+        wd, h = now.weekday(), now.hour
+        if not ((wd == 6 and h == 23) or (wd == 0 and h < 3)):
+            return
+        sunday = (now - pd.Timedelta(days=0 if wd == 6 else 1)).date()
+        if book.meta.get("last_entry_week") == str(sunday):
+            return
+        book.meta["last_entry_week"] = str(sunday)
+        fri_close = self._ny_close(sunday - pd.Timedelta(days=2))
+        meta = hl.meta_and_ctxs("xyz")
+        meta = meta[~meta["delisted"]].sort_values("oi_usd", ascending=False).head(self.top_n)
+        coins = [c for c in meta.index if c.split(":")[1] not in self.NON_EQUITY and mkt.has(c)]
+        wk = {}
+        for c in coins:
+            try:
+                cd = hl.candles(c, "1h", start_ms=int((fri_close - pd.Timedelta(hours=3)).timestamp() * 1000))
+                bar = fri_close - pd.Timedelta(hours=1)
+                if bar in cd.index:
+                    wk[c] = mkt.price(c) / float(cd.at[bar, "close"]) - 1
+            except Exception as e:  # noqa: BLE001
+                print(f"[{self.name}] {c}: {e}")
+        if len(wk) < self.min_names:
+            book.meta["last_signal"] = f"{now:%Y-%m-%d %H:%M} skipped: only {len(wk)} names"
+            return
+        x = pd.Series(wk); x = x - x.mean()
+        w = (-x / x.abs().sum()).clip(-self.cap, self.cap)       # linear in the (demeaned) weekend move
+        w = w / w.abs().sum()                                     # gross 1, ~dollar-neutral
+        targets = w[w.abs() > 0.002].to_dict()
+        n = rebalance(book, mkt, targets, now, "weekend fade entry")
+        mon_close = self._ny_close(sunday + pd.Timedelta(days=1))
+        book.meta["exit_at"] = mon_close.isoformat()
+        book.meta["fri_close"] = fri_close.isoformat()
+        book.meta["last_signal"] = (f"{now:%Y-%m-%d %H:%M}: {n} trades, {len(x)} names, weekend xs-dispersion "
+                                    f"{x.std() * 100:.2f}%, exit {mon_close:%a %H:%M} UTC")
+        print(f"[{self.name}] {book.meta['last_signal']}")
+
+
 class Discretionary(Strategy):
     name = "claude_discretionary"
     description = ("Claude's discretionary book: targets set by hand in state/discretionary.json after reviewing "
@@ -440,7 +502,7 @@ class Discretionary(Strategy):
 
 def all_strategies() -> list[Strategy]:
     return [TrendBreakoutMajors(), TrendBreakoutAltsLO(), TrendEWMACMajorsLO(), XSFunding(), DeltaNeutralCarry(),
-            CrashRebound(), CrashReboundMarketWide(), Discretionary(), BTCHold()]
+            CrashRebound(), CrashReboundMarketWide(), XYZWeekendFade(), Discretionary(), BTCHold()]
 
 
 _ = (np, HL_MULT)  # kept for future use

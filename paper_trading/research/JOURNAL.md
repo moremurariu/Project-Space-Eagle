@@ -303,3 +303,21 @@ Deribit has no free skew history (DVOL only), so every full cycle now snapshots 
 deltas from mark IV, interpolated over OTM strikes) plus put/call OI and volume ratios → `state/options/skew_YYYY-MM.csv`.
 First reading: BTC 30d ATM 37.5%, RR25 −4.9 (put skew; post-hack fear), ETH 30d ATM 51.2%, RR25 −5.3.
 Plan: in 1-2 months test RR25 extremes / changes as a contrarian signal for BTC/ETH (with DVOL history as context).
+
+### r32 weekend price discovery on HL xyz perps (24/7 equities) — EXPERIMENTAL BOOK `xyz_weekend_fade`
+Data: HL 1h candles, 44 xyz perps by OI (HL keeps 5000 bars → 2026-04-07 … 2026-11-02 = 29 weekends, 1135 obs).
+Weekend move = Fri US close → Sun 23:00 UTC; next = Sun 23:00 → Mon US close.
+- Pooled corr(weekend, Monday): all −0.13 (β −0.26), equity-like −0.14 (β −0.29), commodities/FX −0.07; indices
+  SP500/XYZ100 ≈ 0 → the effect is single-stock overreaction while cash markets are shut, not index-level.
+- Per-weekend cross-sectional β: mean −0.56, t −2.6, negative in 72% of weekends.
+- Fade (long weekend losers / short winners, Sun 23:00 → Mon close, 0.18% round-trip):
+  | Weights | net bp/weekend | t | hit | H1 / H2 (bp) |
+  |---|---:|---:|---:|---|
+  | sign, mean split | +24.8 | 1.07 | 59% | +38 / +12 |
+  | sign, median split | +16.4 | 0.83 | 59% | |
+  | linear ∝ −x (dollar-neutral) | +88.3 | 2.05 | 66% | +160 / +21 |
+  | **linear, ≤10%/name** | **+51.3** | **1.73** | **62%** | **+92 / +13** |
+Positive after costs in both halves but only 29 weekends (no multi-year OOS) → NOT a full promotion; started as an
+explicitly experimental $100k book (linear, ≤10%/name, gross 1, HIP-3 fee 0.09%/side + book-walk slippage; live
+entry cost ≈ 0.12%/side). Kill criterion: cumulative net < 0 after 12 live weekends. Also: Market.fee now charges
+0.09% for HIP-3 (xyz) perps instead of 0.045%.

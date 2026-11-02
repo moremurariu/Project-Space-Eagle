@@ -19,6 +19,7 @@ taker fees, order-book-walk slippage, and exact hourly funding from the HL API.
 | `dn_funding_carry` | Delta-neutral basis: short perp + long spot on coins with 7d funding >15% APR | daily |
 | `crash_rebound` | Buy liquidation-cascade overshoots (>10% 4h drop on closed hourly bars): 7.5% at signal + 7.5% on a further −5% within 12h (r30), each held 24h | hourly |
 | `crash_rebound_mkt` | Same, only when BTC also fell >3% in those 4h (market-wide cascades) | hourly |
+| `xyz_weekend_fade` | **Experimental** (r32): fade the weekend move of HL xyz 24/7 stock perps Sun 23:00 → Mon US close, dollar-neutral | weekly |
 | `claude_discretionary` | Claude's own judgment from news / positioning (`state/discretionary.json`) | ad hoc |
 | `benchmark_btc_hold` | BTC buy & hold benchmark | — |
 

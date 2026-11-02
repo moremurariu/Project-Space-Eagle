@@ -7,7 +7,8 @@
    ratios, BTC+ETH, hourly). Study RR25 extremes vs fwd returns after ~1-2 months.
 3. Crash-rebound: r10/r16/r17/r28/r30 done (market-wide book; hourly-close signals; scale-in tranches promoted).
    Left: live-vs-backtest tracking once events occur; exit timing (fixed 24h vs target/trailing).
-4. ~~TradFi trend on HL xyz~~ — r07 + r08 (Yahoo history incl. metals, TOM, VIX) all rejected. Revisit: weekend lead-lag (xyz trades 24/7), index seasonality.
+4. ~~TradFi trend on HL xyz~~ — r07 + r08 rejected. r32: weekend single-stock overreaction on xyz → experimental
+   `xyz_weekend_fade` book (kill if net < 0 after 12 weekends). Next: weekend crypto move → Monday xyz (COIN/MSTR/HOOD) lead-lag.
 5. ML cross-sectional: v1 rejected (r14), v2 marginal (r26, Sharpe 0.25). v3 needs new features (Binance funding recon,
    positioning, HL premium) once enough history exists.
 6. Ensemble / allocator: r15 done (equal-weight + risk balancing adopted). Later: dynamic allocation from LIVE
