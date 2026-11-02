@@ -417,3 +417,14 @@ with all). Equal weight beats inverse-vol (crash-book vol spikes right after eve
 exactly when they pay). Portfolio runs at only ~10% vol OOS → a 1.5x book-level scale would target ~30% CAGR /
 ~15% vol / ~−10% DD. Decision: keep 1x until ~4 weeks of live data confirm live ≈ backtest (fees, slippage,
 funding), then revisit leverage (backlog #6).
+
+### r41 long/short trend breadth (breakout, pvt 0.25) — NOT PROMOTED (mixed)
+| Universe | IS Sharpe / DD | OOS Sharpe / DD | + ER30 gate: IS / OOS (DD) |
+|---|---|---|---|
+| majors 3 (live) | 1.53 / −36% | 0.53 / −36% | 1.64 / 0.50 (−23% / −26%) |
+| top 6 (+XRP, BNB, DOGE) | 1.26 / −42% | 0.75 / −29% | 1.43 / 0.81 (−29% / −20%) |
+| top 10 | 1.28 / −35% | 0.63 / −27% | 1.42 / 0.64 (−23% / −19%) |
+| all 40 | 1.04 / −24% | 0.26 / −19% | 1.24 / 0.46 (−16% / −11%) |
+Broader L/S trend trades IS Sharpe for OOS Sharpe (top6+gate: −0.10 IS, +0.28 OOS, lower DD in both) — fails the
+"better in both periods" bar, and majors-3 was itself chosen on IS data. Keep live as is; top6 + ER30 gate is the
+fallback if `trend_breakout_majors` keeps lagging live. All-40 L/S is clearly worse (short side of alts whipsaws).
