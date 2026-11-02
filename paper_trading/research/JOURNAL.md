@@ -328,3 +328,13 @@ xyz crypto-equities already track BTC fully overnight (β ≈ 1.0). Next-session
 weekends −0.53 (t −2.5, but 4 names × 29 weekends are not independent → clustered t ≈ −1.3), weeknights +0.57
 (t +1.7); idiosyncratic residual ≈ 0. Opposite signs across windows, small samples → nothing to trade. The weekend
 reversal is consistent with r32 and partly captured by `xyz_weekend_fade`.
+
+### r34 xyz overnight reversal: weeknights and weekend entry/exit timing — weeknights REJECTED, weekend book kept
+Same linear XS fade as r32 (≤10%/name, 0.18% round trip), HL xyz 1h, 2026-04 → 11.
+- Weeknights (US close → next day entry, exit next US close, 118 nights): β −0.22/+0.01/−0.00 for entry 23/08/13 UTC;
+  net −17/−27/−25bp per night → no overnight overreaction on weeknights (pre-market trading prices it in).
+- Weekend reversal happens Sunday night → Monday morning: entering Monday 08:00 or 13:00 UTC leaves nothing
+  (β −0.09, net −15/+5bp). Entry/exit grid (net bp per weekend, t): every combination of entry Sun 18/21/23 UTC
+  × exit Mon 03/08/13 UTC/US close is positive (+26…+51bp, t 1.3-2.4); exit Mon 08:00 has the best t (≈2.1-2.2),
+  US-close exit the highest mean but more noise. Live book unchanged (entry Sun 23:00, exit Mon US close; entry
+  catch-up window ends Mon 03:00 UTC, which is right — later entries miss the reversal).
