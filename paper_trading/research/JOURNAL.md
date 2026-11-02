@@ -367,3 +367,25 @@ Backtest (15%/pos, hold 24h, lag 1h, fees + 0.1% slip): slow < −15% Sharpe 0.8
 < −20% 0.43 / 1.23. But daily corr with the live crash book (r30) is 0.52, and a 50/50 mix vs crash alone:
 IS 1.12 vs 1.10, OOS 0.99 vs 1.06 → no improvement in the crash sleeve, so no new book. Rebound after selling
 pressure is one effect; the 4h-cascade trigger captures it better.
+
+### r38 cross-sectional momentum: lookback robustness + blend with XS funding — PROMOTED (`xs_momentum`)
+40 coins, long top / short bottom quartile by past return, inverse-vol, gross 1, weekly; real Binance funding paid.
+| Lookback (single offset) | IS Sharpe | OOS Sharpe | | Staggered (avg of 7 weekly offsets) | IS | OOS |
+|---|---:|---:|---|---|---:|---:|
+| 7d | 0.45 | −0.31 | | 7d | 0.74 | 0.39 |
+| 14d | 0.76 | 0.74 | | 14d | 0.93 | 1.11 |
+| 21d | 0.63 | −0.14 | | 21d | 1.21 | 0.33 |
+| 30d | 1.13 | −0.14 | | 30d | 1.30 | −0.04 |
+| 60d | 0.94 | −0.00 | | 60d | 0.72 | 0.01 |
+14d alone looks cherry-picked (neighbours fail OOS), so use a lookback ensemble. Staggering offsets (removes
+rebalance-day luck) helps every lookback. Daily corr with XS funding ≈ 0.03.
+| Portfolio | IS Sharpe / DD | OOS Sharpe / DD |
+|---|---|---|
+| XS funding alone (lag 48h, live-like) | 1.31 / −27% | 1.44 / −22% |
+| ensemble 7/14/21 staggered alone | 1.14 / −26% | 0.68 / −19% |
+| ensemble 7/14/21/30/60 alone | 1.27 / −23% | 0.48 / −16% |
+| **2/3 funding + 1/3 ens 7/14/21** | **1.65 / −16%** | **1.59 / −9%** |
+| 1/2 funding + 1/2 ens 7/14/21 | 1.71 / −14% | 1.49 / −10% |
+Positive alone in both periods and improves the XS sleeve in both → new live book `xs_momentum` (ensemble
+7/14/21d × 7 staggered weekly offsets averaged on a daily grid; ≈15%/day one-way turnover). Caveat: momentum is
+−13% YTD in 2026 (blend still positive); survivorship bias of the 40-coin universe flatters momentum somewhat.

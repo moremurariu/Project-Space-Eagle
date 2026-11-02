@@ -18,7 +18,8 @@
    hourly near-expiry + daily top-500 snapshots → `state/polymarket/`). After ~3-4 weeks: join with resolved outcomes
    (`resolved_outcome`) → calibration by price bucket & time-to-expiry (favourite-longshot, near-certain carry).
    Trades API only exposes the latest 10k trades/market (offset cap) and CLOB history is empty after resolution.
-9. ~~Pairs / cointegration~~ (r25 rejected: IS negative, OOS driven by one pair).
+9. XS momentum: r38 live (`xs_momentum`). Next: residual (BTC-beta-hedged) momentum, vol-scaled ranking.
+   ~~Pairs / cointegration~~ (r25 rejected: IS negative, OOS driven by one pair).
 10. **News/LLM sentiment**: forward headline collector live since 2026-11-01 (`state/news/`, 7 feeds). In ~3-4 weeks:
     classify headlines (topic/sentiment), event-study coin/market returns after shocks (hacks, listings, ETF, macro).
 11. ~~Weekend effects~~ (r24 rejected). Trend regime gate: r27 promoted ER30 gate for universe LO.
