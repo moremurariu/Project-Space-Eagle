@@ -296,3 +296,10 @@ the IS figure of the live rule is parameter-lucky (24h was originally chosen in-
 market-wide book and longer holds for the unfiltered one. A hold-length ensemble is the robust choice in principle
 (OOS +0.25/+0.40 Sharpe) but loses IS → by the promotion rule, not adopted. Expect live crash-book Sharpe nearer
 ~0.7-1.0 than the headline 1.2. Take-profit exits cut both tails and don't help.
+
+### 2026-11-02 03:05 — forward option-skew dataset started
+Deribit has no free skew history (DVOL only), so every full cycle now snapshots BTC+ETH options
+(`deribit.skew_snapshot`): for the expiries nearest 7d and 30d, ATM IV, 25-delta risk reversal and butterfly (BS
+deltas from mark IV, interpolated over OTM strikes) plus put/call OI and volume ratios → `state/options/skew_YYYY-MM.csv`.
+First reading: BTC 30d ATM 37.5%, RR25 −4.9 (put skew; post-hack fear), ETH 30d ATM 51.2%, RR25 −5.3.
+Plan: in 1-2 months test RR25 extremes / changes as a contrarian signal for BTC/ETH (with DVOL history as context).

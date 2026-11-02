@@ -90,6 +90,11 @@ def run_cycle(fast: bool = False, only: list[str] | None = None) -> dict:
                 summary["news_rows"] = sentiment.collect_headlines(now)
             except Exception as e:  # noqa: BLE001
                 summary["errors"]["news_collect"] = str(e)[:200]
+            try:  # forward option-skew dataset (Deribit RR25 / ATM IV / put-call ratios)
+                from ..data import deribit
+                summary["skew_rows"] = deribit.collect_skew(now)
+            except Exception as e:  # noqa: BLE001
+                summary["errors"]["skew_collect"] = str(e)[:200]
         LAST_RUN.write_text(json.dumps({**summary, "kind": "fast" if fast else "full"}, indent=1))
     return summary
 

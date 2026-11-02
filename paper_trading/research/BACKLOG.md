@@ -2,7 +2,9 @@
 
 1. XS funding: DONE (r21-r22) — live on Binance funding reconstructed from 1m premium archives. Monitor live vs
    backtest; if Coinalyze key arrives, cross-check reconstruction against live Binance rates.
-2. Deribit DVOL: r09/r10/r29 done (standalone + sizing rejected; market-wide crash filter promoted). Left: option skew.
+2. Deribit DVOL: r09/r10/r29 done (standalone + sizing rejected; market-wide crash filter promoted). Left: option skew — forward collector live since 2026-11-02 03:00
+   (`deribit.collect_skew` → `state/options/skew_YYYY-MM.csv`: ATM IV, 25Δ RR/BF at ~7d/30d, put/call OI & volume
+   ratios, BTC+ETH, hourly). Study RR25 extremes vs fwd returns after ~1-2 months.
 3. Crash-rebound: r10/r16/r17/r28/r30 done (market-wide book; hourly-close signals; scale-in tranches promoted).
    Left: live-vs-backtest tracking once events occur; exit timing (fixed 24h vs target/trailing).
 4. ~~TradFi trend on HL xyz~~ — r07 + r08 (Yahoo history incl. metals, TOM, VIX) all rejected. Revisit: weekend lead-lag (xyz trades 24/7), index seasonality.
