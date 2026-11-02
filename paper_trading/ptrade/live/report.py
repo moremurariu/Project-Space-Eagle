@@ -28,7 +28,7 @@ def book_stats(eq: pd.Series, initial: float) -> dict:
 
     dd = (eq / eq.cummax().clip(lower=initial) - 1).min()
     hourly = eq.resample("h").last().dropna().pct_change().dropna()
-    sharpe = hourly.mean() / hourly.std() * np.sqrt(8760) if len(hourly) > 48 and hourly.std() > 0 else np.nan
+    sharpe = hourly.mean() / hourly.std() * np.sqrt(8760) if len(hourly) >= 24 * 14 and hourly.std() > 0 else np.nan
     return {"equity": last, "ret_total": last / initial - 1, "ret_24h": last / ago(24) - 1,
             "ret_7d": last / ago(24 * 7) - 1, "max_dd": min(dd, 0.0), "sharpe": sharpe,
             "days": (t_last - eq.index[0]).total_seconds() / 86400}
@@ -49,7 +49,7 @@ def write_report(mkt, now: pd.Timestamp):
         lines.append("")
     except Exception:  # noqa: BLE001
         pass
-    lines += ["| Book | Equity | Total | 24h | 7d | Max DD | Sharpe (ann.) | Gross | Net | Pos | Fees | Funding |",
+    lines += ["| Book | Equity | Total | 24h | 7d | Max DD | Sharpe (ann., ≥14d) | Gross | Net | Pos | Fees | Funding |",
               "|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|"]
     tot_eq, tot_init = 0.0, 0.0
     for b in books:
