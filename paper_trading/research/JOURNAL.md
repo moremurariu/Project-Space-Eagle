@@ -345,3 +345,16 @@ hour-of-day profile is noise, except one persistent BTC pattern: 21:00-22:59 UTC
 +3.5/+3.0bp OOS (t ≥ 2 both), and 23:00 UTC −2.8/−2.7bp. ≈ +6-8bp/day for a 2-hour BTC long vs ≈ 10-12bp taker round
 trip + slippage → not tradable as a taker strategy; timing the daily 00 UTC rebalance around it is worth < 1bp/day of
 turnover. Possible maker-only revisit if limit-order paper fills are ever modelled.
+
+### r36 universe-LO trend filtered by funding crowding (real Binance funding paid) — REJECTED
+| Variant | IS Sharpe / CAGR / DD | OOS Sharpe / CAGR / DD |
+|---|---|---|
+| live (breakout + ER30 gate) | 1.30 / 32% / −20% | 0.65 / 10% / −20% |
+| × gate 1 below 20% APR → 0 at 50% | 1.24 / 19% / −17% | 0.73 / 9% / −18% |
+| × gate 30% → 80% | 1.36 / 24% / −19% | 0.66 / 9% / −20% |
+| × gate 50% → 100% | 1.46 / 29% / −19% | 0.61 / 9% / −20% |
+| drop top funding tercile | 1.29 / 17% / −16% | 0.66 / 8% / −12% |
+| only below-median funding | 1.16 / 8% / −10% | 1.03 / 10% / −9% |
+12% of held coin-hours have 7d funding > 50% APR. No variant improves Sharpe in both periods (tight filters help
+OOS, loose ones IS); filters mostly just cut exposure. Crowding information is already monetised by `xs_funding`
+(long low-funding / short high-funding), so not adopted.
