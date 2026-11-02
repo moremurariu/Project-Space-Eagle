@@ -338,3 +338,10 @@ Same linear XS fade as r32 (≤10%/name, 0.18% round trip), HL xyz 1h, 2026-04 �
   × exit Mon 03/08/13 UTC/US close is positive (+26…+51bp, t 1.3-2.4); exit Mon 08:00 has the best t (≈2.1-2.2),
   US-close exit the highest mean but more noise. Live book unchanged (entry Sun 23:00, exit Mon US close; entry
   catch-up window ends Mon 03:00 UTC, which is right — later entries miss the reversal).
+
+### r35 hour-of-day seasonality (Binance hourly, BTC & equal-weight 40) — REJECTED
+Correlation of the 24 hourly mean returns IS (2019-23) vs OOS (2024+): BTC +0.16, EW40 −0.13, EW40−BTC −0.01 → the
+hour-of-day profile is noise, except one persistent BTC pattern: 21:00-22:59 UTC (around the US close) +4.8/+3.4bp IS,
++3.5/+3.0bp OOS (t ≥ 2 both), and 23:00 UTC −2.8/−2.7bp. ≈ +6-8bp/day for a 2-hour BTC long vs ≈ 10-12bp taker round
+trip + slippage → not tradable as a taker strategy; timing the daily 00 UTC rebalance around it is worth < 1bp/day of
+turnover. Possible maker-only revisit if limit-order paper fills are ever modelled.
