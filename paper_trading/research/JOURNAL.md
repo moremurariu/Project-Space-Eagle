@@ -278,3 +278,21 @@ worse still), but averaging down on a further drop improves Sharpe in BOTH perio
 MaxDD −46% → −36%. Robust to the add threshold (−3/−5/−8%). → Both live crash books now trade two tranches:
 7.5% at the signal close, +7.5% on an hourly close ≥5% below the signal close within 12h, each held 24h from its
 own trigger (`CrashRebound` tracks `tranches`/`watch` in book meta; bars processed chronologically on catch-up).
+
+### r31 crash-rebound exit timing (on top of r30 scale-in) — NOT PROMOTED (24h kept)
+| Exit | all: IS Sharpe / DD | all: OOS Sharpe / DD | mkt: IS | mkt: OOS |
+|---|---|---|---|---|
+| hold 12h | 0.69 / −36% | 1.09 / −23% | 0.59 / −38% | 1.94 / −14% |
+| hold 18h | 0.71 / −38% | 0.99 / −25% | 0.69 / −38% | 1.92 / −14% |
+| **hold 24h (live)** | **1.02 / −36%** | **0.93 / −27%** | **0.93 / −36%** | **1.23 / −21%** |
+| hold 30h | 0.84 / −43% | 0.97 / −28% | 0.70 / −43% | 1.26 / −21% |
+| hold 36h | 0.56 / −49% | 1.25 / −26% | 0.47 / −48% | 1.53 / −21% |
+| hold 48h | 0.54 / −55% | 1.29 / −25% | 0.51 / −55% | 1.50 / −21% |
+| 24h + take-profit +5% / +10% | 0.81 / 0.94 | 0.81 / 0.98 | 0.75 / 0.83 | 1.12 / 1.28 |
+| 48h + take-profit +10% | 0.69 / −42% | 1.22 / −22% | 0.60 / −42% | 1.53 / −21% |
+| ensemble of holds 12/24/48h | 0.78 / −41% | 1.18 / −25% | 0.70 / −39% | 1.63 / −15% |
+No exit rule beats 24h in both periods. Warning sign: IS Sharpe spikes at exactly 24h (0.69 at 18h, 0.84 at 30h), so
+the IS figure of the live rule is parameter-lucky (24h was originally chosen in-sample); OOS prefers 12-18h for the
+market-wide book and longer holds for the unfiltered one. A hold-length ensemble is the robust choice in principle
+(OOS +0.25/+0.40 Sharpe) but loses IS → by the promotion rule, not adopted. Expect live crash-book Sharpe nearer
+~0.7-1.0 than the headline 1.2. Take-profit exits cut both tails and don't help.

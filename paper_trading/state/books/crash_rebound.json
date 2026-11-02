@@ -1,19 +1,20 @@
 {
  "cash": 100000.0,
  "created": "2026-10-31T15:34:06.149723+00:00",
- "description": "Buy coins after a >10% drop over 4h measured on closed hourly bars (liquidation-cascade overshoot), 15% per position, max gross 100%, hold 24h (re-trigger extends). Hourly only: r28 showed 5-minute scanning catches falling knives (MaxDD \u221260% vs \u221228%).",
+ "description": "Buy coins after a >10% drop over 4h measured on closed hourly bars (liquidation-cascade overshoot). Scale-in (r30): tranche 1 = 7.5% at the signal close, tranche 2 = 7.5% if an hourly close within the next 12h is a further 5% below the signal close; each tranche held 24h (re-trigger extends), max gross 100%. Hourly only: r28 showed 5-minute scanning catches falling knives (MaxDD \u221260% vs \u221228%).",
  "fees": 0.0,
  "funding": 0.0,
  "initial": 100000.0,
  "meta": {
-  "exit_at": {},
-  "last_scan": "2026-11-02T01:05:34.017031+00:00",
+  "last_scan": "2026-11-02T02:03:44.655034+00:00",
+  "tranches": {},
+  "watch": {},
   "worst_4h": {
-   "LINK": -0.71,
-   "ONDO": -0.7,
-   "OP": -0.97,
-   "WLD": -0.92,
-   "kPEPE": -1.21
+   "ARB": -0.67,
+   "ATOM": -0.27,
+   "ONDO": -0.32,
+   "TAO": -0.26,
+   "WLD": -1.04
   }
  },
  "name": "crash_rebound",
