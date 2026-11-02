@@ -321,3 +321,10 @@ Positive after costs in both halves but only 29 weekends (no multi-year OOS) →
 explicitly experimental $100k book (linear, ≤10%/name, gross 1, HIP-3 fee 0.09%/side + book-walk slippage; live
 entry cost ≈ 0.12%/side). Kill criterion: cumulative net < 0 after 12 live weekends. Also: Market.fee now charges
 0.09% for HIP-3 (xyz) perps instead of 0.045%.
+
+### r33 BTC → xyz crypto-equities (COIN/MSTR/HOOD/CRCL) while US cash is closed — REJECTED (inconclusive)
+HL xyz 1h, 147 sessions (2026-04 → 11), overnight = US close → 23:00 UTC before the next session.
+xyz crypto-equities already track BTC fully overnight (β ≈ 1.0). Next-session return on BTC's overnight move:
+weekends −0.53 (t −2.5, but 4 names × 29 weekends are not independent → clustered t ≈ −1.3), weeknights +0.57
+(t +1.7); idiosyncratic residual ≈ 0. Opposite signs across windows, small samples → nothing to trade. The weekend
+reversal is consistent with r32 and partly captured by `xyz_weekend_fade`.
