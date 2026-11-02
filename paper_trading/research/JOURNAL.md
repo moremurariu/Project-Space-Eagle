@@ -272,7 +272,7 @@ Same setup as r10 (40 coins, 4h drop < −10% on hourly closes, hold 24h, 0.045%
 | 7.5% + 7.5% if close ≤ signal −3% within 12h | 0.99 / −36% | 0.99 / −28% | 0.92 / −36% | 1.28 / −20% |
 | **7.5% + 7.5% if close ≤ signal −5%** | **1.02 / −36%** | **0.93 / −27%** | **0.93 / −36%** | **1.23 / −21%** |
 | 7.5% + 7.5% if close ≤ signal −8% | 1.06 / −36% | 0.89 / −26% | 0.93 / −36% | 1.23 / −21% |
-| 10% + 10% add @ −5% | 0.99 / −39% | 0.95 / −28% | 0.89 / −40% | 1.26 / −31%→−21% |
+| 10% + 10% add @ −5% | 0.99 / −39% | 0.95 / −28% | 0.89 / −40% | 1.26 / −21% |
 The rebound is strongest right at the signal close (every hour of delay costs Sharpe; waiting for a green hour is
 worse still), but averaging down on a further drop improves Sharpe in BOTH periods for BOTH books and cuts IS
 MaxDD −46% → −36%. Robust to the add threshold (−3/−5/−8%). → Both live crash books now trade two tranches:
