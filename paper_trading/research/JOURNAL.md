@@ -434,3 +434,13 @@ Paper fills walk the live HL L2 book. Realised per side: fee 5.0bp (perps 4.5, s
 0.5bp (majors) to 3.4bp (xs_funding alts), xs_momentum 2.0bp, DN-carry spot legs 5.8bp. Backtests assume
 4.5 + 5bp per side for perps → assumptions are conservative at current $1-20k order sizes (slippage scales
 with size: ~1.5bp at $1k, ~4bp at $5k for alts). No change needed; re-check if leverage raises order sizes.
+
+### r42 Polymarket calibration — PRELIMINARY (2 days of forward snapshots, 250 resolved markets, 547 obs)
+Outcomes cached in `state/polymarket/outcomes.csv` (590 of 1053 ended markets fetched so far). One obs per market ×
+time-to-expiry bucket, spread ≤ 10c. Pooled by quoted mid: 0-5c → 0/118 won (mid 1.1%); 5-15c → 0/31 (mid 8.6%);
+15-35c → 24% (mid 25%); 35-65c → 51% (mid 48%); 65-85c → 91% ± 5% (mid 74%); 85-95c → 80% (n=10); 95c+ → 100%.
+Direction matches the favourite-longshot bias (longshots overpriced, 65-85c favourites underpriced), but the sample
+is tiny, obs within a market are correlated, and it is dominated by short-dated crypto-price and sports markets.
+No strategy yet; rerun weekly as outcomes accumulate (`python research/r42_polymarket_calib.py 600` fetches the
+next batch of outcomes). Target: ≥1,500 resolved markets before testing "buy 65-90c favourites / sell 5-15c
+longshots ≤24h before expiry" net of the spread.
