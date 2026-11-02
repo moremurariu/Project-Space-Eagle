@@ -428,3 +428,9 @@ funding), then revisit leverage (backlog #6).
 Broader L/S trend trades IS Sharpe for OOS Sharpe (top6+gate: −0.10 IS, +0.28 OOS, lower DD in both) — fails the
 "better in both periods" bar, and majors-3 was itself chosen on IS data. Keep live as is; top6 + ER30 gate is the
 fallback if `trend_breakout_majors` keeps lagging live. All-40 L/S is clearly worse (short side of alts whipsaws).
+
+### 2026-11-02 14:40 — live execution-cost check (first ~47h, $955k traded, 151 fills)
+Paper fills walk the live HL L2 book. Realised per side: fee 5.0bp (perps 4.5, spot 7.0), slippage 2.9bp — perps
+0.5bp (majors) to 3.4bp (xs_funding alts), xs_momentum 2.0bp, DN-carry spot legs 5.8bp. Backtests assume
+4.5 + 5bp per side for perps → assumptions are conservative at current $1-20k order sizes (slippage scales
+with size: ~1.5bp at $1k, ~4bp at $5k for alts). No change needed; re-check if leverage raises order sizes.
