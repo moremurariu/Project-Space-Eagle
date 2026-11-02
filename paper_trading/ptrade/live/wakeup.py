@@ -65,7 +65,7 @@ def main():
         p = STATE / "books" / f"{name}.json"
         if p.exists():
             b = json.loads(p.read_text())
-            print(f"{name}: worst4h={b['meta'].get('worst_4h')} open={list(b['positions'])} exits={b['meta'].get('exit_at')}")
+            print(f"{name}: worst4h={b['meta'].get('worst_4h')} open={list(b['positions'])} tranches={b['meta'].get('tranches')} watch={list(b['meta'].get('watch', {}))}")
 
 
 if __name__ == "__main__":

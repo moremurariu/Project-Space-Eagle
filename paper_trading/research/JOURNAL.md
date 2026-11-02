@@ -261,3 +261,20 @@ full cycle now appends deduplicated headlines from 7 RSS feeds (cointelegraph, c
 bitcoinmagazine, cryptoslate) to `state/news/headlines_YYYY-MM.csv` (seen_at, published, source, title). First pull:
 164 headlines. Enables a headline-shock event study (hacks, ETF flows, macro, listings) once weeks of data accrue —
 optionally with LLM-classified sentiment/topic per headline.
+
+### r30 crash-rebound entry timing: scale-in vs delay vs confirmation (hourly, lag 1h) — SCALE-IN PROMOTED
+Same setup as r10 (40 coins, 4h drop < −10% on hourly closes, hold 24h, 0.045% fee + 0.1% slippage), 15% total/coin.
+| Variant | all: IS Sharpe / DD | all: OOS Sharpe / DD | mkt-wide: IS | mkt-wide: OOS |
+|---|---|---|---|---|
+| baseline 15% at signal (old live) | 0.90 / −46% | 0.78 / −29% | 0.83 / −47% | 1.20 / −21% |
+| delay entry 1h / 2h / 3h | 0.68 / 0.47 / 0.48 | 0.73 / 0.63 / 0.75 | 0.56 / 0.40 / 0.33 | 0.98 / 0.84 / 0.66 |
+| first green hour within 6h | 0.56 / −50% | 0.57 / −28% | 0.42 / −50% | 0.79 / −21% |
+| 7.5% + 7.5% if close ≤ signal −3% within 12h | 0.99 / −36% | 0.99 / −28% | 0.92 / −36% | 1.28 / −20% |
+| **7.5% + 7.5% if close ≤ signal −5%** | **1.02 / −36%** | **0.93 / −27%** | **0.93 / −36%** | **1.23 / −21%** |
+| 7.5% + 7.5% if close ≤ signal −8% | 1.06 / −36% | 0.89 / −26% | 0.93 / −36% | 1.23 / −21% |
+| 10% + 10% add @ −5% | 0.99 / −39% | 0.95 / −28% | 0.89 / −40% | 1.26 / −31%→−21% |
+The rebound is strongest right at the signal close (every hour of delay costs Sharpe; waiting for a green hour is
+worse still), but averaging down on a further drop improves Sharpe in BOTH periods for BOTH books and cuts IS
+MaxDD −46% → −36%. Robust to the add threshold (−3/−5/−8%). → Both live crash books now trade two tranches:
+7.5% at the signal close, +7.5% on an hourly close ≥5% below the signal close within 12h, each held 24h from its
+own trigger (`CrashRebound` tracks `tranches`/`watch` in book meta; bars processed chronologically on catch-up).

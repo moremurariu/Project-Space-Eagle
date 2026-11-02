@@ -268,86 +268,128 @@ class DeltaNeutralCarry(Strategy):
 class CrashRebound(Strategy):
     name = "crash_rebound"
     description = ("Buy coins after a >10% drop over 4h measured on closed hourly bars (liquidation-cascade "
-                   "overshoot), 15% per position, max gross 100%, hold 24h (re-trigger extends). Hourly only: r28 showed "
-                   "5-minute scanning catches falling knives (MaxDD −60% vs −28%).")
+                   "overshoot). Scale-in (r30): tranche 1 = 7.5% at the signal close, tranche 2 = 7.5% if an hourly "
+                   "close within the next 12h is a further 5% below the signal close; each tranche held 24h "
+                   "(re-trigger extends), max gross 100%. Hourly only: r28 showed 5-minute scanning catches falling "
+                   "knives (MaxDD −60% vs −28%).")
     fast = False
-    thr, hold_h, per_w, max_gross = -0.10, 24, 0.15, 1.0
+    thr, hold_h, max_gross = -0.10, 24, 1.0
+    per_w, add_w, add_drop, add_win_h = 0.075, 0.075, 0.05, 12   # r30 scale-in
 
-    def _rolling_4h(self) -> dict[str, float]:
-        syms = list(UNIVERSE)
-        out = {}
-        for i in range(0, len(syms), 50):
-            chunk = syms[i:i + 50]
-            r = get("https://data-api.binance.vision/api/v3/ticker",
-                    params={"symbols": json.dumps(chunk, separators=(",", ":")), "windowSize": "4h", "type": "MINI"})
-            for d in r.json():
-                o, last = float(d["openPrice"]), float(d["lastPrice"])
-                if o > 0:
-                    out[d["symbol"]] = last / o - 1
-        return out
-
-    def _missed_events(self, data, since: pd.Timestamp, now: pd.Timestamp) -> dict:
-        """4h drops at hourly closes since the last scan (catch-up when scans were missed, e.g. container asleep)."""
+    def _bars(self, data, since: pd.Timestamp, now: pd.Timestamp):
+        """Closed hourly bars (Binance spot panel) with close time in (since, now], within the hold window."""
         if data is None or getattr(data, "panel", None) is None:
-            return {}
-        P = data.panel.iloc[-36:]
+            return None, None, []
+        P = data.panel.iloc[-40:]
         r4 = P / P.shift(4) - 1
-        out = {}
-        for t, row in r4.iterrows():
+        bars = []
+        for t in P.index:
             close_t = t + pd.Timedelta(hours=1)
-            if close_t <= since or close_t <= now - pd.Timedelta(hours=self.hold_h):
-                continue
-            btc = float(row.get("BTCUSDT", float("nan")))
-            for sym, v in row.items():
-                if pd.notna(v) and v < self.thr:
-                    out[sym] = (float(v), close_t, btc)
-        return out
+            if since < close_t <= now and close_t > now - pd.Timedelta(hours=self.hold_h):
+                bars.append((t, close_t))
+        return P, r4, bars
 
     def _accept(self, btc_4h: float) -> bool:
         """Event filter hook (base strategy accepts every crash)."""
         return True
 
+    def _buy(self, book, mkt, coin, w, now, reason) -> float:
+        before = book.positions.get(coin, {}).get("qty", 0.0)
+        cur = book.weights(mkt.prices(set(book.positions) | {coin})).get(coin, 0.0)
+        rebalance(book, mkt, {coin: cur + w}, now, reason, close_others=False)
+        return book.positions.get(coin, {}).get("qty", 0.0) - before
+
     def run(self, book, mkt, data, now, fast):
-        exits = book.meta.setdefault("exit_at", {})
-        prev_scan = pd.Timestamp(book.meta.get("last_scan") or (now - pd.Timedelta(hours=6)).isoformat())
-        # 1) exits
-        for coin, ts in list(exits.items()):
-            if pd.Timestamp(ts) <= now:
-                if coin in book.positions:
-                    rebalance(book, mkt, {coin: 0.0}, now, "crash-rebound exit (24h)", close_others=False)
-                exits.pop(coin, None)
-        # 2) events: real-time rolling 4h window + catch-up on hourly closes since the previous scan
+        tr = book.meta.setdefault("tranches", {})   # coin -> {"t1"|"t2": {"qty", "exit"}}
+        watch = book.meta.setdefault("watch", {})   # coin -> {"sym", "ref", "until"}: scale-in window
+        book.meta.pop("exit_at", None)              # legacy (pre-r30) field
+        # 1) exits, per tranche
+        for coin, d in list(tr.items()):
+            for k, t in sorted(d.items(), key=lambda x: x[1]["exit"]):
+                if pd.Timestamp(t["exit"]) > now:
+                    continue
+                pos = book.positions.get(coin)
+                if pos:
+                    last = len(d) == 1
+                    q = pos["qty"] if last else min(t["qty"], pos["qty"])
+                    px = mkt.price(coin)
+                    book.trade(coin, -q, px, mkt.slippage(coin, abs(q) * px, "sell"), mkt.fee(coin), now,
+                               f"crash-rebound exit {k} (24h)")
+                d.pop(k)
+            if not d or coin not in book.positions:
+                tr.pop(coin, None)
+        for coin, w_ in list(watch.items()):
+            if pd.Timestamp(w_["until"]) <= now - pd.Timedelta(hours=1):
+                watch.pop(coin)
         if fast:
             return
-        # signals on closed hourly bars only (incl. any bars missed while the container slept)
-        events = self._missed_events(data, prev_scan, now)
-        events = {k: v for k, v in events.items() if self._accept(v[2])}
-        P = data.panel.iloc[-6:]
-        chg = (P.iloc[-1] / P.iloc[-5] - 1).dropna().to_dict()
+        # 2) closed hourly bars since the previous scan, in time order (catch-up if the container slept)
+        prev_scan = pd.Timestamp(book.meta.get("last_scan") or (now - pd.Timedelta(hours=6)).isoformat())
+        P, r4, bars = self._bars(data, prev_scan, now)
         book.meta["last_scan"] = now.isoformat()
+        if P is None:
+            return
+        chg = (P.iloc[-1] / P.iloc[-5] - 1).dropna().to_dict()
         if chg:
             book.meta["worst_4h"] = {UNIVERSE[s]: round(v * 100, 2) for s, v in sorted(chg.items(), key=lambda x: x[1])[:5]}
-        prices = mkt.prices(set(book.positions))
-        gross, _ = book.exposure(prices)
-        for sym, (r, t_ev, _btc) in sorted(events.items(), key=lambda x: x[1][0]):
-            coin = UNIVERSE[sym]
-            if not mkt.has(coin):
-                continue
-            exit_t = t_ev + pd.Timedelta(hours=self.hold_h)
-            if coin in exits:
-                exit_t = max(exit_t, pd.Timestamp(exits[coin]))
-            if exit_t - now < pd.Timedelta(hours=12) and coin not in book.positions:
-                continue  # too late to enter
-            exits[coin] = exit_t.isoformat()
-            if coin in book.positions:
-                continue
-            w = min(self.per_w, self.max_gross - gross)
-            if w < 0.02:
-                continue
-            late = "" if t_ev == now else f" (late, event {t_ev:%H:%M})"
-            rebalance(book, mkt, {coin: w}, now, f"crash-rebound entry 4h={r*100:.1f}%{late}", close_others=False)
-            gross += w
-            print(f"[{self.name}] ENTER {coin} after {r*100:.1f}% 4h drop{late}")
+        gross, _ = book.exposure(mkt.prices(set(book.positions)))
+        for t, close_t in bars:
+            row = r4.loc[t]
+            btc = float(row.get("BTCUSDT", float("nan")))
+            late = "" if close_t >= now - pd.Timedelta(minutes=59) else f" (late, bar {close_t:%H:%M})"
+            sigs = {s for s, v in row.items() if pd.notna(v) and v < self.thr and self._accept(btc)}
+            # 2a) tranche 1 on new crash signals (re-trigger extends the hold and resets the scale-in reference)
+            for sym in sorted(sigs, key=lambda s: row[s]):
+                coin = UNIVERSE[sym]
+                if not mkt.has(coin):
+                    continue
+                exit_t = close_t + pd.Timedelta(hours=self.hold_h)
+                watch[coin] = {"sym": sym, "ref": float(P.loc[t, sym]),
+                               "until": (close_t + pd.Timedelta(hours=self.add_win_h)).isoformat()}
+                d = tr.setdefault(coin, {})
+                if "t1" in d:
+                    d["t1"]["exit"] = max(pd.Timestamp(d["t1"]["exit"]), exit_t).isoformat()
+                    continue
+                w = min(self.per_w, self.max_gross - gross)
+                if exit_t - now < pd.Timedelta(hours=12) or w < 0.02:
+                    if not d:
+                        tr.pop(coin)
+                    continue  # too late / no room
+                q = self._buy(book, mkt, coin, w, now, f"crash-rebound t1 4h={row[sym]*100:.1f}%{late}")
+                if q > 0:
+                    d["t1"] = {"qty": q, "exit": exit_t.isoformat()}
+                    gross += w
+                    print(f"[{self.name}] ENTER t1 {coin} after {row[sym]*100:.1f}% 4h drop{late}")
+                elif not d:
+                    tr.pop(coin)
+            # 2b) tranche 2: a further drop below the signal close within the scale-in window
+            for coin, w_ in list(watch.items()):
+                sym = w_["sym"]
+                if sym in sigs or not (pd.Timestamp(w_["until"]) >= close_t) or sym not in P:
+                    continue
+                if pd.Timestamp(w_["until"]) - pd.Timedelta(hours=self.add_win_h) >= close_t:
+                    continue  # bar not after the signal
+                px = float(P.loc[t, sym])
+                if not (px < w_["ref"] * (1 - self.add_drop)):
+                    continue
+                exit_t = close_t + pd.Timedelta(hours=self.hold_h)
+                d = tr.setdefault(coin, {})
+                if "t2" in d:
+                    d["t2"]["exit"] = max(pd.Timestamp(d["t2"]["exit"]), exit_t).isoformat()
+                    continue
+                w = min(self.add_w, self.max_gross - gross)
+                if exit_t - now < pd.Timedelta(hours=12) or w < 0.02:
+                    if not d:
+                        tr.pop(coin)
+                    continue
+                q = self._buy(book, mkt, coin, w, now,
+                              f"crash-rebound t2 {px / w_['ref'] * 100 - 100:.1f}% below signal close{late}")
+                if q > 0:
+                    d["t2"] = {"qty": q, "exit": exit_t.isoformat()}
+                    gross += w
+                    print(f"[{self.name}] ADD t2 {coin} ({px / w_['ref'] * 100 - 100:.1f}% below signal){late}")
+                elif not d:
+                    tr.pop(coin)
 
 
 class CrashReboundMarketWide(CrashRebound):
