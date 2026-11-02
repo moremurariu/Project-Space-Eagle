@@ -358,3 +358,12 @@ turnover. Possible maker-only revisit if limit-order paper fills are ever modell
 12% of held coin-hours have 7d funding > 50% APR. No variant improves Sharpe in both periods (tight filters help
 OOS, loose ones IS); filters mostly just cut exposure. Crowding information is already monetised by `xs_funding`
 (long low-funding / short high-funding), so not adopted.
+
+### r37 slow 24h bleeds (24h < thr with no 4h < −10% cascade) — positive standalone, NOT promoted (not additive)
+Prompted by RUNE −15.6%/24h (THORChain halt) not triggering the 4h crash books. Event study (fwd 24h from 1h after
+signal, de-overlapped): 4h cascade +243/+408bp (IS/OOS); slow 24h < −12% +167/+102bp; < −15% +215/+261bp (hit
+62-63%); < −20% +235/+613bp (67/43 events). Idiosyncratic subset (BTC 24h > −3%) weaker and noisy.
+Backtest (15%/pos, hold 24h, lag 1h, fees + 0.1% slip): slow < −15% Sharpe 0.82 IS / 0.69 OOS (DD −30%);
+< −20% 0.43 / 1.23. But daily corr with the live crash book (r30) is 0.52, and a 50/50 mix vs crash alone:
+IS 1.12 vs 1.10, OOS 0.99 vs 1.06 → no improvement in the crash sleeve, so no new book. Rebound after selling
+pressure is one effect; the 4h-cascade trigger captures it better.
