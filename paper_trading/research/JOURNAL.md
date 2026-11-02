@@ -399,3 +399,21 @@ Positive alone in both periods and improves the XS sleeve in both → new live b
 Variants are 0.88-0.90 correlated with each other, ~0.04 with XS funding. Vol-scaled ranking (a t-stat-like score
 that stops high-vol coins dominating both tails) improves standalone Sharpe in both periods → live `xs_momentum`
 switched (`signals.xs_momentum(vol_scaled=True)`); re-signal forced at 11:10. Residual momentum helps IS only.
+
+### r40 portfolio view v2 (current live books, daily streams; DN carry & xyz weekend excluded — short history)
+| Book | IS 2020-23 CAGR / vol / Sharpe / DD | OOS 2024+ CAGR / vol / Sharpe / DD |
+|---|---|---|
+| trend_majors (pvt .25) | 37% / 26% / 1.32 / −34% | 11% / 26% / 0.52 / −35% |
+| trend_univ_lo (ER30 gate) | 35% / 22% / 1.46 / −19% | 10% / 16% / 0.70 / −20% |
+| xs_funding (lag 48h) | 32% / 23% / 1.34 / −27% | 26% / 17% / 1.41 / −20% |
+| xs_momentum (vol-scaled ens.) | 21% / 21% / 1.00 / −24% | 13% / 15% / 0.85 / −17% |
+| crash (r30 scale-in) | 56% / 41% / 1.29 / −30% | 25% / 18% / 1.31 / −12% |
+| crash_mkt (r30 scale-in) | 48% / 39% / 1.20 / −30% | 31% / 24% / 1.25 / −12% |
+| BTC hold | 55% / 68% / 0.99 / −77% | 24% / 47% / 0.69 / −53% |
+| **equal-weight 6 books** | **42% / 16.5% / 2.21 / −12.5%** | **21% / 9.8% / 1.96 / −6.5%** |
+| inverse-vol (90d, lagged) | 27% / 14% / 1.74 / −14% | 12% / 9% / 1.33 / −8% |
+Correlations: trend books 0.48 with each other, crash↔crash_mkt 0.88, everything else |ρ| ≤ 0.25 (XS books ≈ 0
+with all). Equal weight beats inverse-vol (crash-book vol spikes right after events, so inverse-vol de-risks them
+exactly when they pay). Portfolio runs at only ~10% vol OOS → a 1.5x book-level scale would target ~30% CAGR /
+~15% vol / ~−10% DD. Decision: keep 1x until ~4 weeks of live data confirm live ≈ backtest (fees, slippage,
+funding), then revisit leverage (backlog #6).
