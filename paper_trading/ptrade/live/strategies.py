@@ -234,7 +234,8 @@ class XSFunding(Strategy):
 class XSMomentum(DailySignal):
     name = "xs_momentum"
     description = ("Market-neutral cross-sectional momentum on the 40-coin universe: long top / short bottom quartile "
-                   "by past 7/14/21d return (lookback ensemble), inverse-vol, gross 1, weekly rebalance staggered over "
+                   "by vol-scaled past 7/14/21d return (lookback ensemble; r39 vol-scaled ranking), inverse-vol, gross 1, "
+                   "weekly rebalance staggered over "
                    "7 offsets (≈1/7 of the book turns daily). r38: IS 1.14 / OOS 0.68 Sharpe alone; ~0 corr with "
                    "xs_funding, 1/3 blend lifts XS Sharpe 1.31→1.65 IS, 1.44→1.59 OOS and halves drawdowns.")
     lookbacks = (7, 14, 21)
@@ -243,7 +244,7 @@ class XSMomentum(DailySignal):
     def weights(self, P):
         P = P.iloc[-24 * 150:]
         grid = P.index[P.index.hour == 23]        # daily rows live on the 23:00 bar (close = 00 UTC)
-        ws = [S.xs_momentum(P, lookback_d=lb, rebalance_d=7, offset_d=o).reindex(grid).ffill().fillna(0.0)
+        ws = [S.xs_momentum(P, lookback_d=lb, rebalance_d=7, offset_d=o, vol_scaled=True).reindex(grid).ffill().fillna(0.0)
               for lb in self.lookbacks for o in range(7)]
         return sum(ws) / len(ws)
 

@@ -389,3 +389,13 @@ rebalance-day luck) helps every lookback. Daily corr with XS funding ≈ 0.03.
 Positive alone in both periods and improves the XS sleeve in both → new live book `xs_momentum` (ensemble
 7/14/21d × 7 staggered weekly offsets averaged on a daily grid; ≈15%/day one-way turnover). Caveat: momentum is
 −13% YTD in 2026 (blend still positive); survivorship bias of the 40-coin universe flatters momentum somewhat.
+
+### r39 XS momentum ranking: raw vs BTC-residual vs vol-scaled (7/14/21d ensemble, staggered weekly) — VOL-SCALED PROMOTED
+| Ranking | IS Sharpe / DD | OOS Sharpe / DD | 2026 YTD | 2/3 funding + 1/3 mom: IS / OOS |
+|---|---|---|---:|---|
+| raw return (r38 live) | 1.14 / −26% | 0.68 / −19% | −13% | 1.66 / 1.59 |
+| BTC-residual return (60d beta) | 1.38 / −32% | 0.37 / −22% | −16% | 1.75 / 1.40 |
+| **return / (30d vol·√lookback)** | **1.22 / −24%** | **0.88 / −19%** | **−6%** | **1.66 / 1.63** |
+Variants are 0.88-0.90 correlated with each other, ~0.04 with XS funding. Vol-scaled ranking (a t-stat-like score
+that stops high-vol coins dominating both tails) improves standalone Sharpe in both periods → live `xs_momentum`
+switched (`signals.xs_momentum(vol_scaled=True)`); re-signal forced at 11:10. Residual momentum helps IS only.

@@ -115,14 +115,18 @@ def trend_breakout(prices_h: pd.DataFrame, lookbacks=(20, 55, 120), asset_vol_ta
 
 def xs_momentum(prices_h: pd.DataFrame, lookback_d: int = 30, skip_d: int = 0, rebalance_d: int = 7,
                 quantile: float = 0.25, gross: float = 1.0, min_assets: int = 8, hour: int = 0,
-                inv_vol: bool = True, reverse: bool = False, offset_d: int = 0) -> pd.DataFrame:
-    """Long top-quantile / short bottom-quantile by past return (reverse=True -> reversal)."""
+                inv_vol: bool = True, reverse: bool = False, offset_d: int = 0,
+                vol_scaled: bool = False) -> pd.DataFrame:
+    """Long top-quantile / short bottom-quantile by past return (reverse=True -> reversal).
+    vol_scaled=True ranks by return / (30d EWM vol * sqrt(lookback)) — a t-stat-like score (r39)."""
     d = to_daily(prices_h, hour)
     rets = d.pct_change(fill_method=None)
     past = d.shift(skip_d) / d.shift(skip_d + lookback_d) - 1
+    vol = ewm_vol(rets, 30)
+    if vol_scaled:
+        past = past / (vol * np.sqrt(lookback_d))
     if reverse:
         past = -past
-    vol = ewm_vol(rets, 30)
     out = pd.DataFrame(np.nan, index=d.index, columns=d.columns)
     for i, t in enumerate(d.index):
         if (i - offset_d) % rebalance_d:
