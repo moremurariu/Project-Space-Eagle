@@ -167,7 +167,8 @@ class XSFunding(Strategy):
     description = ("Market-neutral: long lowest / short highest trailing-7d *Binance* funding (quartiles, 40 coins), "
                    "inverse-vol, gross 1.0, daily. Binance funding is reconstructed from 1-minute premium-index "
                    "archives (~1-2 day lag; r21 corr 0.99/settlement). r22 backtest 2024-26 w/ HL funding paid: "
-                   "Sharpe 1.44 / 0.82 / 1.20 at 0 / 24 / 48h lag.")
+                   "Sharpe 1.44 / 0.82 / 1.20 at 0 / 24 / 48h lag. Legs beta-neutralised since 2026-11-03 (r44: "
+                   "Sharpe IS 1.31→1.37, OOS 1.46→1.95).")
     paused = False
     pause_reason = ""
     max_staleness = pd.Timedelta(days=4)
@@ -192,6 +193,21 @@ class XSFunding(Strategy):
             last.append(t_last)
         return pd.Series(sums), (min(last) if last else None)
 
+    @staticmethod
+    def _beta_neutral(w: pd.Series, P: pd.DataFrame, cap: float = 2.0) -> pd.Series:
+        """r44: scale the long/short legs so sum(w*beta)=0 (beta = 60d hourly beta to the equal-weight market),
+        keeping gross 1. Dollar-neutral alone left the book long alt beta (low-funding coins are often high-beta)."""
+        rh = P.pct_change(fill_method=None).iloc[-24 * 60:]
+        mk = rh.mean(axis=1)
+        beta = (rh.apply(lambda c: c.cov(mk)) / mk.var()).reindex(w.index).fillna(1.0).clip(0.2, 3.0)
+        L, S_ = w.clip(lower=0), w.clip(upper=0)
+        bl, bs = float((L * beta).sum()), float((-S_ * beta).sum())
+        if bl <= 0 or bs <= 0:
+            return w
+        kl, ks = min(bs / (bl + bs) * 2, cap), min(bl / (bl + bs) * 2, cap)
+        y = L * kl + S_ * ks
+        return y / y.abs().sum()
+
     def run(self, book, mkt, data, now, fast):
         if fast:
             return
@@ -206,7 +222,7 @@ class XSFunding(Strategy):
         if book.meta.get("last_day") == day:
             return
         trail, asof = self._binance_funding_7d(now)
-        P = data.panel.iloc[-24 * 45:]
+        P = data.panel.iloc[-24 * 65:]
         trail = trail[[c for c in trail.index if c in P.columns and pd.notna(P[c].iloc[-1])]]
         if len(trail) < 20:
             print(f"[{self.name}] only {len(trail)} coins with fresh funding data -> holding positions")
@@ -220,6 +236,7 @@ class XSFunding(Strategy):
         w = pd.Series(0.0, index=P.columns)
         w[longs] = iv[longs] / iv[longs].sum() * 0.5
         w[shorts] = -iv[shorts] / iv[shorts].sum() * 0.5
+        w = self._beta_neutral(w, P)
         targets = {k_: v for k_, v in binance_to_hl_weights(w).items() if mkt.has(k_)}
         n = rebalance(book, mkt, targets, now, "daily xs-funding (Binance recon)", buffer=0.01)
         book.meta.pop("warning", None)

@@ -449,3 +449,15 @@ longshots ≤24h before expiry" net of the spread.
 Short coins whose 7d funding rose most vs 72h/168h earlier, long those where it fell most (lag 48h, gross 1):
 IS −0.10 / OOS −0.89 (72h), IS −0.20 / OOS +0.09 (168h) vs the level signal (live) 1.31 / 1.45. Blending halves the
 Sharpe. The XS-funding edge is in the level (persistent crowding / carry), not in funding momentum.
+
+### r44 xs_funding: beta-neutral legs — PROMOTED
+Live attribution (2026-11-03 08:00, book −0.94%): longs −$2,045 (CRV/ATOM/WLD/JUP −7…−9% in the alt sell-off), shorts
++$1,164 (SOL/LINK −4…−5%) → the dollar-neutral book was long alt beta. Backtest: scale the long and short legs so
+Σ w·β = 0 (β = 60d hourly beta to the equal-weight 40-coin market, clipped [0.2, 3], leg scale ≤ 2, gross 1):
+| Variant | IS Sharpe / DD | OOS Sharpe / DD | beta to EW market |
+|---|---|---|---|
+| dollar-neutral (live until now) | 1.31 / −27% | 1.46 / −22% | −0.03 |
+| **beta-neutral legs** | **1.37 / −31%** | **1.95 / −15%** | +0.01 |
+Average beta was already ≈ 0, but it swings with which coins sit in each leg; neutralising it improves Sharpe in both
+periods (IS DD slightly deeper). → live (`XSFunding._beta_neutral`), re-balance forced 08:15. Today it shrinks the
+long leg 0.50 → 0.465 and grows the short leg to 0.535.
