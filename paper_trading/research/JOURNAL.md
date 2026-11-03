@@ -444,3 +444,8 @@ is tiny, obs within a market are correlated, and it is dominated by short-dated 
 No strategy yet; rerun weekly as outcomes accumulate (`python research/r42_polymarket_calib.py 600` fetches the
 next batch of outcomes). Target: ≥1,500 resolved markets before testing "buy 65-90c favourites / sell 5-15c
 longshots ≤24h before expiry" net of the spread.
+
+### r43 XS on the change in funding (not the level) — REJECTED
+Short coins whose 7d funding rose most vs 72h/168h earlier, long those where it fell most (lag 48h, gross 1):
+IS −0.10 / OOS −0.89 (72h), IS −0.20 / OOS +0.09 (168h) vs the level signal (live) 1.31 / 1.45. Blending halves the
+Sharpe. The XS-funding edge is in the level (persistent crowding / carry), not in funding momentum.
