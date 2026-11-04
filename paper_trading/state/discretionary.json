@@ -1,6 +1,9 @@
 {
-  "updated": "2026-11-01T11:06Z",
-  "targets": {"BTC": 0.30, "ETH": 0.0},
-  "rationale": "Keep BTC 0.30 (resilient after the $6.3B Binance hack; F&G ~34; Binance withdrawals reopening = normalisation). Cut ETH 0.15 -> 0: FBI attributes the hack to Lazarus, who historically launder via ETH over weeks (post-Bybit Feb-2025 ETH lagged) -> ETH supply overhang. Revisit after US midterms (Nov 3) or if BTC < 74k.",
-  "review_by": "2026-11-04"
+ "updated": "2026-11-04T00:10Z",
+ "targets": {
+  "BTC": 0.3,
+  "ETH": 0.0
+ },
+ "rationale": "Review 2026-11-04 00:10: keep BTC 0.30 / ETH 0. BTC held $76-78k through the hack aftermath; Binance net flows back positive (+$2.3B) = normalisation; F&G 34 (fear, contrarian-supportive). Midterm results still coming in (prediction markets lean Dem in key crypto races) -> no new risk before the outcome is known. ETH stays 0 while Lazarus laundering overhang persists. Revisit once midterm results are clear or if BTC < 74k.",
+ "review_by": "2026-11-05"
 }

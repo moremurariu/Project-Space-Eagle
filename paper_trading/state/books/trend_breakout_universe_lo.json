@@ -6,9 +6,9 @@
  "funding": -0.7704171132920166,
  "initial": 100000.0,
  "meta": {
-  "last_signal": "2026-11-02T23:00:00+00:00",
+  "last_signal": "2026-11-03T23:00:00+00:00",
   "last_targets": {
-   "BCH": 0.0016
+   "UNI": 0.0009
   }
  },
  "name": "trend_breakout_universe_lo",
