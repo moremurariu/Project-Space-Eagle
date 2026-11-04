@@ -6,15 +6,15 @@
  "funding": 0.0,
  "initial": 100000.0,
  "meta": {
-  "last_scan": "2026-11-04T00:04:26.551533+00:00",
+  "last_scan": "2026-11-04T01:04:21.646884+00:00",
   "tranches": {},
   "watch": {},
   "worst_4h": {
-   "ALGO": -1.06,
-   "AVAX": -0.84,
-   "FIL": -1.71,
-   "RENDER": -0.8,
-   "TRX": -0.74
+   "ALGO": -2.02,
+   "FIL": -1.81,
+   "LINK": -1.6,
+   "ONDO": -1.61,
+   "RENDER": -1.53
   }
  },
  "name": "crash_rebound",
