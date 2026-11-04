@@ -6,15 +6,15 @@
  "funding": 0.0,
  "initial": 100000.0,
  "meta": {
-  "last_scan": "2026-11-04T22:04:41.414394+00:00",
+  "last_scan": "2026-11-04T23:04:08.800985+00:00",
   "tranches": {},
   "watch": {},
   "worst_4h": {
-   "ENA": -1.85,
-   "NEAR": -2.52,
-   "SUI": -1.56,
-   "TIA": -1.6,
-   "kPEPE": -1.78
+   "ALGO": -0.8,
+   "AVAX": -0.12,
+   "LDO": 0.38,
+   "PENDLE": 0.11,
+   "TRX": 0.06
   }
  },
  "name": "crash_rebound",
