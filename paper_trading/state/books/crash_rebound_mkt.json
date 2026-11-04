@@ -6,15 +6,15 @@
  "funding": 0.0,
  "initial": 100000.0,
  "meta": {
-  "last_scan": "2026-11-04T09:04:29.823498+00:00",
+  "last_scan": "2026-11-04T10:04:40.159319+00:00",
   "tranches": {},
   "watch": {},
   "worst_4h": {
-   "ATOM": 0.99,
-   "BNB": 1.19,
-   "SOL": 1.05,
-   "TRX": 0.06,
-   "XRP": 0.74
+   "ADA": 0.37,
+   "BNB": 0.53,
+   "SOL": 0.4,
+   "TRX": 0.0,
+   "XRP": 0.52
   }
  },
  "name": "crash_rebound_mkt",
