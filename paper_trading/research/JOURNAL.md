@@ -473,3 +473,9 @@ long leg 0.50 → 0.465 and grows the short leg to 0.535.
 Reacting faster to intraday moves whipsaws (turnover ×6-14) and is worse in both periods; staggering is mixed
 (IS −0.22, OOS +0.07). The once-daily book is right; squeezes like Nov 4 are the cost of the strategy — the next
 00 UTC rebalance halved the short (−0.79 → −0.42) exactly as the signal preview predicted.
+
+### 2026-11-05 18:06 — first live crash-rebound event (live-vs-backtest log)
+Broad selloff (BTC −6%/24h to 75.7k, ETH −8%, alts −7…−10% over 4h; no clear headline). ENA closed the 18:00 bar
+−10.15% over 4h with BTC 4h < −3% → both `crash_rebound` and `crash_rebound_mkt` bought tranche 1 (7.5%) at ~$0.16,
+fees $4 each; exit 2026-11-06 18:00 UTC; tranche 2 armed if an hourly close ≤ 5% below the signal close within 12h.
+TIA (−9.5%) and FIL (−8.4%) were close. Track the realised 24h P&L vs the r30 event-study expectation (+2-4%/event).

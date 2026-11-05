@@ -204,3 +204,5 @@ ts,book,key,side,qty,mid,fill_px,notional,fee,slip_cost,reason
 2026-11-05T00:05:06.842527+00:00,xs_momentum,AAVE,buy,15.540162,131.7,131.70658,2046.74,0.9210,0.1023,signal 2026-11-04 23h
 2026-11-05T01:04:00.923038+00:00,claude_discretionary,BTC,sell,-0.0096905601,80465.5,80461.477,779.72,0.3509,0.0390,"discretionary: Post-midterm review 2026-11-05: Democrats swept Congress; BTC bounced from a 7-week low <$76k to $80.5k with US stocks, "
 2026-11-05T01:04:00.923038+00:00,claude_discretionary,ETH,buy,4.1846843,2418.05,2418.1709,10119.28,4.5537,0.5059,"discretionary: Post-midterm review 2026-11-05: Democrats swept Congress; BTC bounced from a 7-week low <$76k to $80.5k with US stocks, "
+2026-11-05T18:06:05.237743+00:00,crash_rebound,ENA,buy,46785.815,0.160305,0.16032416,7500.90,3.3754,0.8966,crash-rebound t1 4h=-10.1%
+2026-11-05T18:06:05.237743+00:00,crash_rebound_mkt,ENA,buy,46785.815,0.160305,0.16032416,7500.90,3.3754,0.8966,crash-rebound t1 4h=-10.1%
