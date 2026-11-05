@@ -1,12 +1,12 @@
 {
- "cash": 92495.53659727373,
+ "cash": 92495.44148171277,
  "created": "2026-10-31T15:34:06.149723+00:00",
  "description": "Buy coins after a >10% drop over 4h measured on closed hourly bars (liquidation-cascade overshoot). Scale-in (r30): tranche 1 = 7.5% at the signal close, tranche 2 = 7.5% if an hourly close within the next 12h is a further 5% below the signal close; each tranche held 24h (re-trigger extends), max gross 100%. Hourly only: r28 showed 5-minute scanning catches falling knives (MaxDD \u221260% vs \u221228%).",
  "fees": 3.3754034522219847,
- "funding": -0.19143878076167303,
+ "funding": -0.2865543417235894,
  "initial": 100000.0,
  "meta": {
-  "last_scan": "2026-11-05T20:05:09.399656+00:00",
+  "last_scan": "2026-11-05T21:04:25.388517+00:00",
   "tranches": {
    "ENA": {
     "t1": {
@@ -23,18 +23,18 @@
    }
   },
   "worst_4h": {
-   "BCH": -0.68,
-   "NEAR": 0.22,
-   "ONDO": 0.03,
-   "SOL": -0.11,
-   "XRP": -0.1
+   "BCH": -0.9,
+   "ETH": -0.68,
+   "NEAR": -0.83,
+   "WLD": -0.47,
+   "XRP": -0.89
   }
  },
  "name": "crash_rebound",
  "positions": {
   "ENA": {
    "avg_px": 0.16032416308398378,
-   "funded_through": "2026-11-05T20:00:00+00:00",
+   "funded_through": "2026-11-05T21:00:00+00:00",
    "opened": "2026-11-05T18:06:05.237743+00:00",
    "qty": 46785.814541031155
   }
