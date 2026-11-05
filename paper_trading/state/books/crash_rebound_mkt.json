@@ -6,15 +6,15 @@
  "funding": 0.0,
  "initial": 100000.0,
  "meta": {
-  "last_scan": "2026-11-05T09:06:09.552829+00:00",
+  "last_scan": "2026-11-05T10:04:56.735528+00:00",
   "tranches": {},
   "watch": {},
   "worst_4h": {
-   "BTC": -0.03,
-   "ETH": -0.2,
-   "NEAR": -0.05,
-   "TRX": -0.41,
-   "UNI": -0.43
+   "BTC": 0.05,
+   "ETH": 0.03,
+   "ONDO": 0.15,
+   "TRX": -0.38,
+   "UNI": 0.3
   }
  },
  "name": "crash_rebound_mkt",
