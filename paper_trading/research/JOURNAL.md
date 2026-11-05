@@ -461,3 +461,15 @@ Live attribution (2026-11-03 08:00, book −0.94%): longs −$2,045 (CRV/ATOM/WL
 Average beta was already ≈ 0, but it swings with which coins sit in each leg; neutralising it improves Sharpe in both
 periods (IS DD slightly deeper). → live (`XSFunding._beta_neutral`), re-balance forced 08:15. Today it shrinks the
 long leg 0.50 → 0.465 and grows the short leg to 0.535.
+
+### r45 trend majors: signal update frequency (prompted by the 2026-11-04 short squeeze, book −3.9% in one hour) — NOT CHANGED
+| Variant | IS Sharpe / DD | OOS Sharpe / DD | OOS turnover |
+|---|---|---|---:|
+| once daily at 00 UTC (live) | 1.53 / −36% | 0.49 / −36% | 20x/yr |
+| re-evaluate the daily-bar signal every 6h | 1.05 / −43% | 0.22 / −37% | 126x |
+| re-evaluate every hour | 0.60 / −51% | −0.38 / −53% | 277x |
+| every hour, min_trade 0.05 | 0.87 / −45% | 0.07 / −43% | 154x |
+| average of 4 six-hour-offset books (stagger) | 1.31 / −40% | 0.56 / −35% | 19x |
+Reacting faster to intraday moves whipsaws (turnover ×6-14) and is worse in both periods; staggering is mixed
+(IS −0.22, OOS +0.07). The once-daily book is right; squeezes like Nov 4 are the cost of the strategy — the next
+00 UTC rebalance halved the short (−0.79 → −0.42) exactly as the signal preview predicted.
