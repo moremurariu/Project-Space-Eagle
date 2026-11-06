@@ -1,12 +1,12 @@
 {
- "cash": 92494.51789735645,
+ "cash": 92494.42177590047,
  "created": "2026-10-31T16:40:00.305573+00:00",
  "description": "Crash rebound, market-wide cascades only: coin down >10% over 4h AND BTC down >3% over the same 4h (forced-liquidation overshoot; skips idiosyncratic news-driven drops). r10: OOS Sharpe 1.20 vs 0.78 for the unfiltered version at 1h lag.",
  "fees": 3.3754034522219847,
- "funding": -1.2101386980396742,
+ "funding": -1.3062601540142227,
  "initial": 100000.0,
  "meta": {
-  "last_scan": "2026-11-06T07:06:48.132621+00:00",
+  "last_scan": "2026-11-06T08:05:00.908271+00:00",
   "tranches": {
    "ENA": {
     "t1": {
@@ -17,18 +17,18 @@
   },
   "watch": {},
   "worst_4h": {
-   "BCH": -2.75,
-   "INJ": -2.44,
-   "WLD": -1.51,
-   "XRP": -2.1,
-   "ZEC": -4.12
+   "ATOM": -1.33,
+   "BCH": -4.0,
+   "INJ": -2.65,
+   "XRP": -1.67,
+   "ZEC": -1.33
   }
  },
  "name": "crash_rebound_mkt",
  "positions": {
   "ENA": {
    "avg_px": 0.16032416308398378,
-   "funded_through": "2026-11-06T07:00:00+00:00",
+   "funded_through": "2026-11-06T08:00:00+00:00",
    "opened": "2026-11-05T18:06:05.237743+00:00",
    "qty": 46785.814541031155
   }
