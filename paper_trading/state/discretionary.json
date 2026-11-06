@@ -1,9 +1,9 @@
 {
- "updated": "2026-11-05T00:15Z",
+ "updated": "2026-11-06T15:15Z",
  "targets": {
-  "BTC": 0.3,
-  "ETH": 0.1
+  "BTC": 0.25,
+  "ETH": 0.0
  },
- "rationale": "Post-midterm review 2026-11-05: Democrats swept Congress; BTC bounced from a 7-week low <$76k to $80.5k with US stocks, F&G 26 -> 50. Keep BTC 0.30. Restore ETH to 0.10 (was cut to 0 on a Lazarus-laundering overhang thesis): ETH +6.6% vs BTC +4.2% on the day and stolen funds are being routed via THORChain into BTC, so the ETH-specific overhang looks weaker than feared - thesis partly wrong, re-enter at reduced size rather than chase. Risks: $1.16B ETF outflows, Trump-linked tokens weak. Revisit Nov 8 or if BTC < 75k.",
- "review_by": "2026-11-08"
+ "rationale": "Review on BTC < 75k (2026-11-06 15:05): BTC broke the 7-week-low area under 75k with risk-off equities (KOSPI halted after -8% on AI-regulation fears), F&G 50 -> 28, BTC 30d RR25 -4.8 (put skew). Exit ETH (0.10 -> 0): the re-entry thesis was ETH relative strength, now gone (ETH -3.1% vs BTC -2.5% 24h) - take the small loss rather than average down. Trim BTC 0.30 -> 0.25, keeping a core position for a fear-driven rebound. Rules: BTC < 72k -> cut to 0.10; BTC reclaims 78k -> back to 0.30.",
+ "review_by": "2026-11-09"
 }
