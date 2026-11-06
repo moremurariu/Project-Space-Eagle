@@ -479,3 +479,10 @@ Broad selloff (BTC −6%/24h to 75.7k, ETH −8%, alts −7…−10% over 4h; no
 −10.15% over 4h with BTC 4h < −3% → both `crash_rebound` and `crash_rebound_mkt` bought tranche 1 (7.5%) at ~$0.16,
 fees $4 each; exit 2026-11-06 18:00 UTC; tranche 2 armed if an hourly close ≤ 5% below the signal close within 12h.
 TIA (−9.5%) and FIL (−8.4%) were close. Track the realised 24h P&L vs the r30 event-study expectation (+2-4%/event).
+
+### r42 update 2026-11-06 — Polymarket calibration with midterm markets resolved
+Pooled by quoted mid (n obs / mid / win rate): 0-5c 644 / 0.7% / 0%; 5-15c 69 / 8.4% / 0%; 15-35c 142 / 25% / 23%;
+35-65c 334 / 49% / 52%; 65-85c 77 / 74% / 83% (± 4%); 85-95c 49 / 91% / 92%; 95c+ 100 / 99% / 100%.
+The sample is now dominated by election markets ("Will Republicans…" 452 obs), which are highly correlated with each
+other. The favourite-longshot pattern persists (5-15c longshots 0/69; 65-85c favourites +9pp) but the effective
+sample is still small. Keep collecting; test a strategy once ≥1,500 resolved non-election markets exist.
