@@ -486,3 +486,6 @@ Pooled by quoted mid (n obs / mid / win rate): 0-5c 644 / 0.7% / 0%; 5-15c 69 / 
 The sample is now dominated by election markets ("Will Republicans…" 452 obs), which are highly correlated with each
 other. The favourite-longshot pattern persists (5-15c longshots 0/69; 65-85c favourites +9pp) but the effective
 sample is still small. Keep collecting; test a strategy once ≥1,500 resolved non-election markets exist.
+→ 2026-11-06 18:08 exit (24h): ENA bought 0.16032, sold 0.16583 → +3.4% gross on the position, ≈ +3.3% after fees,
+slippage and funding; book +0.25% (7.5% position). Tranche 2 never armed (no further −5%). In line with the
+r10/r30 event-study expectation (+2-4% per event). Live crash events so far: 1, both books +$249.

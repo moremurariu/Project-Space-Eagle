@@ -225,3 +225,5 @@ ts,book,key,side,qty,mid,fill_px,notional,fee,slip_cost,reason
 2026-11-06T00:04:38.291333+00:00,dn_funding_carry,ENA/spot,buy,15367.193,0.161429,0.16150971,2481.95,1.7374,1.2404,daily dn-carry
 2026-11-06T16:07:03.139753+00:00,claude_discretionary,ETH,sell,-4.1846843,2226.95,2226.7591,9318.28,4.1932,0.7989,discretionary: Review on BTC < 75k (2026-11-06 15:05): BTC broke the 7-week-low area under 75k with risk-off equities (KOSPI halted aft
 2026-11-06T16:07:03.139753+00:00,claude_discretionary,BTC,sell,-0.051793475,75716.5,75712.714,3921.42,1.7646,0.1961,discretionary: Review on BTC < 75k (2026-11-06 15:05): BTC broke the 7-week-low area under 75k with risk-off equities (KOSPI halted aft
+2026-11-06T18:08:10.854198+00:00,crash_rebound,ENA,sell,-46785.815,0.165905,0.16583292,7758.63,3.4914,3.3723,crash-rebound exit t1 (24h)
+2026-11-06T18:08:10.854198+00:00,crash_rebound_mkt,ENA,sell,-46785.815,0.165905,0.16583292,7758.63,3.4914,3.3723,crash-rebound exit t1 (24h)
