@@ -489,3 +489,17 @@ sample is still small. Keep collecting; test a strategy once ≥1,500 resolved n
 → 2026-11-06 18:08 exit (24h): ENA bought 0.16032, sold 0.16583 → +3.4% gross on the position, ≈ +3.3% after fees,
 slippage and funding; book +0.25% (7.5% position). Tranche 2 never armed (no further −5%). In line with the
 r10/r30 event-study expectation (+2-4% per event). Live crash events so far: 1, both books +$249.
+
+### 2026-11-07 00:05 — first live week (2026-10-31 15:34 → 11-07 00:05)
+BTC 78.4k → 75.9k (benchmark −2.1%, max DD −7.2%). Combined books −0.11% on $1.0M (ex-benchmark).
+| Book | Return | Notes |
+|---|---:|---|
+| xs_momentum (from 11-02) | +0.51% | best book; vol-scaled ranking since r39 |
+| crash_rebound / _mkt | +0.25% each | one event (ENA, +3.3% net on the position) |
+| dn_funding_carry | +0.10% | $195 funding vs $189 entry fees → now net positive |
+| xs_funding | −0.17% | recovered from −1.13%; beta-neutral legs since r44 |
+| trend_breakout_majors | −0.53% | short squeeze 11-04 (−3.9% in 1h), short halved next day |
+| claude_discretionary | −1.38% | long BTC into a falling market; ETH round trip lost ~4% on 10% |
+| xyz_weekend_fade | 0 | first entry Sunday 11-08 23:00 UTC |
+Execution costs below backtest assumptions (fees 5bp + slippage ~3bp per side). No errors in a week of hourly cycles.
+Sample far too short to judge any book; next portfolio review after ~4 weeks (leverage decision, backlog #6).
