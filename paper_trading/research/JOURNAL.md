@@ -499,7 +499,7 @@ BTC 78.4k → 75.9k (benchmark −2.1%, max DD −7.2%). Combined books −0.11%
 | dn_funding_carry | +0.10% | $195 funding vs $189 entry fees → now net positive |
 | xs_funding | −0.17% | recovered from −1.13%; beta-neutral legs since r44 |
 | trend_breakout_majors | −0.53% | short squeeze 11-04 (−3.9% in 1h), short halved next day |
-| claude_discretionary | −1.38% | long BTC into a falling market; ETH round trip lost ~4% on 10% |
+| claude_discretionary | −1.38% | long BTC into a falling market; ETH re-entry 2418 → 2227 (−7.9% on a 10% slot ≈ −0.8% of book) |
 | xyz_weekend_fade | 0 | first entry Sunday 11-08 23:00 UTC |
 Execution costs below backtest assumptions (fees 5bp + slippage ~3bp per side). No errors in a week of hourly cycles.
 Sample far too short to judge any book; next portfolio review after ~4 weeks (leverage decision, backlog #6).
