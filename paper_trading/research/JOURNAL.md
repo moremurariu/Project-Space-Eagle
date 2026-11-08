@@ -758,3 +758,10 @@ H2 −2bp; non-US/private only (CXMT, ZHIPU, SPCX, PURRDAT, UNITREE, SKHX, SKHY,
 +83bp, t 1.73, H1 +187 / H2 −11bp; all equity-like +40bp, t 1.29. Pooled Monday-on-weekend XS beta: −0.29 US-listed,
 −0.33 non-US/private. Both groups revert, so there is no reason to exclude the non-US names. Both halves have weakened recently
 (the last 10 weekends are negative in both groups), consistent with r50's caution. Entry tonight unchanged; the kill rule stands.
+
+### 2026-11-08 22:04 — Sunday-evening sell-off (ops log)
+BTC 75.9k → 74.6k (−1.4%/24h), ETH 2,240 → 2,130 (−4.6% over 4h); alts −4…−5% over 4h (PENDLE, ETH, ENA, JUP, SEI). No crash
+signal (thr −10%). No clear headline: Binance France closures and the CFO exit are old news, US tech perps are soft (XYZ100 −0.5%).
+trend_majors short +1.75%/24h → book +1.50%. Combined books turn positive (+0.03%) vs benchmark −3.73%. Combined BTC
+exposure −0.55 books (corr −0.74) paid off here. Discretionary rules not hit (BTC > 72k). The xyz_weekend_fade entry runs at the 23:03
+wake-up: its weekend returns are measured vs the Friday close, so the crypto-led drop feeds in via COIN/MSTR/HOOD/CRCL.
