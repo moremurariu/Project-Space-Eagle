@@ -57,7 +57,7 @@ def main():
         print(f"funding fetcher restarted ({n_cached} cached)")
     # status
     rep = (ROOT / "reports" / "STATUS.md").read_text().splitlines()
-    print("\n".join(rep[:2 + 18]))
+    print("\n".join(rep[:2 + 20]))
     errs = {p.stem: json.loads(p.read_text())["meta"].get("last_error") for p in (STATE / "books").glob("*.json")}
     errs = {k: v for k, v in errs.items() if v}
     print("errors:", errs or "none")

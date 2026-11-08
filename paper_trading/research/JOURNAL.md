@@ -721,3 +721,11 @@ ex-benchmark book to the BTC-hold book (`report._combined_btc_beta`). A first ve
 added book showed up as a +10% return (xs_bab 11-08 01h, xs_momentum/xyz 11-02); it now uses per-book returns weighted
 by prior equity. Current reading: beta −0.049 ≈ −0.53 books of BTC (≈ −$53k BTC-equivalent: trend_majors −$59k,
 discretionary +$25k, XS legs), corr −0.72.
+
+### r42 update 2026-11-08 19:xx — Polymarket outcomes 1,063 → 1,633 resolved (1,409 non-election)
+Pooled by quoted mid (n obs / mid / win rate ± se): 0-5c 744 / 0.8% / 0%; 5-15c 107 / 8.8% / 3.7% ± 1.8;
+15-35c 208 / 25% / 24%; 35-65c 617 / 49% / 53% ± 2.0; 65-85c 149 / 74% / **83% ± 3.1**; 85-95c 74 / 91% / 93%;
+95c+ 158 / 99% / 100%. The favourite-longshot bias persists with the bigger sample: longshots are overpriced (5-15c win
+3.7% vs 8.8% implied), and favourites at 65-85c win ~9pp more than priced (≈ 3 se). Non-election resolved markets: 1,409,
+just under the 1,500 bar. At the next weekly refresh (~11-15), test "buy 65-85c favourites / sell 5-15c longshots
+near expiry" with spread, time-to-expiry buckets and per-event clustering.
