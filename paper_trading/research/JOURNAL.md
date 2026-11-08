@@ -700,8 +700,9 @@ which is intended.
 First 8 days: 802 unique headlines. Weekday volume ~90–120/day across feeds, weekends ~10–30. Median detection
 lag 48 min (collected at each hourly wake-up). Keyword tags: hack/exploit 178 (dominated by the $6.3B Binance hack
 story), ETF 27, SEC/regulation/sanctions 27, macro/Fed 18, liquidation 5, listing 3.
-Bugs: (1) **dlnews had produced 0 rows all week.** `headlines(max_items=500)` capped the *total* across feeds, so feeds
-late in the dict got ≤1 item; the cap is now per feed (dlnews 40 items, decrypt 39, cointelegraph 30, …).
-(2) **bitcoinmagazine returns 403** to the Python client since ~11-07, though curl gets 200, which looks like
-deliberate blocking of automated clients. The feed was removed rather than worked around with a spoofed User-Agent.
-Six feeds remain.
+Findings: (1) dlnews: its 40 rows were all collected on 11-01, and **its RSS feed has not published since 10-28** (newest item
+10-28 22:30). It is a stale feed, not a parser problem; it stays configured in case it resumes. An earlier draft of this note
+blamed the global `max_items` cap. That was wrong: ~165 items across feeds never reached 500. The cap is now per feed anyway,
+which is harmless. (2) **bitcoinmagazine returns 403** to the Python client since ~11-07, though curl gets 200, which
+looks like deliberate blocking of automated clients. The feed was removed rather than worked around with a spoofed
+User-Agent. Live sources now: cointelegraph, coindesk, decrypt, theblock, cryptoslate (+ dlnews if it resumes).
