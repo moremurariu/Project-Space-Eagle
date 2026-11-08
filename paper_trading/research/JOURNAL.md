@@ -661,3 +661,15 @@ Daily returns match to within ~0.3pp on every day, including the 11-04 squeeze (
 book-walk slippage below the 5bp assumption. Hourly correlation is low (0.16/0.39) only because of timestamps: live equity
 is marked at ~:04 while backtest bars are bar-open indexed. Evidence for backlog #6 (leverage) once ~4 weeks exist; re-run weekly
 (`research/r55_live_vs_bt.py`; add more books as their history grows).
+→ r55 update (13:xx): **xs_funding** added, with r44 beta-neutral legs in the backtest.
+Found a research-data gap first: `cache/binance_funding_*.parquet` (monthly archives) ends 2026-09-30, so
+`load_binance_funding_panel` gave every coin the flat default rate for October–November. The backtest's xs_funding signal
+over the live window was then pure ties (daily corr with live −0.66). After splicing in the live 1m-premium reconstruction:
+live −0.15% vs bt +0.15% (10-31 → 11-08), daily corr 0.38. Holdings at the latest rebalance: weight corr 0.84; the same
+names sit at both extremes (short BTC/XRP/ETC/LINK, long TRX/ETH/XLM/ATOM/SEI/JUP); the differences are quartile-boundary
+names (TAO, LDO, SUI, OP, LTC, CRV, PENDLE, XLM). The live trailing window ends 11-07 00:00; the bt shift-48h window
+ends 11-06 00:00. The rest of the P&L gap: live was not beta-neutral until 11-03 (bt is throughout), and it entered
+at 11-01 02:20. Verdict: same book; tracking is noisier than for xs_momentum because edge names flip.
+**Fix:** `load_binance_funding_panel(..., splice_recon=True)` (opt-in) fills each symbol after its last archive with the
+cached reconstruction. Use it in all research from now on. Effect on earlier work: r44–r54 "2026 YTD" numbers had flat
+funding for Oct–Nov, ~5 weeks out of 7 years, so their conclusions stand, but xs_funding's Oct 2026 backtest P&L was noise.

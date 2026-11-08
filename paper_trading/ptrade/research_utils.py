@@ -26,8 +26,10 @@ def load_volume_panel(symbols=None, start="2019-01-01") -> pd.DataFrame:
     return binance.panel(dfs, "quote_volume")
 
 
-def load_binance_funding_panel(prices: pd.DataFrame, default_8h: float = 0.0001) -> pd.DataFrame:
-    """Hourly funding panel aligned to `prices`. Missing history -> default rate (spread evenly, 8h)."""
+def load_binance_funding_panel(prices: pd.DataFrame, default_8h: float = 0.0001, splice_recon: bool = False) -> pd.DataFrame:
+    """Hourly funding panel aligned to `prices`. Missing history -> default rate (spread evenly, 8h).
+    splice_recon=True: after each symbol's last monthly archive, use the live 1m-premium reconstruction
+    (`data.funding_recon`, cached under cache/frecon) instead of the flat default (r55)."""
     cols = {}
     for sym in prices.columns:
         path = CACHE / f"binance_funding_{sym}.parquet"
@@ -49,6 +51,18 @@ def load_binance_funding_panel(prices: pd.DataFrame, default_8h: float = 0.0001)
         # for periods without data (before listing / after last archive) use default spread hourly
         covered = (prices.index >= s.index[0]) & (prices.index <= s.index[-1] + pd.Timedelta(hours=8))
         h[~covered] = default_8h / 8
+        if splice_recon:
+            try:
+                from .data import funding_recon
+                end = s.index[-1]
+                r = funding_recon.build("1000PEPEUSDT" if sym == "PEPEUSDT" else sym,
+                                        start=(end + pd.Timedelta(days=1)).strftime("%Y-%m"), workers=4)
+                r.index = r.index.floor("h"); r = r[~r.index.duplicated(keep="last")]
+                win = prices.index[(prices.index > end) & (prices.index <= r.index[-1] + pd.Timedelta(hours=8))] if len(r) else []
+                if len(win):
+                    h.loc[win] = r.reindex(win).fillna(0.0).to_numpy()
+            except Exception as e:  # noqa: BLE001
+                print(f"[funding] recon splice failed {sym}: {e}")
         cols[sym] = h
     return pd.DataFrame(cols, index=prices.index)
 
