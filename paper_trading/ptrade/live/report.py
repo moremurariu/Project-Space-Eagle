@@ -38,6 +38,30 @@ def pct(x, d=2):
     return "n/a" if x is None or (isinstance(x, float) and not np.isfinite(x)) else f"{x*100:+.{d}f}%"
 
 
+def _combined_btc_beta(eqdf: pd.DataFrame, days: int = 7) -> str:
+    """Realised beta/corr of the combined (ex-benchmark) book vs the BTC-hold benchmark, hourly, last `days`."""
+    try:
+        if not len(eqdf):
+            return ""
+        d = eqdf.copy(); d["ts"] = pd.to_datetime(d.ts, utc=True)
+        W = d.pivot_table(index=d.ts.dt.floor("h"), columns="book", values="equity", aggfunc="last").ffill()
+        W = W[W.index > W.index[-1] - pd.Timedelta(days=days)]
+        bench = [c for c in W.columns if c.startswith("benchmark")]
+        if not bench or len(W) < 48:
+            return ""
+        X = W.drop(columns=bench); R = X.pct_change(fill_method=None)   # per-book returns: new books (NaN before) don't jump
+        prev = X.shift(1).where(R.notna())
+        comb = (R * prev).sum(axis=1) / prev.sum(axis=1)
+        b = W[bench[0]].pct_change()
+        j = pd.concat([comb, b], axis=1).dropna()
+        j4 = (1 + j).groupby(j.index.floor("4h")).prod() - 1
+        beta = j4.iloc[:, 0].cov(j4.iloc[:, 1]) / j4.iloc[:, 1].var()
+        return (f"Combined BTC exposure ({days}d realised, 4h returns): beta {beta:+.3f} "
+                f"(≈ {beta * len(W.drop(columns=bench).columns):+.2f} books of BTC), corr {j4.iloc[:, 0].corr(j4.iloc[:, 1]):+.2f}")
+    except Exception:  # noqa: BLE001
+        return ""
+
+
 def write_report(mkt, now: pd.Timestamp):
     books = _load_books()
     eqdf = pd.read_csv(EQUITY_CSV, parse_dates=["ts"]) if EQUITY_CSV.exists() else pd.DataFrame()
@@ -69,7 +93,11 @@ def write_report(mkt, now: pd.Timestamp):
             tot_eq += e
             tot_init += b.initial
     if tot_init:
-        lines += ["", f"**Combined (ex-benchmark): ${tot_eq:,.0f} on ${tot_init:,.0f} → {pct(tot_eq / tot_init - 1)}**", ""]
+        lines += ["", f"**Combined (ex-benchmark): ${tot_eq:,.0f} on ${tot_init:,.0f} → {pct(tot_eq / tot_init - 1)}**"]
+        beta_line = _combined_btc_beta(eqdf)
+        if beta_line:
+            lines.append(beta_line)
+        lines.append("")
 
     lines += ["## Positions", ""]
     for b in books:

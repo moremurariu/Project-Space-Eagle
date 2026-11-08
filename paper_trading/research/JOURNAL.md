@@ -716,3 +716,8 @@ other way. In the long backtest the portfolio has ≈ 0 beta, so this is regime-
 Other pairs: crash ↔ xs_funding +0.52, dn_carry ↔ xs_funding −0.54 (both from the single 11-05 event, so ignore),
 trend_majors ↔ xs_momentum +0.49. For the ~4-week portfolio review (backlog #6): add a combined-portfolio BTC-beta line
 to the status report, and consider a portfolio-level beta cap before any leverage decision.
+→ 18:xx: status report now prints **"Combined BTC exposure (7d realised, 4h returns)"**, a beta of the combined
+ex-benchmark book to the BTC-hold book (`report._combined_btc_beta`). A first version summed book equities, so each newly
+added book showed up as a +10% return (xs_bab 11-08 01h, xs_momentum/xyz 11-02); it now uses per-book returns weighted
+by prior equity. Current reading: beta −0.049 ≈ −0.53 books of BTC (≈ −$53k BTC-equivalent: trend_majors −$59k,
+discretionary +$25k, XS legs), corr −0.72.
