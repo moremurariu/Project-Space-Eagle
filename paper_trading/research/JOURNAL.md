@@ -747,3 +747,14 @@ r42's pooled "favourites win +9pp" came from counting every hourly quote, so lon
 and correlated, and election markets dominated. Taken once per market at a tradeable price, the bias disappears or
 reverses: near-expiry favourites at 80–95c win only 80%. No strategy. Keep collecting; at ~3,000 markets re-test by
 category (sports vs crypto vs politics) and by time to expiry (24–72h vs < 6h), since the bias may live in one segment only.
+
+### r58 xyz weekend fade: US-listed names vs names without a US cash session — keep the full universe
+Prompted by tonight's planned book. Dry run at 21:00 for the 23:05 entry: 35 trades, 38 names, weekend dispersion
+1.13%. The largest shorts are ANT −10.9% (new perp, $72M OI, not in the backtest cache), CXMT −9%, MRNA, ZHIPU, SPCX;
+the largest longs are PURRDAT, NVDA, SOXL, MSTR, LITE, CRCL. Several of these are private/pre-IPO or Asia-listed, so they
+have no US cash close for the r32 "overreaction while cash is shut" story.
+Split (r50 data, 29 weekends, linear fade, 0.18% round trip): US-listed only (~25 names/wk) +30bp/wk, t 0.96, H1 +65 /
+H2 −2bp; non-US/private only (CXMT, ZHIPU, SPCX, PURRDAT, UNITREE, SKHX, SKHY, SMSN; ~7 names/wk, 19 weekends, cap 35%)
++83bp, t 1.73, H1 +187 / H2 −11bp; all equity-like +40bp, t 1.29. Pooled Monday-on-weekend XS beta: −0.29 US-listed,
+−0.33 non-US/private. Both groups revert, so there is no reason to exclude the non-US names. Both halves have weakened recently
+(the last 10 weekends are negative in both groups), consistent with r50's caution. Entry tonight unchanged; the kill rule stands.
