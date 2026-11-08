@@ -25,3 +25,5 @@
 10. **News/LLM sentiment**: forward headline collector live since 2026-11-01 (`state/news/`, 7 feeds). In ~3-4 weeks:
     classify headlines (topic/sentiment), event-study coin/market returns after shocks (hacks, listings, ETF, macro).
 11. ~~Weekend effects~~ (r24 rejected). Trend regime gate: r27 promoted ER30 gate for universe LO.
+12. Vol-managed books (r48): promoted de-risk-only scaling for universe LO. Other books mixed — revisit trend_majors
+    with a cap-1.0 version (only cap 1.5/2 tested there) and crash books with an event-aware vol estimate.

@@ -542,3 +542,23 @@ Sharpe. What remains is weak OOS, fading in 2026, and does not improve the portf
 ("positive standalone but not additive → not promoted"), the r46 promotion was a mistake: it rested on the
 misaligned beta check. `xs_bab` is set `paused` and its positions closed after ~1h live. Cost ≈ $63 fees plus
 ~1h P&L (−0.08%). Lesson: compute realised beta from the same hourly→daily returns as the book.
+
+### r48 volatility-managed books (scale by own long-run vol / recent vol, lagged) — PROMOTED for universe LO (de-risk only)
+r48 (daily-stream approximation, scale capped at 2x, scaling turnover charged): mixed for most books.
+Crash: IS 1.29 → ~1.0, OOS better. trend_majors: OOS worse at 20d. xs_momentum: IS worse. xs_funding: mixed by window.
+Only **trend_univ_lo** improved in both periods (IS 1.46 → 1.53–1.63, OOS 0.69 → 1.06–1.08).
+r48b robustness for trend_univ_lo, which is flat 47% of days: estimating vol from active days only
+(gross > 5%) kept the gain, so it is not a flat-period artifact. All 8 variants (window 20/60, cap 1.5/2,
+all/active days) gave IS 1.45–1.69 and OOS 1.01–1.11. 2024, 2025 and 2026 each improved vs base (1.44 / −0.19 / 0.02).
+Full hourly engine (real funding, scaling turnover, min_trade 0.02), like-for-like base IS 1.35 / OOS 0.64:
+| Variant | IS 2020-23 Sharpe / CAGR / DD | OOS 2024+ Sharpe / CAGR / DD |
+|---|---|---|
+| base | 1.35 / 35.1% / −19.7% | 0.64 / 10.1% / −20.4% |
+| cap 1.5, win 60 | 1.41 / 42.2% / −27.0% | 0.93 / 20.2% / −21.9% |
+| cap 1.25, win 60 | 1.44 / 40.5% / −25.1% | 0.87 / 17.0% / −21.2% |
+| cap 1.0, win 60 | 1.41 / 34.8% / −18.8% | 0.80 / 12.3% / −18.9% |
+| **cap 1.0, win 20** | **1.53 / 36.4% / −18.9%** | **0.85 / 11.7% / −15.0%** |
+Promoted the de-risk-only version: scale = min(1, own 365d vol / 20d vol), using active days, lagged one day.
+It needs no leverage and improves Sharpe and drawdown in both periods; the 60d window also improves both,
+so the choice is not fragile. Live in `trend_breakout_universe_lo` from 2026-11-08 (`vol_scale`, recomputed daily
+from the book's own backtest returns over the last 520 days). Currently the book is ~flat (gross 1%), scale 1.0.

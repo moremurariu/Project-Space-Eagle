@@ -143,11 +143,33 @@ class TrendBreakoutMajors(DailySignal):
 class TrendBreakoutAltsLO(DailySignal):
     name = "trend_breakout_universe_lo"
     description = ("Long-only Donchian breakout on 40-coin universe, inverse-vol, 40% vol target, daily; positions "
-                   "scaled by 30d efficiency-ratio gate [0.1, 0.3] (r27: Sharpe IS 1.38→1.46, OOS 0.53→0.67, lower DD).")
+                   "scaled by 30d efficiency-ratio gate [0.1, 0.3] (r27: Sharpe IS 1.38→1.46, OOS 0.53→0.67, lower DD); "
+                   "vol-managed since 2026-11-08 (r48: × min(1, own 365d vol / 20d vol on active days) — de-risk only; "
+                   "full engine IS 1.35→1.53, OOS 0.64→0.85, max DD −19.7→−18.9% / −20.4→−15.0%).")
+
+    vm_win, vm_cap, vm_lookback_d = 20, 1.0, 520
 
     def weights(self, P):
         w = S.trend_breakout(P, long_only=True, port_vol_target=0.4)
-        return w * S.efficiency_gate(P, 30, 0.1, 0.3).reindex(columns=w.columns).where(w.notna())
+        w = w * S.efficiency_gate(P, 30, 0.1, 0.3).reindex(columns=w.columns).where(w.notna())
+        return w.mul(self.vol_scale(P, w, self.vm_win, self.vm_cap, self.vm_lookback_d), axis=0)
+
+    @staticmethod
+    def vol_scale(P, w, win=60, cap=1.5, lookback_d=None):
+        """r48: scale the book by its own long-run vol (365d) / recent vol (win d) of daily backtest returns on
+        active days (gross > 5%), lagged one day, capped. Returns an hourly multiplier aligned to w.index."""
+        from ..backtest import engine
+        Pt = P if lookback_d is None else P.iloc[-24 * lookback_d:]
+        wt = w.reindex(Pt.index)
+        x = engine.run(Pt, wt, fee=0.00045, slippage=0.0005, min_trade=0.02).returns
+        r = (1 + x).groupby(x.index.floor("D")).prod() - 1
+        gross = wt.ffill().fillna(0).abs().sum(axis=1).groupby(wt.index.floor("D")).last().reindex(r.index).fillna(0)
+        act = r.where(gross.shift(1) > 0.05)
+        rv = act.rolling(win, min_periods=win // 2).std().shift(1)
+        tgt = act.rolling(365, min_periods=120).std().shift(1)
+        sc = (tgt / rv).clip(0, cap).ffill().fillna(1.0)
+        day = (w.index + pd.Timedelta(hours=1)).floor("D")   # a row at 23:00 sets positions for the next day
+        return pd.Series(sc.reindex(day).fillna(1.0).to_numpy(), index=w.index)
 
 
 class TrendEWMACMajorsLO(DailySignal):
