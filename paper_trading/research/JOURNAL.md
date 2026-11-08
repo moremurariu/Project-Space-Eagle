@@ -592,3 +592,16 @@ morning) of the current universe ranges from 0.2M (ETC) to 515M (BTC); the media
 HYPE 138M, PUMP 45M, then XPL, AERO, MET, TRUMP, GRAM (2–4M), MEGA, ZRO, STRK, WLFI (1.5–1.8M), then ~20 names at
 0.3–0.9M (ASTER, ETHFI, MORPHO, RUNE, JTO, PENGU, kSHIB, DASH, VIRTUAL, ICP, FET, PYTH, W, GMX, …). Next: fetch
 history and test xs_momentum breadth 40 vs ~70 on 2024+.
+
+### r51 xs_momentum on a wider universe (40 + top-N HL candidates by OI, Binance 1h, 2024+) — REJECTED (not robust)
+The 30 candidates' first bars span 2023-06 … 2026-09 (the panel starts 2023-06; 15 of them listed in 2025-26).
+Same live recipe (vol-scaled 7/14/21d, staggered weekly, 0.045% + 5bp, no funding).
+| Universe | 2024 | 2025 | 2026 YTD | 2024+ Sharpe / CAGR / DD |
+|---|---:|---:|---:|---|
+| 40 (live) | 1.58 | 0.98 | −0.46 | 0.87 / 12.5% / −18.3% |
+| 40+30 | 1.11 | 1.66 | −1.63 | 0.65 / 8.3% / −18.5% |
+| 40+30, skip first 90d after listing | 1.47 | 1.44 | −1.97 | 0.65 / 8.4% / −21.5% |
+| 40+15, skip 90d | 1.29 | 1.63 | −0.60 | 0.93 / 13.3% / −19.4% |
+More breadth helps in 2025 and hurts in 2026 in every variant, and the full-period result depends on N. There is no
+in-sample period for the young names. Not adopted; the universe stays at 40. Revisit with xs_funding breadth
+only if funding reconstruction for the extra names becomes cheap.
