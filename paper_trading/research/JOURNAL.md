@@ -684,3 +684,14 @@ Beta-neutral is still clearly better, and the live recipe still passes. Sharpe b
 2023 0.19, 2024 1.91, 2025 2.22, 2026 1.49. Monthly 2026: Jul −1.87%, Aug −2.48%, Sep −0.49%, **Oct −0.67%**, Nov +0.46% (MTD).
 The edge has been soft for four months before and into the live start (live −0.32% so far). Expectations for the first live
 month should be modest. It is not a kill signal: comparable flat stretches happened in 2020 and 2023 before strong years.
+
+### 2026-11-08 15:xx — dn_funding_carry income check
+Holdings (trailing-7d HL funding APR): UNI 13.6, HYPE 13.3, ZEC 12.9, PENDLE 11.8, ENA 10.8. All sit just above HL's
+baseline 0.01%/8h ≈ 10.95% APR (the interest-rate component), so the book now harvests mostly the baseline. Funding by
+coin since start: UNI $50, HYPE $46, ZEC $41, PENDLE $38, ENA $33, kPEPE $9 (exited). Last 24h: +$17.8 on the five
+held, which is ≈ $6.5k/yr ≈ 6.5% on the $100k book at gross 1.4 (≈ 0.70 short notional → ~9% on the short leg).
+kPEPE's −$5.2 in the last 24h was its exit day, when its funding had turned negative.
+Entry fees ($215) are now paid back (cumulative funding $217). Each further day adds ~$18 with no turnover.
+r11's 13.7% CAGR came from 2024–25 funding spikes; with the market at baseline, expect ~6–7%/yr on the book.
+No change. The 5% exit threshold sits below the 11% baseline, so positions persist unless funding turns negative,
+which is intended.
