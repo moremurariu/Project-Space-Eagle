@@ -25,5 +25,11 @@
 10. **News/LLM sentiment**: forward headline collector live since 2026-11-01 (`state/news/`, 7 feeds). In ~3-4 weeks:
     classify headlines (topic/sentiment), event-study coin/market returns after shocks (hacks, listings, ETF, macro).
 11. ~~Weekend effects~~ (r24 rejected). Trend regime gate: r27 promoted ER30 gate for universe LO.
+13. **Wider XS universe** (scoped 2026-11-08 06:xx): HL main dex has 179 perps; 109 not yet in the universe have a Binance
+    USDT spot pair (`research/universe_candidates_2026-11-08.csv`, HL volume/OI snapshot). ~30 trade ≥ $0.3M/day on HL,
+    the same as the current universe's tail (ETC/ATOM/OP/SEI/LDO 0.2–0.3M on a Sunday). Most listed 2024-25, so
+    test 2024+ only: fetch Binance 1h klines for the top ~30 by OI (excl. PAXG), run xs_momentum (and xs_funding if
+    funding recon is feasible) on 40 vs ~70 coins over the same window, and check that the added names are not just
+    noise (capacity, slippage at a 2-3% weight).
 12. Vol-managed books (r48): promoted de-risk-only scaling for universe LO; r49 rejected cap-1.0 for trend_majors,
     xs_funding, xs_momentum. Left: crash books with an event-aware vol estimate (low priority).

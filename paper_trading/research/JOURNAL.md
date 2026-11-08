@@ -585,3 +585,10 @@ Terciles: low (median 0.86%) +46bp, 70% hit; mid +3bp; high +67bp. Thresholds 0.
 +32…+47bp, below +29…+149bp). → No dispersion filter; low-dispersion weekends still clear costs.
 Caution: the last 10 weekends net −45bp/weekend on average (−273, −201, −145bp losers), vs the 29-week mean +36bp.
 The edge may be decaying. The live kill rule (cumulative net < 0 after 12 weekends) stands.
+
+### 2026-11-08 06:xx — scoping a wider XS universe (backlog #13)
+HL main dex: 179 live perps, 40 in the universe, 109 more with a Binance USDT spot pair. HL 24h volume (Sunday
+morning) of the current universe ranges from 0.2M (ETC) to 515M (BTC); the median name trades ~1.5M. Candidates by HL volume:
+HYPE 138M, PUMP 45M, then XPL, AERO, MET, TRUMP, GRAM (2–4M), MEGA, ZRO, STRK, WLFI (1.5–1.8M), then ~20 names at
+0.3–0.9M (ASTER, ETHFI, MORPHO, RUNE, JTO, PENGU, kSHIB, DASH, VIRTUAL, ICP, FET, PYTH, W, GMX, …). Next: fetch
+history and test xs_momentum breadth 40 vs ~70 on 2024+.
