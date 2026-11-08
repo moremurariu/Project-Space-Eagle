@@ -1,7 +1,7 @@
 {
  "cash": 99917.31660772576,
  "created": "2026-10-31T15:34:06.149723+00:00",
- "description": "Long-only Donchian breakout on 40-coin universe, inverse-vol, 40% vol target, daily; positions scaled by 30d efficiency-ratio gate [0.1, 0.3] (r27: Sharpe IS 1.38\u21921.46, OOS 0.53\u21920.67, lower DD).",
+ "description": "Long-only Donchian breakout on 40-coin universe, inverse-vol, 40% vol target, daily; positions scaled by 30d efficiency-ratio gate [0.1, 0.3] (r27: Sharpe IS 1.38\u21921.46, OOS 0.53\u21920.67, lower DD); vol-managed since 2026-11-08 (r48: \u00d7 min(1, own 365d vol / 20d vol on active days) \u2014 de-risk only; full engine IS 1.35\u21921.53, OOS 0.64\u21920.85, max DD \u221219.7\u2192\u221218.9% / \u221220.4\u2192\u221215.0%).",
  "fees": 1.9504469445653356,
  "funding": -0.7704171132920166,
  "initial": 100000.0,

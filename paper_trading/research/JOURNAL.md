@@ -562,3 +562,14 @@ Promoted the de-risk-only version: scale = min(1, own 365d vol / 20d vol), using
 It needs no leverage and improves Sharpe and drawdown in both periods; the 60d window also improves both,
 so the choice is not fragile. Live in `trend_breakout_universe_lo` from 2026-11-08 (`vol_scale`, recomputed daily
 from the book's own backtest returns over the last 520 days). Currently the book is ~flat (gross 1%), scale 1.0.
+
+### r49 de-risk-only vol management (r48 method, cap 1.0) on the other books — REJECTED for all three
+Full hourly engine, real funding, scaling turnover charged.
+| Book | base IS / OOS Sharpe | win 20 IS / OOS | win 60 IS / OOS |
+|---|---|---|---|
+| trend_majors | 1.33 / 0.53 | 1.31 / 0.48 | 1.36 / 0.61 |
+| xs_funding | 1.27 / 1.43 | 1.23 / 1.60 | 1.15 / 1.53 |
+| xs_momentum | 1.04 / 0.89 | 1.13 / 0.77 | 1.04 / 0.74 |
+trend_majors: only the 60d window helps, and only slightly, so it depends on the window → no. xs_funding: OOS
+better with much lower DD (−22 → −14%), but IS worse in both windows → no; it may be worth revisiting after a live
+drawdown. xs_momentum: OOS worse → no. Vol management stays on universe LO only (r48).
