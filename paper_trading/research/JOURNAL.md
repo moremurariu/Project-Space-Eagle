@@ -639,3 +639,14 @@ edge > 3/5/8/12c → +0.1 / −2.9 / +2.0 / +6.6c per contract, all t < 0.3, fro
 Outcomes within a date share one BTC fix, so the effective sample is ~7. In the 90-100c bucket only 80% won, because
 BTC fell through strikes on 11-05. Revisit once ~30 dates have resolved (early December), adding skew (RR25) to the
 digital (vanilla-spread approximation) and the "reach/dip" barrier markets (touch probabilities).
+
+### r54 xs_momentum with a funding-crowding filter (drop longs in the top / shorts in the bottom funding quantile) — REJECTED
+Trailing-7d Binance funding with a 48h lag (live-like); legs renormalised to the original gross; real funding paid.
+| Variant | IS 2020-23 Sharpe / CAGR / DD | OOS 2024+ Sharpe / CAGR / DD |
+|---|---|---|
+| base | 1.04 / 21.2% / −24.1% | 0.89 / 12.8% / −18.5% |
+| filter q 0.25 | 0.84 / 19.7% / −36.4% | 1.02 / 16.2% / −16.5% |
+| filter q 0.15 | 1.11 / 25.8% / −23.2% | 0.95 / 14.3% / −15.6% |
+| filter q 0.10 | 1.20 / 27.1% / −23.2% | 0.79 / 11.3% / −15.8% |
+The sign of the effect flips with the quantile (IS and OOS improve together only at q 0.15, and only by +0.06–0.07),
+so it is noise-level. Funding crowding is already priced by the xs_funding book. Not adopted.
