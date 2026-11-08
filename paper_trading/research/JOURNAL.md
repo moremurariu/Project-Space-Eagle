@@ -650,3 +650,14 @@ Trailing-7d Binance funding with a 48h lag (live-like); legs renormalised to the
 | filter q 0.10 | 1.20 / 27.1% / −23.2% | 0.79 / 11.3% / −15.8% |
 The sign of the effect flips with the quantile (IS and OOS improve together only at q 0.15, and only by +0.06–0.07),
 so it is noise-level. Funding crowding is already priced by the xs_funding book. Not adopted.
+
+### r55 live vs backtest tracking (same recipe on the Binance panel over the identical live window) — tracking good
+| Book | Window | live | backtest | daily corr | live costs |
+|---|---|---:|---:|---:|---|
+| xs_momentum | 11-02 11h → 11-08 11h | +0.66% | +0.55% | 0.99 | fees $53, slippage $17, funding −$19 |
+| trend_breakout_majors | 10-31 15h → 11-08 11h | −0.22% | −0.42% | 0.99 | fees $49, slippage $6, funding +$114 |
+Daily returns match to within ~0.3pp on every day, including the 11-04 squeeze (−3.13% live vs −3.46% bt) and the
+11-05 rebound (+3.11% vs +2.82%). Live ≥ backtest so far, helped by HL funding received on the majors short and
+book-walk slippage below the 5bp assumption. Hourly correlation is low (0.16/0.39) only because of timestamps: live equity
+is marked at ~:04 while backtest bars are bar-open indexed. Evidence for backlog #6 (leverage) once ~4 weeks exist; re-run weekly
+(`research/r55_live_vs_bt.py`; add more books as their history grows).
