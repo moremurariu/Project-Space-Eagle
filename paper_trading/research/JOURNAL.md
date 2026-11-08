@@ -729,3 +729,21 @@ Pooled by quoted mid (n obs / mid / win rate ± se): 0-5c 744 / 0.8% / 0%; 5-15c
 3.7% vs 8.8% implied), and favourites at 65-85c win ~9pp more than priced (≈ 3 se). Non-election resolved markets: 1,409,
 just under the 1,500 bar. At the next weekly refresh (~11-15), test "buy 65-85c favourites / sell 5-15c longshots
 near expiry" with spread, time-to-expiry buckets and per-event clustering.
+
+### r57 Polymarket favourite-longshot as a strategy (prelim) — NO EDGE; the r42 calibration gap is not tradeable as measured
+One quote per resolved non-election market: the latest snapshot 1–72h before close (median 2h). Cross the spread
+(median 1c), no fees, $ returns averaged within events (close date + question stem) to handle clustering.
+955 markets / 601 events.
+| Trade | n / events | avg price | win | ret per $ | event-clustered mean (t) |
+|---|---|---:|---:|---:|---|
+| buy YES, mid 0.60–0.80 | 124 / 86 | 0.72 | 74% | +3.0% | −5.1% (−0.73) |
+| buy YES, mid 0.65–0.85 | 123 / 84 | 0.77 | 76% | −0.2% | −5.3% (−0.82) |
+| buy YES, mid 0.70–0.90 | 127 / 88 | 0.81 | 78% | −3.6% | −5.7% (−0.99) |
+| buy YES, mid 0.80–0.95 | 81 / 62 | 0.88 | 80% | −8.9% | −8.0% (−1.40) |
+| buy NO, mid 0.03–0.10 | 66 / 57 | 0.95 | 88% | −7.6% | −4.1% (−1.03) |
+| buy NO, mid 0.05–0.15 | 87 / 73 | 0.92 | 87% | −4.6% | −0.4% (−0.12) |
+| buy NO, mid 0.10–0.25 | 105 / 95 | 0.85 | 85% | +0.1% | −0.8% (−0.18) |
+r42's pooled "favourites win +9pp" came from counting every hourly quote, so long-lived markets were heavily repeated
+and correlated, and election markets dominated. Taken once per market at a tradeable price, the bias disappears or
+reverses: near-expiry favourites at 80–95c win only 80%. No strategy. Keep collecting; at ~3,000 markets re-test by
+category (sports vs crypto vs politics) and by time to expiry (24–72h vs < 6h), since the bias may live in one segment only.

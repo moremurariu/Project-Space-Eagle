@@ -21,6 +21,8 @@
    Trades API only exposes the latest 10k trades/market (offset cap) and CLOB history is empty after resolution.
    r53: daily BTC 'above $K' digitals vs BS (Deribit IV) — no edge on 7 dates; redo at ~30 dates with skew-adjusted
    digitals + barrier ('reach/dip') markets.
+   r57: favourite-longshot as a strategy (one quote per market, 1-72h before close, crossing the spread) — NO edge on 955
+   markets / 601 events; re-test by category and time-to-expiry at ~3,000 markets.
 9. XS momentum: r38/r39 live (`xs_momentum`, vol-scaled). Low-risk anomalies r46: BAB promoted then retired by r47
    (residual beta, hedged OOS 0.14–0.37, not additive); low-vol / low-MAX rejected.
    ~~Pairs / cointegration~~ (r25 rejected: IS negative, OOS driven by one pair).
