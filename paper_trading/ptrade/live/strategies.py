@@ -93,6 +93,32 @@ class Strategy:
         raise NotImplementedError
 
 
+def data_gaps(P: pd.DataFrame, ts: pd.Timestamp, expected=None) -> list[str]:
+    """Coins expected on the signal bar but missing: absent from the panel, or no price at `ts` despite data in the
+    prior 72h (a transient fetch gap, not a delisting). Trading on such a row would close those positions."""
+    expected = list(UNIVERSE) if expected is None else expected
+    out = [c for c in expected if c not in P.columns]
+    if ts in P.index:
+        row = P.loc[ts]
+        recent = P.loc[ts - pd.Timedelta(hours=72):ts]
+        out += [c for c in P.columns if pd.isna(row[c]) and recent[c].notna().any()]
+    return out
+
+
+def hold_for_data_gaps(name, book, P, ts, now, expected=None, max_wait_h=6) -> bool:
+    """True -> skip this rebalance and retry next cycle (bounded: trade anyway after max_wait_h)."""
+    gaps = data_gaps(P, ts, expected)
+    if gaps:
+        since = pd.Timestamp(book.meta.setdefault("data_wait_since", now.isoformat()))
+        if now - since < pd.Timedelta(hours=max_wait_h):
+            book.meta["data_wait"] = f"{ts:%Y-%m-%d %H}h signal held: no bar for {', '.join(gaps[:8])}"
+            print(f"[{name}] {book.meta['data_wait']} (waiting since {since:%H:%M})")
+            return True
+        print(f"[{name}] data gaps persist > {max_wait_h}h ({', '.join(gaps[:8])}) -> trading anyway")
+    book.meta.pop("data_wait", None); book.meta.pop("data_wait_since", None)
+    return False
+
+
 class DailySignal(Strategy):
     """Rebalance once per new daily signal row (computed from the Binance hourly panel)."""
     symbols: list[str] | None = None
@@ -103,6 +129,7 @@ class DailySignal(Strategy):
 
     paused = False
     pause_reason = ""
+    max_data_wait_h = 6
 
     def run(self, book, mkt, data, now, fast):
         if fast:
@@ -119,6 +146,8 @@ class DailySignal(Strategy):
             return
         ts = w.index[-1]
         if book.meta.get("last_signal") == ts.isoformat():
+            return
+        if hold_for_data_gaps(self.name, book, P, ts, now, self.symbols, self.max_data_wait_h):
             return
         targets = binance_to_hl_weights(w.iloc[-1])
         targets = {k: v for k, v in targets.items() if mkt.has(k)}
@@ -245,6 +274,8 @@ class XSFunding(Strategy):
             return
         trail, asof = self._binance_funding_7d(now)
         P = data.panel.iloc[-24 * 65:]
+        if hold_for_data_gaps(self.name, book, P, P.index[-1], now):
+            return
         trail = trail[[c for c in trail.index if c in P.columns and pd.notna(P[c].iloc[-1])]]
         if len(trail) < 20:
             print(f"[{self.name}] only {len(trail)} coins with fresh funding data -> holding positions")

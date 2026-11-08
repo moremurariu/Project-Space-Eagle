@@ -605,3 +605,16 @@ Same live recipe (vol-scaled 7/14/21d, staggered weekly, 0.045% + 5bp, no fundin
 More breadth helps in 2025 and hurts in 2026 in every variant, and the full-period result depends on N. There is no
 in-sample period for the young names. Not adopted; the universe stays at 40. Revisit with xs_funding breadth
 only if funding reconstruction for the extra names becomes cheap.
+
+### 2026-11-08 08:xx — ops: guard against partial Binance data gaps at the daily rebalance (+ discretionary review)
+Prompted by the Binance-hack news flow, since the live signals depend on Binance public mirrors. Failure mode found:
+if one symbol's kline refresh failed, `binance.load_many` dropped it from the panel. The XS/trend signals then gave
+it weight 0, and the 00 UTC rebalance would have closed that position, then reopened it a day later (two sets of
+fees, random exposure gap). `xs_funding` dropped any coin whose last price was NaN in the same way. Fixes:
+(1) `load_many` falls back to the cached history when a refresh fails, so the coin stays in the panel, stale.
+(2) New `hold_for_data_gaps` in `live/strategies.py`, used by every `DailySignal` and by `xs_funding`. If a coin
+expected on the signal bar has no price there but had data in the prior 72h, the rebalance is skipped and retried
+each cycle (`meta.data_wait`), for at most 6h, then it trades anyway. Tested on a synthetic gap: held, then traded after the 6h
+limit; a clean panel is unaffected.
+Discretionary review: hold BTC 0.25 / ETH 0. BTC 75-76k for 48h; F&G 26-37; put skew persists (BTC RR25 −4.9/−4.2 at
+7d/30d); Binance hack aftermath (CFO out, staged withdrawals). Rules unchanged (<72k → 0.10, >78k → 0.30); review by 11-11.

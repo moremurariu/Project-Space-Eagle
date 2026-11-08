@@ -78,6 +78,11 @@ def load_many(symbols, interval="1h", start="2019-01-01", refresh=True, workers=
             return s, load_klines(s, interval, start, refresh)
         except Exception as e:  # noqa: BLE001
             print(f"[binance] failed {s}: {e}")
+            if refresh:  # keep the coin in the panel from cache (stale) instead of silently dropping it
+                try:
+                    return s, load_klines(s, interval, start, refresh=False)
+                except Exception:  # noqa: BLE001
+                    pass
             return s, None
 
     with ThreadPoolExecutor(workers) as ex:
