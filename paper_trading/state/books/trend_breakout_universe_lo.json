@@ -6,9 +6,10 @@
  "funding": -0.7704171132920166,
  "initial": 100000.0,
  "meta": {
-  "last_signal": "2026-11-06T23:00:00+00:00",
+  "last_signal": "2026-11-07T23:00:00+00:00",
   "last_targets": {
-   "kPEPE": 0.0092
+   "INJ": 0.0045,
+   "kPEPE": 0.014
   }
  },
  "name": "trend_breakout_universe_lo",
