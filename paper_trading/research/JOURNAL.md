@@ -695,3 +695,13 @@ Entry fees ($215) are now paid back (cumulative funding $217). Each further day 
 r11's 13.7% CAGR came from 2024–25 funding spikes; with the market at baseline, expect ~6–7%/yr on the book.
 No change. The 5% exit threshold sits below the 11% baseline, so positions persist unless funding turns negative,
 which is intended.
+
+### 2026-11-08 16:xx — news collector health check (backlog #10 prep) — two feed bugs fixed
+First 8 days: 802 unique headlines. Weekday volume ~90–120/day across feeds, weekends ~10–30. Median detection
+lag 48 min (collected at each hourly wake-up). Keyword tags: hack/exploit 178 (dominated by the $6.3B Binance hack
+story), ETF 27, SEC/regulation/sanctions 27, macro/Fed 18, liquidation 5, listing 3.
+Bugs: (1) **dlnews had produced 0 rows all week.** `headlines(max_items=500)` capped the *total* across feeds, so feeds
+late in the dict got ≤1 item; the cap is now per feed (dlnews 40 items, decrypt 39, cointelegraph 30, …).
+(2) **bitcoinmagazine returns 403** to the Python client since ~11-07, though curl gets 200, which looks like
+deliberate blocking of automated clients. The feed was removed rather than worked around with a spoofed User-Agent.
+Six feeds remain.

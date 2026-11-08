@@ -16,7 +16,7 @@ RSS_FEEDS = {
     "decrypt": "https://decrypt.co/feed",
     "theblock": "https://www.theblock.co/rss.xml",
     "dlnews": "https://www.dlnews.com/arc/outboundfeeds/rss/",
-    "bitcoinmagazine": "https://bitcoinmagazine.com/feed",
+    # "bitcoinmagazine": dropped 2026-11-08 — returns 403 to this client since ~11-07 (not worked around)
     "cryptoslate": "https://cryptoslate.com/feed/",
 }
 
@@ -35,11 +35,13 @@ def headlines(max_items: int = 30, feeds: dict | None = None) -> list[dict]:
             root = ET.fromstring(get(url, retries=2).content)
         except Exception:  # noqa: BLE001
             continue
-        for item in root.iter("item"):
+        n = 0
+        for item in root.iter("item"):   # max_items is per feed (was a global cap that starved the last feeds)
             title = (item.findtext("title") or "").strip()
             pub = item.findtext("pubDate") or ""
             out.append({"source": src, "title": re.sub(r"\s+", " ", title), "published": pub})
-            if len(out) >= max_items:
+            n += 1
+            if n >= max_items:
                 break
     return out
 
