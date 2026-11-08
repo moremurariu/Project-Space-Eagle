@@ -706,3 +706,13 @@ blamed the global `max_items` cap. That was wrong: ~165 items across feeds never
 which is harmless. (2) **bitcoinmagazine returns 403** to the Python client since ~11-07, though curl gets 200, which
 looks like deliberate blocking of automated clients. The feed was removed rather than worked around with a spoofed
 User-Agent. Live sources now: cointelegraph, coindesk, decrypt, theblock, cryptoslate (+ dlnews if it resumes).
+
+### 2026-11-08 17:xx — live book correlations (11-02 12h → 11-08 17h, 4h returns; ~37 obs, very noisy)
+Equal-weight live portfolio (9 active books): annualised vol 3.8% vs 9.7% for the average book, so diversification
+ratio 2.55. Its **correlation to BTC hold is −0.69**, so the live mix is currently a net short-BTC bet. Drivers:
+trend_majors is net short (−0.59, corr −0.89 to BTC), and xs_funding (−0.42) and xs_momentum (−0.41) both lean short
+majors right now (BTC is in xs_funding's short leg). Only discretionary (+0.25 BTC) and dn_carry (+0.17) lean the
+other way. In the long backtest the portfolio has ≈ 0 beta, so this is regime-dependent (BTC downtrend → trend short).
+Other pairs: crash ↔ xs_funding +0.52, dn_carry ↔ xs_funding −0.54 (both from the single 11-05 event, so ignore),
+trend_majors ↔ xs_momentum +0.49. For the ~4-week portfolio review (backlog #6): add a combined-portfolio BTC-beta line
+to the status report, and consider a portfolio-level beta cap before any leverage decision.
