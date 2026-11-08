@@ -573,3 +573,15 @@ Full hourly engine, real funding, scaling turnover charged.
 trend_majors: only the 60d window helps, and only slightly, so it depends on the window → no. xs_funding: OOS
 better with much lower DD (−22 → −14%), but IS worse in both windows → no; it may be worth revisiting after a live
 drawdown. xs_momentum: OOS worse → no. Vol management stays on universe LO only (r48).
+
+### r50 xyz weekend fade vs weekend cross-sectional dispersion — no filter (plus pre-flight of tonight's first entry)
+Pre-flight: a dry run of `XYZWeekendFade` at a simulated 2026-11-08 23:05 UTC (temp book) gave 36 trades / 38 names,
+gross 1.00, net +0.01. Friday close resolved to 2026-11-06 21:00 UTC (EST, after the DST change) and exit to Mon
+2026-11-09 21:00 UTC. A re-run an hour later made no second entry. Entry fees ≈ $90/side; weekend dispersion so far
+0.78%, which is low.
+r50 (r32 data refreshed: 29 weekends 2026-04-13 → 11-02, linear ≤10%/name, 0.18% round trip). Weekend dispersion =
+cross-sectional std of demeaned weekend returns; median 1.5%, 10th pct 0.75%. corr(dispersion, net P&L) = 0.05.
+Terciles: low (median 0.86%) +46bp, 70% hit; mid +3bp; high +67bp. Thresholds 0.5–1.25% change nothing (above
++32…+47bp, below +29…+149bp). → No dispersion filter; low-dispersion weekends still clear costs.
+Caution: the last 10 weekends net −45bp/weekend on average (−273, −201, −145bp losers), vs the 29-week mean +36bp.
+The edge may be decaying. The live kill rule (cumulative net < 0 after 12 weekends) stands.
