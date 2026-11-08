@@ -629,3 +629,13 @@ Discretionary review: hold BTC 0.25 / ETH 0. BTC 75-76k for 48h; F&G 26-37; put 
 Alt/BTC ratio trends worked in the 2020-21 alt cycles and are flat-to-negative since 2024, when alts bled steadily
 against BTC with sharp squeezes. Correlation 0.3 with xs_momentum, which already captures the relative-strength part
 better (OOS 0.89). Not promoted.
+
+### r53 Polymarket daily BTC digitals ("above $K on <date>", 12:00 ET fix) vs Black-Scholes with Deribit 7d ATM IV — no edge yet (tiny sample)
+Collector snapshots 2026-10-31 → 11-08: 67 markets, 1272 hourly quotes, only **7 resolution dates** (11-01 … 11-07).
+Outcomes come from the Binance BTCUSDT hourly close at 12:00 ET. Spreads are tight (median 0.1c); IV median 39%.
+Brier on informative quotes (3–97c, n 418): market mid 0.178, BS model 0.183, average of the two 0.180. The market
+is at least as good as a naive lognormal. Trading on model-vs-quote gaps (cross the spread, first signal per market):
+edge > 3/5/8/12c → +0.1 / −2.9 / +2.0 / +6.6c per contract, all t < 0.3, from 26/16/11/4 markets. Nothing there.
+Outcomes within a date share one BTC fix, so the effective sample is ~7. In the 90-100c bucket only 80% won, because
+BTC fell through strikes on 11-05. Revisit once ~30 dates have resolved (early December), adding skew (RR25) to the
+digital (vanilla-spread approximation) and the "reach/dip" barrier markets (touch probabilities).
