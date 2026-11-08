@@ -618,3 +618,14 @@ each cycle (`meta.data_wait`), for at most 6h, then it trades anyway. Tested on 
 limit; a clean panel is unaffected.
 Discretionary review: hold BTC 0.25 / ETH 0. BTC 75-76k for 48h; F&G 26-37; put skew persists (BTC RR25 −4.9/−4.2 at
 7d/30d); Binance hack aftermath (CFO out, staged withdrawals). Rules unchanged (<72k → 0.10, >78k → 0.30); review by 11-11.
+
+### r52 time-series trend on alt/BTC ratios (Donchian 20/55/120 on each alt/BTC, alt leg w, BTC leg −Σw) — REJECTED
+| Variant | IS 2020-23 Sharpe / CAGR / DD | OOS 2024+ Sharpe / CAGR / DD | avg gross |
+|---|---|---|---:|
+| L/S, pvt 0.25 | 0.72 / 16% / −30% | 0.07 / −1% / −29% | 1.23 |
+| long alt-vs-BTC only, pvt 0.25 | 1.01 / 15% / −19% | −0.29 / −3% / −19% | 0.37 |
+| L/S, pvt 0.40 | 0.79 / 25% / −39% | 0.01 / −6% / −40% | 1.79 |
+| long only, pvt 0.40 | 0.97 / 15% / −21% | −0.32 / −3% / −20% | 0.37 |
+Alt/BTC ratio trends worked in the 2020-21 alt cycles and are flat-to-negative since 2024, when alts bled steadily
+against BTC with sharp squeezes. Correlation 0.3 with xs_momentum, which already captures the relative-strength part
+better (OOS 0.89). Not promoted.
