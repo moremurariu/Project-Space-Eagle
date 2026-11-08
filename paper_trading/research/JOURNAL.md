@@ -673,3 +673,14 @@ at 11-01 02:20. Verdict: same book; tracking is noisier than for xs_momentum bec
 **Fix:** `load_binance_funding_panel(..., splice_recon=True)` (opt-in) fills each symbol after its last archive with the
 cached reconstruction. Use it in all research from now on. Effect on earlier work: r44–r54 "2026 YTD" numbers had flat
 funding for Oct–Nov, ~5 weeks out of 7 years, so their conclusions stand, but xs_funding's Oct 2026 backtest P&L was noise.
+
+### r56 xs_funding re-run with corrected (spliced) funding — conclusions unchanged; the backtest's recent months are weak
+`load_binance_funding_panel(splice_recon=True)` (r55 fix), same r44 recipes, IS 2019-23 / OOS 2024+:
+| Variant | IS Sharpe / DD | OOS Sharpe / DD (r44, flat Oct-Nov funding) |
+|---|---|---|
+| dollar-neutral | 1.31 / −27% | **1.28** / −22% (was 1.46) |
+| beta-neutral legs (live) | 1.37 / −31% | **1.88** / −15% (was 1.95) |
+Beta-neutral is still clearly better, and the live recipe still passes. Sharpe by year: 2019 1.66, 2020 0.07, 2021 3.35, 2022 0.87,
+2023 0.19, 2024 1.91, 2025 2.22, 2026 1.49. Monthly 2026: Jul −1.87%, Aug −2.48%, Sep −0.49%, **Oct −0.67%**, Nov +0.46% (MTD).
+The edge has been soft for four months before and into the live start (live −0.32% so far). Expectations for the first live
+month should be modest. It is not a kill signal: comparable flat stretches happened in 2020 and 2023 before strong years.
