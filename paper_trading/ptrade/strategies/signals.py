@@ -152,6 +152,37 @@ def xs_momentum(prices_h: pd.DataFrame, lookback_d: int = 30, skip_d: int = 0, r
     return daily_to_hourly(out, prices_h.index)
 
 
+def xs_bab(prices_h: pd.DataFrame, beta_d: int = 60, vol_d: int = 30, rebalance_d: int = 7, offset_d: int = 0,
+           quantile: float = 0.25, min_assets: int = 8, hour: int = 0) -> pd.DataFrame:
+    """Betting-against-beta (r46): long the lowest-beta / short the highest-beta quantile vs the equal-weight market,
+    inverse-vol within legs, legs scaled so long beta == short beta (gross 1, net $ long on average)."""
+    d = to_daily(prices_h, hour)
+    r = d.pct_change(fill_method=None)
+    mk = r.mean(axis=1)
+    mp = int(beta_d * 2 / 3)
+    beta = r.rolling(beta_d, min_periods=mp).cov(mk).div(mk.rolling(beta_d, min_periods=mp).var(), axis=0)
+    vol = r.rolling(vol_d, min_periods=int(vol_d * 2 / 3)).std()
+    out = pd.DataFrame(np.nan, index=d.index, columns=d.columns)
+    for i, t in enumerate(d.index):
+        if (i - offset_d) % rebalance_d:
+            continue
+        row = pd.Series(0.0, index=d.columns)
+        s = (-beta.loc[t]).dropna()
+        if len(s) >= min_assets:
+            k = max(1, int(round(len(s) * quantile)))
+            o = s.sort_values()
+            L, Sh = o.index[-k:], o.index[:k]
+            iv = 1 / vol.loc[t]
+            lw, sw = iv[L] / iv[L].sum(), iv[Sh] / iv[Sh].sum()
+            b = beta.loc[t].clip(0.2, 3).fillna(1)
+            bl, bs = float((lw * b[L]).sum()), float((sw * b[Sh]).sum())
+            if bl > 0 and bs > 0:
+                row[L] = (lw * bs / (bl + bs)).values
+                row[Sh] = -(sw * bl / (bl + bs)).values
+        out.loc[t] = row.fillna(0.0)
+    return daily_to_hourly(out, prices_h.index)
+
+
 def xs_funding_carry(prices_h: pd.DataFrame, funding_h: pd.DataFrame, lookback_h: int = 72,
                      rebalance_h: int = 24, quantile: float = 0.25, gross: float = 1.0,
                      min_assets: int = 8, inv_vol: bool = True) -> pd.DataFrame:

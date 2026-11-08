@@ -266,6 +266,22 @@ class XSMomentum(DailySignal):
         return sum(ws) / len(ws)
 
 
+class XSBAB(DailySignal):
+    name = "xs_bab"
+    description = ("EXPERIMENTAL (r46): betting-against-beta on the 40-coin universe — long lowest / short highest "
+                   "quartile of 60d beta to the equal-weight market, inverse-vol, legs beta-matched (gross 1, ~zero "
+                   "realised beta), weekly staggered over 7 offsets. Backtest IS 1.46 / OOS 0.59 Sharpe after costs, "
+                   "robust to beta window and quantile; ~0 corr with xs_momentum. Weak 2026 YTD (-1.9 Sharpe): kill if "
+                   "live Sharpe < 0 after 3 months.")
+    buffer = 0.01
+
+    def weights(self, P):
+        P = P.iloc[-24 * 150:]
+        grid = P.index[P.index.hour == 23]
+        ws = [S.xs_bab(P, rebalance_d=7, offset_d=o).reindex(grid).ffill().fillna(0.0) for o in range(7)]
+        return sum(ws) / len(ws)
+
+
 class DeltaNeutralCarry(Strategy):
     name = "dn_funding_carry"
     description = ("Delta-neutral: short HL perp + long spot (priced at HL oracle) on coins whose trailing-7d "
@@ -536,7 +552,7 @@ class Discretionary(Strategy):
 
 
 def all_strategies() -> list[Strategy]:
-    return [TrendBreakoutMajors(), TrendBreakoutAltsLO(), TrendEWMACMajorsLO(), XSFunding(), XSMomentum(), DeltaNeutralCarry(),
+    return [TrendBreakoutMajors(), TrendBreakoutAltsLO(), TrendEWMACMajorsLO(), XSFunding(), XSMomentum(), XSBAB(), DeltaNeutralCarry(),
             CrashRebound(), CrashReboundMarketWide(), XYZWeekendFade(), Discretionary(), BTCHold()]
 
 

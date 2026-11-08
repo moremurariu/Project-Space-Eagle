@@ -503,3 +503,25 @@ BTC 78.4k → 75.9k (benchmark −2.1%, max DD −7.2%). Combined books −0.11%
 | xyz_weekend_fade | 0 | first entry Sunday 11-08 23:00 UTC |
 Execution costs below backtest assumptions (fees 5bp + slippage ~3bp per side). No errors in a week of hourly cycles.
 Sample far too short to judge any book; next portfolio review after ~4 weeks (leverage decision, backlog #6).
+
+### r46 cross-sectional low-risk anomalies: low-vol, MAX, betting-against-beta — BAB PROMOTED (experimental `xs_bab`)
+Binance 40-coin hourly panel, daily signal at 00 UTC, quartile legs, inverse-vol within legs, weekly rebalance averaged
+over 7 staggered offsets, 0.045% fee + 5bp slippage, real Binance funding paid. Beta = 60d beta to the equal-weight market.
+| Variant | IS 2019-23 Sharpe / CAGR / DD | OOS 2024+ Sharpe / CAGR / DD |
+|---|---|---|
+| low-vol, $-neutral | −0.76 / −25% / −81% | −0.22 / −9% / −36% |
+| low-vol, beta-neutral | 0.02 / −3% / −55% | 0.34 / 4% / −20% |
+| low-MAX, $-neutral | −0.93 / −27% / −80% | −0.12 / −5% / −28% |
+| low-MAX, beta-neutral | −0.15 / −7% / −51% | 0.51 / 7% / −17% |
+| BAB, $-neutral | 0.36 / 6% / −45% | −0.09 / −6% / −30% |
+| **BAB, beta-neutral** | **1.46 / 43% / −33%** | **0.59 / 9% / −22%** |
+$-neutral low-risk books are just short beta, so they lose in crypto. Beta-matching the legs fixes that. r46b robustness
+for BAB beta-neutral: beta window 30/60/120d × quantile 0.25/0.33 → IS 1.07–1.47, OOS 0.59–0.88, all positive.
+Realised beta of the book's daily returns is −0.01 vs both the EW market and BTC. Net dollar exposure is +0.34 on average:
+long more notional in low-beta coins, but beta-matched. Sharpe by year: 2019 1.4, 2020 1.7, 2021 2.6, 2022 0.0,
+2023 0.8, 2024 1.4, 2025 1.5, **2026 YTD −1.9** (recent weakness). Daily correlation with xs_momentum is 0.03.
+The library implementation `signals.xs_bab` zero-fills weights for coins with missing vol. The research script let
+those NaN cells forward-fill old weights, which flattered it slightly. The clean version gives IS 1.40 / OOS 0.45,
+still positive both. Promoted as **experimental** book `xs_bab` (live from 2026-11-08 01:xx UTC; first signal was
+long BTC/BNB/ETH/SOL/TRX/XRP, short LDO/UNI/APT/WLD/ENA/NEAR; gross 1, net +0.42).
+Kill rule: live Sharpe < 0 after 3 months.
