@@ -8,7 +8,8 @@
 3. Crash-rebound: r10/r16/r17/r28/r30 done (market-wide book; hourly-close signals; scale-in tranches promoted).
    Left: live-vs-backtest tracking once events occur; exit timing (fixed 24h vs target/trailing).
 4. ~~TradFi trend on HL xyz~~ — r07 + r08 rejected. r32: weekend single-stock overreaction on xyz → experimental
-   `xyz_weekend_fade` book (kill if net < 0 after 12 weekends). Weekend crypto → Monday xyz lead-lag: r33 rejected (inconclusive).
+   `xyz_weekend_fade` book (kill if net < 0 after 12 weekends). 2026-11-08: liquidity cap added (≤25bp est. slippage/name);
+   TODO re-run r32 with name-level costs from L2 depth snapshots (thin pre-IPO names overstated). Weekend crypto → Monday xyz lead-lag: r33 rejected (inconclusive).
 5. ML cross-sectional: v1 rejected (r14), v2 marginal (r26, Sharpe 0.25). v3 needs new features (Binance funding recon,
    positioning, HL premium) once enough history exists.
 6. Ensemble / allocator: r15 + r40 done (equal-weight beats inverse-vol; portfolio OOS Sharpe ~2.0 at ~10% vol).

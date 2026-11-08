@@ -305,3 +305,38 @@ ts,book,key,side,qty,mid,fill_px,notional,fee,slip_cost,reason
 2026-11-08T02:06:52.535428+00:00,xs_bab,APT,buy,5143.1557,0.5973,0.59753478,3073.21,1.3829,1.2075,"retired: r47: residual market beta 0.1-0.2 (r46b check was misaligned), hedged OOS Sharpe"
 2026-11-08T02:06:52.535428+00:00,xs_bab,UNI,buy,452.23208,7.1062,7.1079263,3214.43,1.4465,0.7807,"retired: r47: residual market beta 0.1-0.2 (r46b check was misaligned), hedged OOS Sharpe"
 2026-11-08T02:06:52.535428+00:00,xs_bab,LDO,buy,10540.138,0.32472,0.32491648,3424.66,1.5411,2.0709,"retired: r47: residual market beta 0.1-0.2 (r46b check was misaligned), hedged OOS Sharpe"
+2026-11-08T23:04:30.674496+00:00,xyz_weekend_fade,xyz:ANT,sell,-103.81237,98.1375,97.156125,10086.01,9.0774,101.8789,weekend fade entry
+2026-11-08T23:04:30.674496+00:00,xyz_weekend_fade,xyz:CXMT,sell,-1040.583,6.0716,6.0685254,6314.80,5.6833,3.1994,weekend fade entry
+2026-11-08T23:04:30.674496+00:00,xyz_weekend_fade,xyz:MRNA,sell,-20.653389,257.19,257.08347,5309.64,4.7787,2.2001,weekend fade entry
+2026-11-08T23:04:30.674496+00:00,xyz_weekend_fade,xyz:SPCX,sell,-29.582543,135.205,135.19676,3999.46,3.5995,0.2437,weekend fade entry
+2026-11-08T23:04:30.674496+00:00,xyz_weekend_fade,xyz:ZHIPU,sell,-65.635949,53.49,53.465732,3509.27,3.1583,1.5929,weekend fade entry
+2026-11-08T23:04:30.674496+00:00,xyz_weekend_fade,xyz:META,sell,-5.4630209,612.85,612.79518,3347.71,3.0129,0.2995,weekend fade entry
+2026-11-08T23:04:30.674496+00:00,xyz_weekend_fade,xyz:AMD,sell,-4.5018597,447.03,446.97443,2012.22,1.8110,0.2501,weekend fade entry
+2026-11-08T23:04:30.674496+00:00,xyz_weekend_fade,xyz:UNITREE,sell,-20.542071,97.5865,97.569799,2004.29,1.8039,0.3431,weekend fade entry
+2026-11-08T23:04:30.674496+00:00,xyz_weekend_fade,xyz:SP500,sell,-0.27093704,7369.85,7369.4815,1996.67,1.7970,0.0998,weekend fade entry
+2026-11-08T23:04:30.674496+00:00,xyz_weekend_fade,xyz:AMZN,sell,-6.4695733,258.67,258.64613,1673.33,1.5060,0.1544,weekend fade entry
+2026-11-08T23:04:30.674496+00:00,xyz_weekend_fade,xyz:AAPL,sell,-4.2310797,341.195,341.12507,1443.33,1.2990,0.2959,weekend fade entry
+2026-11-08T23:04:30.674496+00:00,xyz_weekend_fade,xyz:XYZ100,sell,-0.050943451,26880.5,26875.014,1369.11,1.2322,0.2795,weekend fade entry
+2026-11-08T23:04:30.674496+00:00,xyz_weekend_fade,xyz:EWY,sell,-10.034449,136.465,136.45818,1369.28,1.2324,0.0685,weekend fade entry
+2026-11-08T23:04:30.674496+00:00,xyz_weekend_fade,xyz:STRC,sell,-13.49413,99.307,99.265319,1339.50,1.2055,0.5624,weekend fade entry
+2026-11-08T23:04:30.674496+00:00,xyz_weekend_fade,xyz:TSLA,sell,-3.3424789,356.52,356.50217,1191.60,1.0724,0.0596,weekend fade entry
+2026-11-08T23:04:30.674496+00:00,xyz_weekend_fade,xyz:MSFT,sell,-2.0938756,528.07,528.0436,1105.66,0.9951,0.0553,weekend fade entry
+2026-11-08T23:04:30.674496+00:00,xyz_weekend_fade,xyz:BABA,sell,-8.109034,108.93,108.91501,883.20,0.7949,0.1215,weekend fade entry
+2026-11-08T23:04:30.674496+00:00,xyz_weekend_fade,xyz:MU,sell,-0.78826808,685.265,685.22502,540.14,0.4861,0.0315,weekend fade entry
+2026-11-08T23:04:30.674496+00:00,xyz_weekend_fade,xyz:SMSN,sell,-3.7339831,141.105,141.08502,526.81,0.4741,0.0746,weekend fade entry
+2026-11-08T23:04:30.674496+00:00,xyz_weekend_fade,xyz:DRAM,sell,-8.8278977,38.9105,38.902501,343.43,0.3091,0.0706,weekend fade entry
+2026-11-08T23:04:30.674496+00:00,xyz_weekend_fade,xyz:KORU,buy,30.550285,6.85185,6.8536467,209.38,0.1884,0.0549,weekend fade entry
+2026-11-08T23:04:30.674496+00:00,xyz_weekend_fade,xyz:SKHX,buy,0.88909148,849.14,849.39037,755.19,0.6797,0.2226,weekend fade entry
+2026-11-08T23:04:30.674496+00:00,xyz_weekend_fade,xyz:SKHY,buy,6.3112337,125.585,125.59999,792.69,0.7134,0.0946,weekend fade entry
+2026-11-08T23:04:30.674496+00:00,xyz_weekend_fade,xyz:INTC,buy,15.799754,55.5965,55.59928,878.45,0.7906,0.0439,weekend fade entry
+2026-11-08T23:04:30.674496+00:00,xyz_weekend_fade,xyz:MRVL,buy,10.799702,139.03,139.03695,1501.56,1.3514,0.0751,weekend fade entry
+2026-11-08T23:04:30.674496+00:00,xyz_weekend_fade,xyz:LITE,buy,2.9258742,530.855,531.04456,1553.77,1.3984,0.5546,weekend fade entry
+2026-11-08T23:04:30.674496+00:00,xyz_weekend_fade,xyz:HOOD,buy,21.072161,79.673,79.678104,1678.99,1.5111,0.1076,weekend fade entry
+2026-11-08T23:04:30.674496+00:00,xyz_weekend_fade,xyz:SNDK,buy,3.2858093,818.665,818.75999,2690.29,2.4213,0.3121,weekend fade entry
+2026-11-08T23:04:30.674496+00:00,xyz_weekend_fade,xyz:COIN,buy,27.720055,131.545,131.5564,3646.75,3.2821,0.3160,weekend fade entry
+2026-11-08T23:04:30.674496+00:00,xyz_weekend_fade,xyz:NBIS,buy,29.785447,126.33,126.39005,3764.58,3.3881,1.7885,weekend fade entry
+2026-11-08T23:04:30.674496+00:00,xyz_weekend_fade,xyz:CRCL,buy,58.391104,66.148,66.156985,3862.98,3.4767,0.5246,weekend fade entry
+2026-11-08T23:04:30.674496+00:00,xyz_weekend_fade,xyz:NVDA,buy,26.527431,181.375,181.40415,4812.19,4.3310,0.7733,weekend fade entry
+2026-11-08T23:04:30.674496+00:00,xyz_weekend_fade,xyz:MSTR,buy,44.129637,125.01,125.02957,5517.51,4.9658,0.8637,weekend fade entry
+2026-11-08T23:04:30.674496+00:00,xyz_weekend_fade,xyz:SOXL,buy,167.16179,44.0995,44.117441,7374.75,6.6373,2.9990,weekend fade entry
+2026-11-08T23:04:30.674496+00:00,xyz_weekend_fade,xyz:PURRDAT,buy,1221.1591,8.3428,8.426228,10289.77,9.2608,101.8789,weekend fade entry

@@ -528,6 +528,27 @@ class XYZWeekendFade(Strategy):
     NON_EQUITY = {"GOLD", "SILVER", "CL", "BRENTOIL", "COPPER", "NATGAS", "PLATINUM", "PALLADIUM", "JPY", "EUR",
                   "URANIUM", "ALUMINIUM", "DXY", "VIX", "CORN", "WHEAT", "TTF"}
     top_n, min_names, cap = 45, 10, 0.10
+    max_slip = 0.0025   # 2026-11-08: first entry paid 1% (capped) book-walk slippage on ANT/PURRDAT ($10k into ~$1k top-5 depth)
+
+    def _liquidity_cap(self, w, mkt, equity):
+        """Shrink any name whose estimated L2 book-walk slippage at its target size exceeds max_slip (halve up to 6x;
+        drop if still too thin). Gross is not re-levered, so the book may run below gross 1 on thin weekends."""
+        out, thin = w.copy(), {}
+        for c, wt in w.items():
+            if abs(wt) < 0.002:
+                continue
+            side = "buy" if wt > 0 else "sell"
+            k = 1.0
+            for _ in range(7):
+                if mkt.slippage(c, abs(wt) * k * equity, side) <= self.max_slip:
+                    break
+                k /= 2
+            else:
+                k = 0.0
+            if k < 1.0:
+                out[c] = wt * k
+                thin[c.split(":")[1]] = round(k, 3)
+        return out, thin
 
     @staticmethod
     def _ny_close(date) -> pd.Timestamp:
@@ -572,8 +593,10 @@ class XYZWeekendFade(Strategy):
         x = pd.Series(wk); x = x - x.mean()
         w = (-x / x.abs().sum()).clip(-self.cap, self.cap)       # linear in the (demeaned) weekend move
         w = w / w.abs().sum()                                     # gross 1, ~dollar-neutral
+        w, thin = self._liquidity_cap(w, mkt, book.equity(mkt.prices(book.positions)))
         targets = w[w.abs() > 0.002].to_dict()
         n = rebalance(book, mkt, targets, now, "weekend fade entry")
+        book.meta["liquidity_capped"] = thin
         mon_close = self._ny_close(sunday + pd.Timedelta(days=1))
         book.meta["exit_at"] = mon_close.isoformat()
         book.meta["fri_close"] = fri_close.isoformat()

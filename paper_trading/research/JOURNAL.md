@@ -765,3 +765,16 @@ signal (thr −10%). No clear headline: Binance France closures and the CFO exit
 trend_majors short +1.75%/24h → book +1.50%. Combined books turn positive (+0.03%) vs benchmark −3.73%. Combined BTC
 exposure −0.55 books (corr −0.74) paid off here. Discretionary rules not hit (BTC > 72k). The xyz_weekend_fade entry runs at the 23:03
 wake-up: its weekend returns are measured vs the Friday close, so the crypto-led drop feeds in via COIN/MSTR/HOOD/CRCL.
+
+### 2026-11-08 23:04 — first live xyz_weekend_fade entry: execution cost 3x budget → liquidity cap added
+Entry at 23:04: 35 trades, gross 1.00, net −0.01, weekend dispersion 1.55%. Fees $90 (9bp, as expected), but **slippage $222
+(22bp)**, so the book opened at −0.31% against the ~0.12%/side budget. $204 of that came from two names: ANT (short, $10.1k) and
+PURRDAT (long, $10.3k), each charged the 1% MAX_SLIP cap. Their L2 top-5 depth was only ~$0.7–2k on a Sunday night despite
+$24–72M OI. The real cost would have been even higher (the cap binds). The other 33 names paid 1–5bp.
+Fix for future weekends: `XYZWeekendFade._liquidity_cap` halves a name's target until its estimated book-walk
+slippage ≤ 25bp (up to 6 halvings, else drop). Gross is not re-levered. A re-run now gives ANT and PURRDAT ×0.25, slippage $26
+(vs $222), gross 0.84. `meta.liquidity_capped` records which names were cut. This week's positions are kept until
+the Monday 21:00 UTC exit (selling now would pay the same slippage again; US-hours books should be deeper).
+**Research caveat:** r32/r50/r58 charged a flat 0.18% round trip to every name. The thin pre-IPO/private names that
+looked strongest in r58 (+83bp/wk) are exactly the ones with ~2%+ realistic round trips, so their edge is overstated.
+TODO: re-run the fade with name-level costs (from L2 depth snapshots across a few weekends) before judging the book.
