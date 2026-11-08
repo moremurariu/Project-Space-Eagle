@@ -19,9 +19,8 @@
    hourly near-expiry + daily top-500 snapshots → `state/polymarket/`). After ~3-4 weeks: join with resolved outcomes
    (`resolved_outcome`) → calibration by price bucket & time-to-expiry (favourite-longshot, near-certain carry).
    Trades API only exposes the latest 10k trades/market (offset cap) and CLOB history is empty after resolution.
-9. XS momentum: r38/r39 live (`xs_momentum`, vol-scaled). Low-risk anomalies r46: BAB beta-neutral → experimental
-   `xs_bab` (kill if live Sharpe < 0 after 3 months); low-vol / low-MAX rejected. Next: BAB + xs_mom + xs_funding blend
-   in the r40 portfolio once `xs_bab` has a few weeks live.
+9. XS momentum: r38/r39 live (`xs_momentum`, vol-scaled). Low-risk anomalies r46: BAB promoted then retired by r47
+   (residual beta, hedged OOS 0.14–0.37, not additive); low-vol / low-MAX rejected.
    ~~Pairs / cointegration~~ (r25 rejected: IS negative, OOS driven by one pair).
 10. **News/LLM sentiment**: forward headline collector live since 2026-11-01 (`state/news/`, 7 feeds). In ~3-4 weeks:
     classify headlines (topic/sentiment), event-study coin/market returns after shocks (hacks, listings, ETF, macro).

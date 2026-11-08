@@ -517,7 +517,8 @@ over 7 staggered offsets, 0.045% fee + 5bp slippage, real Binance funding paid. 
 | **BAB, beta-neutral** | **1.46 / 43% / −33%** | **0.59 / 9% / −22%** |
 $-neutral low-risk books are just short beta, so they lose in crypto. Beta-matching the legs fixes that. r46b robustness
 for BAB beta-neutral: beta window 30/60/120d × quantile 0.25/0.33 → IS 1.07–1.47, OOS 0.59–0.88, all positive.
-Realised beta of the book's daily returns is −0.01 vs both the EW market and BTC. Net dollar exposure is +0.34 on average:
+~~Realised beta of the book's daily returns is −0.01 vs both the EW market and BTC.~~ **Wrong: the check
+compared returns offset by one day. Corrected in r47: beta ≈ 0.1–0.2, correlation ≈ 0.5.** Net dollar exposure is +0.34 on average:
 long more notional in low-beta coins, but beta-matched. Sharpe by year: 2019 1.4, 2020 1.7, 2021 2.6, 2022 0.0,
 2023 0.8, 2024 1.4, 2025 1.5, **2026 YTD −1.9** (recent weakness). Daily correlation with xs_momentum is 0.03.
 The library implementation `signals.xs_bab` zero-fills weights for coins with missing vol. The research script let
@@ -525,3 +526,19 @@ those NaN cells forward-fill old weights, which flattered it slightly. The clean
 still positive both. Promoted as **experimental** book `xs_bab` (live from 2026-11-08 01:xx UTC; first signal was
 long BTC/BNB/ETH/SOL/TRX/XRP, short LDO/UNI/APT/WLD/ENA/NEAR; gross 1, net +0.42).
 Kill rule: live Sharpe < 0 after 3 months.
+
+### r47 portfolio view v3 (r40 books + xs_bab) and xs_bab beta re-check — xs_bab RETIRED (2026-11-08 ~02:15)
+Equal-weight portfolio with vs without BAB: IS Sharpe 2.27 vs 2.21 (DD −10.2% vs −12.5%); **OOS 1.95 vs 1.95, CAGR
+18.8% vs 20.6%, DD −8.1% vs −6.5%**. So BAB adds nothing out of sample. In correctly aligned daily returns xs_bab
+correlates 0.51 with BTC hold. r47b, with the market exposure regressed out:
+| Period | beta vs EW / BTC | corr vs EW / BTC | raw Sharpe | hedged Sharpe (EW / BTC) |
+|---|---|---|---:|---|
+| IS 2020-23 | 0.16 / 0.22 | 0.48 / 0.52 | 1.31 | 0.79 / 0.93 |
+| OOS 2024+ | 0.09 / 0.18 | 0.37 / 0.47 | 0.44 | 0.37 / 0.14 |
+| 2026 YTD | 0.08 / 0.21 | 0.30 / 0.59 | −1.65 | −1.77 / −1.92 |
+Hedging with a rolling 90d lagged beta gives IS 0.58 / OOS 0.34. The ex-ante beta-matching against the EW market
+leaves a residual long-market tilt: net $ is +0.35 on average, long BTC/majors. That tilt explains part of the r46
+Sharpe. What remains is weak OOS, fading in 2026, and does not improve the portfolio. Under the r37 rule
+("positive standalone but not additive → not promoted"), the r46 promotion was a mistake: it rested on the
+misaligned beta check. `xs_bab` is set `paused` and its positions closed after ~1h live. Cost ≈ $63 fees plus
+~1h P&L (−0.08%). Lesson: compute realised beta from the same hourly→daily returns as the book.

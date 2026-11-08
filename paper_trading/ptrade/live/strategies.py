@@ -272,8 +272,11 @@ class XSBAB(DailySignal):
                    "quartile of 60d beta to the equal-weight market, inverse-vol, legs beta-matched (gross 1, ~zero "
                    "realised beta), weekly staggered over 7 offsets. Backtest IS 1.46 / OOS 0.59 Sharpe after costs, "
                    "robust to beta window and quantile; ~0 corr with xs_momentum. Weak 2026 YTD (-1.9 Sharpe): kill if "
-                   "live Sharpe < 0 after 3 months.")
+                   "live Sharpe < 0 after 3 months. RETIRED 2026-11-08 02:xx by r47.")
     buffer = 0.01
+    paused = True
+    pause_reason = ("r47: residual market beta 0.1-0.2 (r46b check was misaligned), hedged OOS Sharpe 0.14-0.37, "
+                    "not additive to the portfolio OOS")
 
     def weights(self, P):
         P = P.iloc[-24 * 150:]

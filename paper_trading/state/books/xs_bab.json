@@ -1,9 +1,9 @@
 {
- "cash": 59200.25907073381,
+ "cash": 99840.35257254467,
  "created": "2026-11-08T01:13:01.047309+00:00",
- "description": "EXPERIMENTAL (r46): betting-against-beta on the 40-coin universe \u2014 long lowest / short highest quartile of 60d beta to the equal-weight market, inverse-vol, legs beta-matched (gross 1, ~zero realised beta), weekly staggered over 7 offsets. Backtest IS 1.46 / OOS 0.59 Sharpe after costs, robust to beta window and quantile; ~0 corr with xs_momentum. Weak 2026 YTD (-1.9 Sharpe): kill if live Sharpe < 0 after 3 months.",
- "fees": 44.68182436519656,
- "funding": 0.0,
+ "description": "EXPERIMENTAL (r46): betting-against-beta on the 40-coin universe \u2014 long lowest / short highest quartile of 60d beta to the equal-weight market, inverse-vol, legs beta-matched (gross 1, ~zero realised beta), weekly staggered over 7 offsets. Backtest IS 1.46 / OOS 0.59 Sharpe after costs, robust to beta window and quantile; ~0 corr with xs_momentum. Weak 2026 YTD (-1.9 Sharpe): kill if live Sharpe < 0 after 3 months. RETIRED 2026-11-08 02:xx by r47.",
+ "fees": 89.20978446742085,
+ "funding": -0.5717928005048701,
  "initial": 100000.0,
  "meta": {
   "last_signal": "2026-11-07T23:00:00+00:00",
@@ -32,149 +32,11 @@
    "WLD": -0.0278,
    "XLM": 0.0168,
    "XRP": 0.0718
-  }
+  },
+  "paused": "r47: residual market beta 0.1-0.2 (r46b check was misaligned), hedged OOS Sharpe 0.14-0.37, not additive to the portfolio OOS"
  },
  "name": "xs_bab",
- "positions": {
-  "APT": {
-   "avg_px": 0.5986100072904985,
-   "funded_through": "2026-11-08T01:00:00+00:00",
-   "opened": "2026-11-08T01:13:01.047309+00:00",
-   "qty": -5143.155741757229
-  },
-  "ARB": {
-   "avg_px": 0.1683043901595291,
-   "funded_through": "2026-11-08T01:00:00+00:00",
-   "opened": "2026-11-08T01:13:01.047309+00:00",
-   "qty": -8334.455320459112
-  },
-  "ATOM": {
-   "avg_px": 1.3709218636904368,
-   "funded_through": "2026-11-08T01:00:00+00:00",
-   "opened": "2026-11-08T01:13:01.047309+00:00",
-   "qty": 2780.3437451957157
-  },
-  "BNB": {
-   "avg_px": 696.059359286359,
-   "funded_through": "2026-11-08T01:00:00+00:00",
-   "opened": "2026-11-08T01:13:01.047309+00:00",
-   "qty": 11.708463810738833
-  },
-  "BTC": {
-   "avg_px": 75812.29042500001,
-   "funded_through": "2026-11-08T01:00:00+00:00",
-   "opened": "2026-11-08T01:13:01.047309+00:00",
-   "qty": 0.13804102332877205
-  },
-  "DOGE": {
-   "avg_px": 0.0714779908382047,
-   "funded_through": "2026-11-08T01:00:00+00:00",
-   "opened": "2026-11-08T01:13:01.047309+00:00",
-   "qty": 55537.12126959958
-  },
-  "ENA": {
-   "avg_px": 0.1574024394938539,
-   "funded_through": "2026-11-08T01:00:00+00:00",
-   "opened": "2026-11-08T01:13:01.047309+00:00",
-   "qty": -17053.853401241613
-  },
-  "ETH": {
-   "avg_px": 2236.0617975,
-   "funded_through": "2026-11-08T01:00:00+00:00",
-   "opened": "2026-11-08T01:13:01.047309+00:00",
-   "qty": 3.5547489792793168
-  },
-  "HBAR": {
-   "avg_px": 0.06691935540037236,
-   "funded_through": "2026-11-08T01:00:00+00:00",
-   "opened": "2026-11-08T01:13:01.047309+00:00",
-   "qty": 85886.53216076428
-  },
-  "JUP": {
-   "avg_px": 0.241140973251544,
-   "funded_through": "2026-11-08T01:00:00+00:00",
-   "opened": "2026-11-08T01:13:01.047309+00:00",
-   "qty": -8185.229962930278
-  },
-  "LDO": {
-   "avg_px": 0.32622271856438,
-   "funded_through": "2026-11-08T01:00:00+00:00",
-   "opened": "2026-11-08T01:13:01.047309+00:00",
-   "qty": -10540.137729395023
-  },
-  "LTC": {
-   "avg_px": 52.14850801070247,
-   "funded_through": "2026-11-08T01:00:00+00:00",
-   "opened": "2026-11-08T01:13:01.047309+00:00",
-   "qty": 119.03211059201108
-  },
-  "NEAR": {
-   "avg_px": 3.7100644875,
-   "funded_through": "2026-11-08T01:00:00+00:00",
-   "opened": "2026-11-08T01:13:01.047309+00:00",
-   "qty": -637.390090245028
-  },
-  "ONDO": {
-   "avg_px": 0.36268274153736146,
-   "funded_through": "2026-11-08T01:00:00+00:00",
-   "opened": "2026-11-08T01:13:01.047309+00:00",
-   "qty": -5740.992970532989
-  },
-  "OP": {
-   "avg_px": 0.10156150358405787,
-   "funded_through": "2026-11-08T01:00:00+00:00",
-   "opened": "2026-11-08T01:13:01.047309+00:00",
-   "qty": -21926.6216202179
-  },
-  "SOL": {
-   "avg_px": 89.46597307500001,
-   "funded_through": "2026-11-08T01:00:00+00:00",
-   "opened": "2026-11-08T01:13:01.047309+00:00",
-   "qty": 85.60824567455367
-  },
-  "SUI": {
-   "avg_px": 0.853912641777449,
-   "funded_through": "2026-11-08T01:00:00+00:00",
-   "opened": "2026-11-08T01:13:01.047309+00:00",
-   "qty": -2175.795607191049
-  },
-  "TIA": {
-   "avg_px": 0.43733065917678593,
-   "funded_through": "2026-11-08T01:00:00+00:00",
-   "opened": "2026-11-08T01:13:01.047309+00:00",
-   "qty": -4904.727390412375
-  },
-  "TRX": {
-   "avg_px": 0.3205192247812319,
-   "funded_through": "2026-11-08T01:00:00+00:00",
-   "opened": "2026-11-08T01:13:01.047309+00:00",
-   "qty": 22462.157093899106
-  },
-  "UNI": {
-   "avg_px": 7.162159598568861,
-   "funded_through": "2026-11-08T01:00:00+00:00",
-   "opened": "2026-11-08T01:13:01.047309+00:00",
-   "qty": -452.23207831499093
-  },
-  "WLD": {
-   "avg_px": 0.3319856330671485,
-   "funded_through": "2026-11-08T01:00:00+00:00",
-   "opened": "2026-11-08T01:13:01.047309+00:00",
-   "qty": -8359.469547860732
-  },
-  "XLM": {
-   "avg_px": 0.15132049239203157,
-   "funded_through": "2026-11-08T01:00:00+00:00",
-   "opened": "2026-11-08T01:13:01.047309+00:00",
-   "qty": 11127.489250727915
-  },
-  "XRP": {
-   "avg_px": 1.1606080275000001,
-   "funded_through": "2026-11-08T01:00:00+00:00",
-   "opened": "2026-11-08T01:13:01.047309+00:00",
-   "qty": 6187.998865304626
-  }
- },
- "realized": 0.0,
- "slippage": 18.50203781027549
+ "positions": {},
+ "realized": -69.86585018735725,
+ "slippage": 40.89099506816579
 }
