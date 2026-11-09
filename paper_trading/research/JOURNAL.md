@@ -846,3 +846,13 @@ r45 already showed faster signal updates do not help. Nothing to change.
 ### 2026-11-09 12:xx — ops log scan
 `cache/daemon.log` (2.6k lines): all cycles report `"errors": {}`; no data-gap holds and no Binance fetch fallbacks triggered.
 `cache/fetch_hl_funding.log`: one transient HL `fundingHistory` POST failure (SOL), retried by the next pass. Clean.
+
+### 2026-11-09 21:04 — xyz_weekend_fade live weekend #1 result: **+1.22% net** (+$1,220)
+Entry Sun 23:04 (35 names, dispersion 1.55%), exit Mon 21:04. Costs: entry $90 fees + $222 slippage, exit $96 + $133 = **$541
+(0.54% of book)**. ANT alone cost $209 (1% capped slippage both ways); with the new ≤25bp liquidity cap it would have been ~$50.
+Gross ≈ +1.76%. Path: −1.21% at Mon 08:00, while the weekend move continued through Asia/Europe (Asia-listed shorts ran
++7–9%), then reversal at the US cash open: +0.71% at 15:00 and +1.81% at 16:00, exit at +1.22%. Backtest expectation is
++40–50bp/week with ~165bp std, so this weekend is +0.5σ. Running tally: 1 weekend, cumulative net +1.22% (kill rule:
+cumulative < 0 after 12 weekends; retire early if continuation persists, r58b). The timing detail matches r34: the
+reversal happens in the US session, so an entry at Monday ~13:00 UTC (just before the US open) might capture it with less
+exposure to the Asia-session continuation. r34 found Mon 13:00 entry ≈ +5bp (worse), so no change; keep watching.
