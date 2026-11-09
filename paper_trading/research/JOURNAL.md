@@ -793,3 +793,12 @@ CRCL +$40. One weekend proves nothing, but the hypothesis is plausible: for name
 Asia time (ZHIPU/UNITREE/CXMT in China/HK, SMSN/SKHY in Korea), the weekend perp move anticipates that session, so it
 continues rather than reverts. r58's split counted them as "non-US/private" together with SPCX/PURRDAT (private,
 no session). Next r58 re-run: split Asia-listed vs private-no-session vs US-listed, using the name-level costs.
+
+### r58b xyz weekend move → Monday: Asia-listed vs private vs US-listed — inconclusive; US names flipped to continuation lately
+r50 data (29 weekends to 11-02). Pooled XS beta of the Monday return on the demeaned weekend move: US-listed (n 733) −0.29,
+corr −0.12; Asia-listed CXMT/ZHIPU/UNITREE/SKHX/SKHY/SMSN (n 123) −0.33, corr −0.13; private SPCX/PURRDAT (n 49) −0.36.
+Pooled, all three revert similarly. Per-weekend betas for the small groups are unstable (2–6 names a weekend). So the
+"Asia names continue into their home session" idea from today's attribution is not supported by the backtest; one live weekend is not evidence.
+**More important:** over the last 10 weekends the US-listed pooled correlation is **+0.12**, i.e. continuation, not reversal.
+This is the bulk of the book and explains the recent losing weekends (r50: last 10 ≈ −45bp/wk). If the next 3–4 live weekends
+also show continuation, retire the book early instead of waiting for the 12-weekend kill rule.
