@@ -842,3 +842,7 @@ Daily closes are at the 20d and 55d channel lows for all three (pos −1.00). On
 SOL −0.42. A rally back to the 20d/55d midpoints (BTC +6/+8%, ETH +8/+15%, SOL +12/+21%) would neutralise those components;
 the EWM smoothing spreads that over several days. So a sharp squeeze like 11-04 (−3.9% in an hour) is the main risk, and
 r45 already showed faster signal updates do not help. Nothing to change.
+
+### 2026-11-09 12:xx — ops log scan
+`cache/daemon.log` (2.6k lines): all cycles report `"errors": {}`; no data-gap holds and no Binance fetch fallbacks triggered.
+`cache/fetch_hl_funding.log`: one transient HL `fundingHistory` POST failure (SOL), retried by the next pass. Clean.
