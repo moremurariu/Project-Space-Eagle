@@ -830,3 +830,9 @@ after a crypto-led weekend selloff the fade is net long crypto-equities (COIN/CR
 far), so it adds crypto beta exactly when crypto is falling. If the r32 re-test with name-level costs keeps the book alive,
 consider hedging that leg with a BTC perp short (or excluding crypto-equities when the weekend crypto move is large).
 Discretionary: BTC 73.8k, 2.4% above the 72k cut-to-0.10 rule; to be applied at the first check-in below 72k.
+
+### r59 xyz weekend fade: hedge the crypto-equity leg (COIN/MSTR/HOOD/CRCL/STRC) with a BTC perp — REJECTED
+r50 data, 29 weekends; hedge = −(net crypto-equity weight) × BTC return Sun 23:00 → Mon US close, β≈1 (r33), +5bp/side on the hedge.
+Unhedged +46.6bp/wk (t 1.52, std 165bp); hedged +39.8bp (t 1.38, std 155bp); last 10 weekends −33 vs −34bp. The net crypto-equity
+weight averages |0.12|, and its BTC component correlates +0.42 with the book's P&L. Crypto also tends to revert after the weekend
+move, so that exposure has paid on average. Hedging lowers risk a little and the mean more. No hedge; the 08:00 note is withdrawn.
