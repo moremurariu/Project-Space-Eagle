@@ -816,3 +816,9 @@ only +$80. Turnover by day: 10-31 2.0x (initial build/close), 11-01 1.0x (resume
 forced re-signal). Those three one-offs cost $284. Steady-state days (11-02, 11-05 … 11-09) average ~0.30x/day vs the
 backtest's 0.28–0.30x/day, so execution is in line. The live book carries about −0.3% of one-off setup cost; nothing to change.
 (05:04 check-in: the tool safety check failed repeatedly, so that hour's state was committed at 06:08.)
+
+### 2026-11-09 07:xx — options-skew collector sanity (backlog #2)
+BTC: 171 hourly rows (11-02 04h → 11-09 07h, ~1 missing). 7d RR25 −8.1 … −0.9 (median −4.5), 30d RR25 −6.3 … −1.7 (median −4.3):
+put skew all week. ATM IV 7d 34–45%, 30d 34–41%. Skew is coincident with price: corr(30d RR25 level, trailing-24h BTC return)
+0.63, corr(ΔRR25 24h, 24h return) 0.71. Puts get bid after drops. Any predictive test (backlog #2, after 1–2 months) must
+therefore use skew *relative to* what the price move implies (residual of RR25 on trailing return), not the raw level.
