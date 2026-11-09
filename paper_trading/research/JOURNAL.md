@@ -802,3 +802,8 @@ Pooled, all three revert similarly. Per-weekend betas for the small groups are u
 **More important:** over the last 10 weekends the US-listed pooled correlation is **+0.12**, i.e. continuation, not reversal.
 This is the bulk of the book and explains the recent losing weekends (r50: last 10 ≈ −45bp/wk). If the next 3–4 live weekends
 also show continuation, retire the book early instead of waiting for the 12-weekend kill rule.
+
+### 2026-11-09 04:xx — Polymarket collector health
+10 daily files (10-31 → 11-09): 23–24 hourly snapshots every full day (one missed hour on 11-02), 850–1,500 distinct markets
+per day, quotes present on 68–94% of rows, median 24h volume per market $30–110k. Healthy. With ~570 newly
+resolved markets a week (r42), the ~3,000-market re-test of r57 by category is due around late November.
