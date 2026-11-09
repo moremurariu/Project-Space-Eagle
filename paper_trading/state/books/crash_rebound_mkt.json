@@ -6,15 +6,15 @@
  "funding": -2.275729485912791,
  "initial": 100000.0,
  "meta": {
-  "last_scan": "2026-11-09T15:05:49.431754+00:00",
+  "last_scan": "2026-11-09T16:05:09.804530+00:00",
   "tranches": {},
   "watch": {},
   "worst_4h": {
-   "BCH": 0.87,
-   "BNB": 0.83,
-   "BTC": 1.0,
-   "RENDER": -0.13,
-   "TRX": 0.06
+   "BCH": 0.58,
+   "BNB": 1.1,
+   "BTC": 1.56,
+   "CRV": 1.25,
+   "TRX": -0.03
   }
  },
  "name": "crash_rebound_mkt",
