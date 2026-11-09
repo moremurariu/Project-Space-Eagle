@@ -807,3 +807,12 @@ also show continuation, retire the book early instead of waiting for the 12-week
 10 daily files (10-31 → 11-09): 23–24 hourly snapshots every full day (one missed hour on 11-02), 850–1,500 distinct markets
 per day, quotes present on 68–94% of rows, median 24h volume per market $30–110k. Healthy. With ~570 newly
 resolved markets a week (r42), the ~3,000-market re-test of r57 by category is due around late November.
+
+### 2026-11-09 06:xx — xs_funding live attribution (book −0.66%)
+Current positions: long leg $50.9k (avg −4.25%, uPnL −$1,800; ATOM −$675, SEI −$524, TIA −$369), short leg −$43.8k (avg
+−4.15%, uPnL +$2,042; XRP +$776, LINK +$504). The beta-neutral legs hedge each other as designed: the selloff hit both
+sides about equally, so net is +$242 on open positions. The loss is costs: $418 fees+slippage on 5.5x turnover in 9 days, funding received
+only +$80. Turnover by day: 10-31 2.0x (initial build/close), 11-01 1.0x (resume on reconstructed funding), 11-03 0.75x (r44
+forced re-signal). Those three one-offs cost $284. Steady-state days (11-02, 11-05 … 11-09) average ~0.30x/day vs the
+backtest's 0.28–0.30x/day, so execution is in line. The live book carries about −0.3% of one-off setup cost; nothing to change.
+(05:04 check-in: the tool safety check failed repeatedly, so that hour's state was committed at 06:08.)
