@@ -836,3 +836,9 @@ r50 data, 29 weekends; hedge = −(net crypto-equity weight) × BTC return Sun 2
 Unhedged +46.6bp/wk (t 1.52, std 165bp); hedged +39.8bp (t 1.38, std 155bp); last 10 weekends −33 vs −34bp. The net crypto-equity
 weight averages |0.12|, and its BTC component correlates +0.42 with the book's P&L. Crypto also tends to revert after the weekend
 move, so that exposure has paid on average. Hedging lowers risk a little and the mean more. No hedge; the 08:00 note is withdrawn.
+
+### 2026-11-09 11:xx — trend_majors risk map (book +2.14%, short BTC −20% / ETH −19% / SOL −23%)
+Daily closes are at the 20d and 55d channel lows for all three (pos −1.00). On the 120d channel BTC sits mid-range (+0.03), ETH −0.30,
+SOL −0.42. A rally back to the 20d/55d midpoints (BTC +6/+8%, ETH +8/+15%, SOL +12/+21%) would neutralise those components;
+the EWM smoothing spreads that over several days. So a sharp squeeze like 11-04 (−3.9% in an hour) is the main risk, and
+r45 already showed faster signal updates do not help. Nothing to change.
