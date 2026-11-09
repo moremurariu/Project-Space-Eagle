@@ -95,6 +95,11 @@ def run_cycle(fast: bool = False, only: list[str] | None = None) -> dict:
                 summary["skew_rows"] = deribit.collect_skew(now)
             except Exception as e:  # noqa: BLE001
                 summary["errors"]["skew_collect"] = str(e)[:200]
+            try:  # forward xyz order-book depth dataset (name-level execution costs for the weekend fade)
+                from ..data import hyperliquid as _hl
+                summary["xyz_depth_rows"] = _hl.collect_xyz_depth(now)
+            except Exception as e:  # noqa: BLE001
+                summary["errors"]["xyz_depth"] = str(e)[:200]
         LAST_RUN.write_text(json.dumps({**summary, "kind": "fast" if fast else "full"}, indent=1))
     return summary
 

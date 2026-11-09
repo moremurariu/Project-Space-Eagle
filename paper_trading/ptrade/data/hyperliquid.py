@@ -145,3 +145,46 @@ def book_slippage(coin: str, notional_usd: float, side: str) -> float:
         return 0.01
     avg = cost / qty
     return abs(avg / mid - 1)
+
+
+def _walk(levels, notional):
+    """Average fill price walking `levels` for `notional` USD; None if the visible book is too thin."""
+    remaining, cost, qty = notional, 0.0, 0.0
+    for lv in levels:
+        px, sz = float(lv["px"]), float(lv["sz"])
+        take = min(remaining, px * sz)
+        cost += take; qty += take / px; remaining -= take
+        if remaining <= 1e-9:
+            return cost / qty
+    return None
+
+
+def collect_xyz_depth(now, top_n: int = 45, sizes=(2500, 5000, 10000)) -> int:
+    """Hourly L2 snapshot of HIP-3 xyz perps (top by OI): spread and book-walk slippage at a few sizes, both sides.
+    Forward dataset for name-level execution costs of `xyz_weekend_fade` (2026-11-08: thin pre-IPO names cost 1%+)."""
+    import csv, time
+    from ..config import STATE
+    d = STATE / "xyz_depth"; d.mkdir(parents=True, exist_ok=True)
+    path = d / f"depth_{now:%Y-%m}.csv"
+    m = meta_and_ctxs("xyz"); m = m[~m["delisted"]].sort_values("oi_usd", ascending=False).head(top_n)
+    rows = []
+    for c in m.index:
+        try:
+            b = l2_book(c); bids, asks = b["levels"][0], b["levels"][1]
+        except Exception:  # noqa: BLE001
+            continue
+        if not bids or not asks:
+            continue
+        bb, ba = float(bids[0]["px"]), float(asks[0]["px"]); mid = (bb + ba) / 2
+        r = {"ts": now.isoformat(), "coin": c, "mid": mid, "spread_bp": round((ba - bb) / mid * 1e4, 2),
+             "oi_usd": round(float(m.at[c, "oi_usd"])), "vol24_usd": round(float(m.at[c, "day_ntl_vlm"]))}
+        for s in sizes:
+            fb, fs = _walk(asks, s), _walk(bids, s)
+            r[f"buy{s}_bp"] = round((fb / mid - 1) * 1e4, 1) if fb else ""
+            r[f"sell{s}_bp"] = round((1 - fs / mid) * 1e4, 1) if fs else ""
+        rows.append(r); time.sleep(0.05)
+    if rows:
+        new = not path.exists()
+        with open(path, "a", newline="") as f:
+            w = csv.DictWriter(f, fieldnames=list(rows[0])); new and w.writeheader(); w.writerows(rows)
+    return len(rows)

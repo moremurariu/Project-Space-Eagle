@@ -778,3 +778,11 @@ the Monday 21:00 UTC exit (selling now would pay the same slippage again; US-hou
 **Research caveat:** r32/r50/r58 charged a flat 0.18% round trip to every name. The thin pre-IPO/private names that
 looked strongest in r58 (+83bp/wk) are exactly the ones with ~2%+ realistic round trips, so their edge is overstated.
 TODO: re-run the fade with name-level costs (from L2 depth snapshots across a few weekends) before judging the book.
+
+### 2026-11-09 01:xx — new forward dataset: xyz L2 depth (execution costs per name)
+`hyperliquid.collect_xyz_depth` runs on every full cycle → `state/xyz_depth/depth_YYYY-MM.csv`: top-45 xyz perps by OI,
+spread and book-walk slippage at $2.5k/$5k/$10k on both sides, plus OI and 24h volume. First snapshot (Mon 01:00 UTC):
+median $5k slippage ≈ 1bp; the visible 20-level book of ANT cannot fill $5k ($72M OI!); PURRDAT 14–37bp at $5–10k
+(it was >100bp at Sunday 23:00); NBIS, KORU, CXMT 4–12bp. After 3–4 weekends: re-run r32/r58 with name- and
+hour-specific costs (Sun 23:00 entry, Mon 21:00 exit) and decide whether thin names should be excluded or just capped.
+xyz_weekend_fade so far: −0.12% at 01:00 (entry cost 0.31%, +0.19% gross since).
