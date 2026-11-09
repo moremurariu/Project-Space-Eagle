@@ -33,3 +33,28 @@ restarts the daemon and the HL funding fetcher, and prints the status table, err
 ```bash
 python -m ptrade.live.gitsync "hourly review: <one-line summary>"
 ```
+The daemon rewrites `state/last_run.json` after the sync, so a stop-hook "uncommitted changes" warning just means
+running gitsync again. If tool calls are blocked, the next wake-up's gitsync commits everything pending.
+
+## Research hygiene (lessons, keep applying)
+- **Additive or not promoted**: a strategy positive IS+OOS that does not improve the equal-weight portfolio OOS
+  (`research/r47_portfolio_v3.py` pattern) stays out (r37, r46/r47 BAB).
+- **Realised beta**: compute it from the same hourly→daily returns as the book (`(1+r).groupby(floor('D')).prod()-1`),
+  never `to_daily()` closes vs bar-open returns (one-day offset → fake β≈0, r46b).
+- **Funding data**: `load_binance_funding_panel(P, splice_recon=True)`. Monthly archives end ~1 month back; without the
+  splice, recent months get a flat default rate (r55).
+- **Costs**: thin HIP-3/xyz names can cost 1%+ per side. Use name-level costs (`state/xyz_depth/`), not a flat 0.18%.
+- Compare like-for-like baselines in the same engine and settings before calling an improvement (r48).
+- Don't spoof User-Agents or work around bot blocks or geo-blocks; drop the source instead.
+
+## Recurring checks
+- Daily 00 UTC: rebalance output (trade counts per book) in the wake-up print.
+- Weekly (~Fri): `python research/r42_polymarket_calib.py 600` (grow resolved outcomes); `python research/r55_live_vs_bt.py`
+  (live vs backtest tracking).
+- Monday 21:00 UTC: `xyz_weekend_fade` exit. Log the weekend's net P&L. Kill rule: cumulative net < 0 after 12 weekends;
+  retire early if live weekends keep showing continuation (r58b).
+- Discretionary: follow the rules in `state/discretionary.json` (price triggers) and `review_by`.
+- Forward datasets: news (`state/news/`), Polymarket (`state/polymarket/`), options skew (`state/options/`), xyz L2 depth
+  (`state/xyz_depth/`). Studies are due per `research/BACKLOG.md`.
+- ~Late Nov (≈4 weeks live): portfolio review, leverage decision, portfolio-level BTC-beta cap (backlog #6; status line
+  "Combined BTC exposure").
