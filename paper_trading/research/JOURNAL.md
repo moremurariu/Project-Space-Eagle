@@ -786,3 +786,10 @@ median $5k slippage ≈ 1bp; the visible 20-level book of ANT cannot fill $5k ($
 (it was >100bp at Sunday 23:00); NBIS, KORU, CXMT 4–12bp. After 3–4 weekends: re-run r32/r58 with name- and
 hour-specific costs (Sun 23:00 entry, Mon 21:00 exit) and decide whether thin names should be excluded or just capped.
 xyz_weekend_fade so far: −0.12% at 01:00 (entry cost 0.31%, +0.19% gross since).
+→ 02:xx attribution of the first live weekend (mark-to-mid −$276, book −0.51% incl. entry costs): the worst names are all shorts
+of private/Asia-listed perps that kept rising into Monday's Asia session: ANT −$274 (+2.7%), ZHIPU −$255 (+7.3%), UNITREE
+−$176 (+8.8%), CXMT −$78, SPCX −$59. The best are US-listed longs: SOXL +$284, NBIS +$99, MSTR +$71, SNDK +$55, COIN +$47,
+CRCL +$40. One weekend proves nothing, but the hypothesis is plausible: for names whose home market opens Monday morning
+Asia time (ZHIPU/UNITREE/CXMT in China/HK, SMSN/SKHY in Korea), the weekend perp move anticipates that session, so it
+continues rather than reverts. r58's split counted them as "non-US/private" together with SPCX/PURRDAT (private,
+no session). Next r58 re-run: split Asia-listed vs private-no-session vs US-listed, using the name-level costs.
