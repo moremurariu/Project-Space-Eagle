@@ -822,3 +822,11 @@ BTC: 171 hourly rows (11-02 04h → 11-09 07h, ~1 missing). 7d RR25 −8.1 … �
 put skew all week. ATM IV 7d 34–45%, 30d 34–41%. Skew is coincident with price: corr(30d RR25 level, trailing-24h BTC return)
 0.63, corr(ΔRR25 24h, 24h return) 0.71. Puts get bid after drops. Any predictive test (backlog #2, after 1–2 months) must
 therefore use skew *relative to* what the price move implies (residual of RR25 on trailing return), not the raw level.
+
+### 2026-11-09 08:xx — weekend fade mid-Monday: −1.21% (mark P&L −$1,177 + $312 entry cost)
+Losers have spread from the Asia-listed shorts (02:00) to the US longs: SOXL −$211, PURRDAT −$189, NVDA −$140, UNITREE −$140,
+ANT −$111. The weekend losers keep falling (continuation, as in the last-10-weekend backtest pattern, r58b). Structural note:
+after a crypto-led weekend selloff the fade is net long crypto-equities (COIN/CRCL/HOOD/MSTR −STRC = +13% of the book, −$253 so
+far), so it adds crypto beta exactly when crypto is falling. If the r32 re-test with name-level costs keeps the book alive,
+consider hedging that leg with a BTC perp short (or excluding crypto-equities when the weekend crypto move is large).
+Discretionary: BTC 73.8k, 2.4% above the 72k cut-to-0.10 rule; to be applied at the first check-in below 72k.
