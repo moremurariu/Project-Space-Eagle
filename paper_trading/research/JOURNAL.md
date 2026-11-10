@@ -856,3 +856,11 @@ Gross ≈ +1.76%. Path: −1.21% at Mon 08:00, while the weekend move continued 
 cumulative < 0 after 12 weekends; retire early if continuation persists, r58b). The timing detail matches r34: the
 reversal happens in the US session, so an entry at Monday ~13:00 UTC (just before the US open) might capture it with less
 exposure to the Asia-session continuation. r34 found Mon 13:00 entry ≈ +5bp (worse), so no change; keep watching.
+
+### r60 HL hourly funding spikes → forward relative returns (event study) — REJECTED (no edge either way after costs)
+HL hourly funding (cache, 2024-01 → 2026-11, universe coins), events = first hour with |APR| > 50/100/200% after 24h quiet.
+Forward 8/24/72h return from the next hour's close minus the EW-40 return; fade (short positive / long negative spikes) net of a 0.19% round trip.
+IS 2024 / OOS 2025+: the fade is negative almost everywhere (e.g. >100% APR positive spikes: 8h −46/−36bp, 24h −24/−85bp;
+>50% negative spikes: 8h −25/−23bp, t −2.6/−4.1). Gross, the effect is mild continuation, but following the spike nets
+≈ 0 to −15bp after paying the round trip twice. Funding extremes are not a short-horizon signal at these costs.
+The slow version (xs_funding: trailing-7d ranking, daily) remains the way funding is used.
