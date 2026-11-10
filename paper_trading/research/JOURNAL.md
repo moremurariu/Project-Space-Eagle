@@ -864,3 +864,9 @@ IS 2024 / OOS 2025+: the fade is negative almost everywhere (e.g. >100% APR posi
 >50% negative spikes: 8h −25/−23bp, t −2.6/−4.1). Gross, the effect is mild continuation, but following the spike nets
 ≈ 0 to −15bp after paying the round trip twice. Funding extremes are not a short-horizon signal at these costs.
 The slow version (xs_funding: trailing-7d ranking, daily) remains the way funding is used.
+
+### r61 turn-of-the-month effect (last 2 + first 3 calendar days) — REJECTED (IS only, reverses OOS)
+Daily 00 UTC closes. BTC: TOM +42bp/day vs rest +15bp in IS 2019-23 (diff t 1.3); OOS 2024+ −3 vs +11bp (t −0.7).
+EW-40: IS +72 vs +18bp (t 2.3); OOS −17 vs +10bp (t −0.8). A long-only-in-TOM strategy: IS +187/+340bp per window
+(BTC/EW), OOS −36/−104bp. This is a classic data-mined calendar effect that disappeared once crypto institutionalised,
+the same pattern as r03/r24/r35 (hour-of-day, day-of-week, weekend).
