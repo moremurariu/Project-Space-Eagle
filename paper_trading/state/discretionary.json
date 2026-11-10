@@ -1,9 +1,9 @@
 {
- "updated": "2026-11-08T08:15Z",
+ "updated": "2026-11-10T16:10Z",
  "targets": {
-  "BTC": 0.25,
+  "BTC": 0.15,
   "ETH": 0.0
  },
- "rationale": "Review 2026-11-08 08:10: hold BTC 0.25, ETH 0. BTC range-bound 75-76k for 48h (no rule hit). Fear & Greed 26-37 (fear, contrarian support) vs persistent put skew (BTC 7d/30d RR25 -4.9/-4.2, ETH -6.0) and the aftermath of the record $6.3B Binance hack (CFO resigned, staged withdrawal reopenings, hackers swapping loot into BTC) as tail risk. No edge to add or cut. Rules unchanged: BTC < 72k -> cut to 0.10; BTC reclaims 78k -> back to 0.30.",
- "review_by": "2026-11-11"
+ "rationale": "Review 2026-11-10 16:10: trim BTC 0.25 -> 0.15. New macro information beyond the price rule: Fed rate-HIKE odds ~96% after Waller's speech (headline), gold -2.1% and oil -2.9% over 24h (broad risk-off), BlackRock BTC ETF outflows $1.66B over 7 sessions, BTC broke to 73.2k (-1.8% in an hour), ETH 2,027. Persistent put skew. F&G 29-32 (fear) is the only support. The systematic books are already net short BTC (~-0.5 books), but this book should express my own view: near-term bearish, so smaller long, keeping a core for a fear-driven rebound. Rules: BTC < 72k -> 0.05; BTC reclaims 78k -> 0.25.",
+ "review_by": "2026-11-13"
 }

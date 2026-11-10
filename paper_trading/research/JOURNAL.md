@@ -870,3 +870,11 @@ Daily 00 UTC closes. BTC: TOM +42bp/day vs rest +15bp in IS 2019-23 (diff t 1.3)
 EW-40: IS +72 vs +18bp (t 2.3); OOS −17 vs +10bp (t −0.8). A long-only-in-TOM strategy: IS +187/+340bp per window
 (BTC/EW), OOS −36/−104bp. This is a classic data-mined calendar effect that disappeared once crypto institutionalised,
 the same pattern as r03/r24/r35 (hour-of-day, day-of-week, weekend).
+
+### 2026-11-10 16:06 — discretionary: trim BTC 0.25 → 0.15 (sold 0.125 BTC at 73,209)
+New macro information beyond the price rule: headlines put Fed rate-HIKE odds at ~96% after a Waller speech; gold −2.1% and oil −2.9%
+over 24h (broad risk-off); BlackRock BTC ETF outflows $1.66B over 7 sessions; BTC −1.8% in an hour to 73.2k, ETH 2,027.
+The systematic books are net short BTC (~−0.5 books; trend_majors +4.32%, combined +0.35% at a new high). The discretionary
+book expresses my view: near-term bearish, so a smaller long, keeping a core for a fear-driven rebound (F&G 29–32).
+New rules: BTC < 72k → 0.05; BTC reclaims 78k → 0.25. Review by 11-13.
+Ops note: a `fast` cycle does not apply discretionary target changes; it needs a full cycle (`run_cycle(fast=False, only=[...])`).
