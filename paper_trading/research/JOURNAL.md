@@ -878,3 +878,11 @@ The systematic books are net short BTC (~−0.5 books; trend_majors +4.32%, comb
 book expresses my view: near-term bearish, so a smaller long, keeping a core for a fear-driven rebound (F&G 29–32).
 New rules: BTC < 72k → 0.05; BTC reclaims 78k → 0.25. Review by 11-13.
 Ops note: a `fast` cycle does not apply discretionary target changes; it needs a full cycle (`run_cycle(fast=False, only=[...])`).
+
+### 2026-11-10 17:04 — live crash-rebound event #2: ZEC −12.6% over 4h → `crash_rebound` t1
+ZEC closed the 16:00 bar −12.6% over 4h (signal close 1,010.95). `crash_rebound` bought tranche 1: 7.39 ZEC at 1,017.34
+(mid 1,017.15), $7,520 (7.5%), fees $3.4 + slippage $1.4. Exit 2026-11-11 17:00 UTC. Tranche 2 armed if an hourly close is
+≤ 960.4 (−5% vs signal) by 11-11 05:00. `crash_rebound_mkt` did not trade: BTC 4h > −3%, so it treats this as idiosyncratic.
+Context: market-wide risk-off (hawkish Fed, BTC 73k, alts −4% over 4h), and ZEC had rallied on the NU7 upgrade (11-06) and a
+proposed block-time cut (11-09). No specific negative headline; it looks like a crowded-long unwind. ZEC is also held in
+dn_funding_carry (short perp / long spot, delta-neutral), unaffected. Backtest expectation +2–4% per event (r10/r30).
