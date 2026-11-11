@@ -1,12 +1,12 @@
 {
- "cash": 85224.89566454745,
+ "cash": 85224.71211841823,
  "created": "2026-10-31T15:34:06.149723+00:00",
  "description": "Buy coins after a >10% drop over 4h measured on closed hourly bars (liquidation-cascade overshoot). Scale-in (r30): tranche 1 = 7.5% at the signal close, tranche 2 = 7.5% if an hourly close within the next 12h is a further 5% below the signal close; each tranche held 24h (re-trigger extends), max gross 100%. Hourly only: r28 showed 5-minute scanning catches falling knives (MaxDD \u221260% vs \u221228%).",
  "fees": 13.6232242636471,
- "funding": -4.905947112916113,
+ "funding": -5.0894932421315415,
  "initial": 100000.0,
  "meta": {
-  "last_scan": "2026-11-11T14:05:28.921318+00:00",
+  "last_scan": "2026-11-11T15:05:49.864415+00:00",
   "tranches": {
    "ZEC": {
     "t1": {
@@ -21,18 +21,18 @@
   },
   "watch": {},
   "worst_4h": {
-   "AVAX": -0.7,
-   "CRV": -0.48,
-   "INJ": -1.52,
-   "RENDER": -0.31,
-   "kPEPE": -0.79
+   "AVAX": -1.81,
+   "INJ": -0.77,
+   "RENDER": -0.75,
+   "ZEC": -1.27,
+   "kPEPE": -1.59
   }
  },
  "name": "crash_rebound",
  "positions": {
   "ZEC": {
    "avg_px": 994.8893628682279,
-   "funded_through": "2026-11-11T14:00:00+00:00",
+   "funded_through": "2026-11-11T15:00:00+00:00",
    "opened": "2026-11-10T17:04:53.136905+00:00",
    "qty": 15.091433711539352
   }
