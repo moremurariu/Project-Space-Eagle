@@ -445,3 +445,4 @@ ts,book,key,side,qty,mid,fill_px,notional,fee,slip_cost,reason
 2026-11-11T00:05:00.179543+00:00,dn_funding_carry,ZEC,sell,-2.7011134,1046.55,1046.4977,2826.71,1.2720,0.1413,daily dn-carry
 2026-11-11T00:05:00.179543+00:00,dn_funding_carry,ZEC/spot,buy,2.6916196,1046.7472,1047.2706,2818.85,1.9732,1.4087,daily dn-carry
 2026-11-11T07:05:52.774505+00:00,crash_rebound,ZEC,buy,7.6995602,973.285,973.33511,7494.25,3.3724,0.3858,crash-rebound t2 -5.3% below signal close
+2026-11-11T19:04:53.477465+00:00,crash_rebound,ZEC,sell,-7.3918736,988.425,988.37558,7305.95,3.2877,0.3653,crash-rebound exit t1 (24h)

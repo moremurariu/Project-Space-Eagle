@@ -897,3 +897,8 @@ Open positions net +$428 (longs $43.2k uPnL −$2,103: ZEC −$756 after its −
 +$2,531: SOL +$747, ADA, WLD, CRV). The book's loss is realised P&L from earlier rotations plus $154 fees. Overlap: ZEC is
 a momentum long *and* the crash_rebound position, so the two books' ZEC P&L moves together. The backtest's worst drawdown was
 −24% OOS, so this is well within the normal range; no action.
+→ 2026-11-11 19:04 ZEC tranche 1 exit (24h after the last re-signal): bought 1,017.34, sold 988.38, **−2.85% gross ≈ −3.0% net**
+(−$221 on $7.5k, i.e. −0.22% of the book). Tranche 2 (bought 973.34, ≈ +1.5% now) is open until 11-12 07:00.
+Book +0.14% overall. Live crash tally: ENA +3.3% (11-05); ZEC t1 −3.0% (t2 pending). The backtest mean is +2–4%/event with a
+~35–40% loss rate, so a losing tranche is expected. Note the extension mechanics: re-signals at 17:00/18:00 pushed t1's exit from
+17:00 to 19:00 and raised the t2 reference; t2 then bought lower, which is the averaging-down that r30 found adds value.

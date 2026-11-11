@@ -1,18 +1,14 @@
 {
- "cash": 85224.14284290226,
+ "cash": 92526.61591766585,
  "created": "2026-10-31T15:34:06.149723+00:00",
  "description": "Buy coins after a >10% drop over 4h measured on closed hourly bars (liquidation-cascade overshoot). Scale-in (r30): tranche 1 = 7.5% at the signal close, tranche 2 = 7.5% if an hourly close within the next 12h is a further 5% below the signal close; each tranche held 24h (re-trigger extends), max gross 100%. Hourly only: r28 showed 5-minute scanning catches falling knives (MaxDD \u221260% vs \u221228%).",
- "fees": 13.6232242636471,
- "funding": -5.658768758111307,
+ "fees": 16.910900551210034,
+ "funding": -5.845323402365715,
  "initial": 100000.0,
  "meta": {
-  "last_scan": "2026-11-11T18:04:26.730221+00:00",
+  "last_scan": "2026-11-11T19:04:53.477465+00:00",
   "tranches": {
    "ZEC": {
-    "t1": {
-     "exit": "2026-11-11T19:00:00+00:00",
-     "qty": 7.391873557757517
-    },
     "t2": {
      "exit": "2026-11-12T07:00:00+00:00",
      "qty": 7.699560153781835
@@ -21,22 +17,22 @@
   },
   "watch": {},
   "worst_4h": {
-   "ARB": -0.81,
-   "DOT": -0.69,
-   "NEAR": -1.03,
-   "TIA": -1.1,
-   "kPEPE": -1.2
+   "ARB": -0.75,
+   "DOT": -1.04,
+   "ENA": -0.72,
+   "TIA": -1.36,
+   "kPEPE": -1.01
   }
  },
  "name": "crash_rebound",
  "positions": {
   "ZEC": {
    "avg_px": 994.8893628682279,
-   "funded_through": "2026-11-11T18:00:00+00:00",
+   "funded_through": "2026-11-11T19:00:00+00:00",
    "opened": "2026-11-10T17:04:53.136905+00:00",
-   "qty": 15.091433711539352
+   "qty": 7.699560153781835
   }
  },
- "realized": 257.73170596547766,
- "slippage": 6.065131959165596
+ "realized": 209.58263738100774,
+ "slippage": 6.43044759023209
 }
