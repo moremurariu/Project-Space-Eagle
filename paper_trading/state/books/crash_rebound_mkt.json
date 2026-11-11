@@ -6,15 +6,15 @@
  "funding": -2.275729485912791,
  "initial": 100000.0,
  "meta": {
-  "last_scan": "2026-11-11T22:04:34.321885+00:00",
+  "last_scan": "2026-11-11T23:05:12.118397+00:00",
   "tranches": {},
   "watch": {},
   "worst_4h": {
-   "ENA": -2.68,
-   "OP": -2.36,
-   "PENDLE": -2.23,
-   "RENDER": -2.3,
-   "kPEPE": -5.47
+   "ENA": -3.69,
+   "JUP": -3.38,
+   "NEAR": -3.2,
+   "UNI": -3.37,
+   "kPEPE": -5.32
   }
  },
  "name": "crash_rebound_mkt",
