@@ -886,3 +886,8 @@ ZEC closed the 16:00 bar −12.6% over 4h (signal close 1,010.95). `crash_reboun
 Context: market-wide risk-off (hawkish Fed, BTC 73k, alts −4% over 4h), and ZEC had rallied on the NU7 upgrade (11-06) and a
 proposed block-time cut (11-09). No specific negative headline; it looks like a crowded-long unwind. ZEC is also held in
 dn_funding_carry (short perp / long spot, delta-neutral), unaffected. Backtest expectation +2–4% per event (r10/r30).
+→ 2026-11-11 07:04 ZEC tranche 2 triggered: the 06:00 hourly close was ≤ 986 (−5% vs the re-set signal ref 1,037.87; the watch
+was extended by the 17:00/18:00 re-signals). Bought 7.70 ZEC (7.5%); exit 2026-11-12 07:00. Book gross 0.15 at −0.09%. Tranche 1
+exits 11-11 19:00. Note: the re-signals moved the t2 reference *up* (to the later, higher signal closes), so t2 bought
+about 3% below the t1 entry rather than 5%. That is by design (r30 uses the latest signal close), but noted for the
+live-vs-backtest log.
