@@ -891,3 +891,9 @@ was extended by the 17:00/18:00 re-signals). Bought 7.70 ZEC (7.5%); exit 2026-1
 exits 11-11 19:00. Note: the re-signals moved the t2 reference *up* (to the later, higher signal closes), so t2 bought
 about 3% below the t1 entry rather than 5%. That is by design (r30 uses the latest signal close), but noted for the
 live-vs-backtest log.
+
+### 2026-11-11 10:xx — xs_momentum soft patch (book −0.85%, max DD −1.98%)
+Open positions net +$428 (longs $43.2k uPnL −$2,103: ZEC −$756 after its −12.6% crash, UNI −$419, BCH, ETH; shorts −$42.6k uPnL
++$2,531: SOL +$747, ADA, WLD, CRV). The book's loss is realised P&L from earlier rotations plus $154 fees. Overlap: ZEC is
+a momentum long *and* the crash_rebound position, so the two books' ZEC P&L moves together. The backtest's worst drawdown was
+−24% OOS, so this is well within the normal range; no action.
