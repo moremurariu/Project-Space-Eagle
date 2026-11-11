@@ -6,15 +6,15 @@
  "funding": -2.275729485912791,
  "initial": 100000.0,
  "meta": {
-  "last_scan": "2026-11-11T15:05:49.864415+00:00",
+  "last_scan": "2026-11-11T16:05:13.531277+00:00",
   "tranches": {},
   "watch": {},
   "worst_4h": {
-   "AVAX": -1.81,
-   "INJ": -0.77,
-   "RENDER": -0.75,
-   "ZEC": -1.27,
-   "kPEPE": -1.59
+   "ATOM": -0.21,
+   "NEAR": -1.06,
+   "TIA": -0.16,
+   "ZEC": -0.62,
+   "kPEPE": -0.8
   }
  },
  "name": "crash_rebound_mkt",
