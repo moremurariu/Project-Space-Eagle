@@ -919,3 +919,9 @@ Events = first 4h < −10% hourly close per coin after ≥24h quiet (957 IS / 50
 Repeated-signal (cascading) events rebound *more* on average, not less. Anchoring the exit to the last re-signal (the live
 extension) improves IS by +0.7pp and is neutral OOS (−0.1pp). The live rule stays. ZEC (11-10, chain of 3 signal bars) was
 a losing draw from a positive-expectancy distribution; hit rate ~0.6–0.65 means 35–40% of events lose.
+
+### 2026-11-12 12:10 — discretionary: cut BTC 0.15 → 0.05 (review due 11-13, done early)
+BTC 72.9k, 1.2% above the 72k cut rule. New information: stablecoin supply −$14.2B over 30d (largest since June 2022), i.e. liquidity
+leaving; BlackRock ETF outflows $2B over 9 sessions; MSCI confirmed Strategy (MSTR) index removal at end-Nov (forced selling of
+a large BTC proxy); gold −2.5%/24h; ETH 7d RR25 −6.6; F&G 25–32 with no capitulation signal. Cut to a token 5% long. Rules: reclaim
+78k → 0.20; review by 11-16. The book is at −2.35% since start, mostly from the early-November long BTC/ETH into the decline.
