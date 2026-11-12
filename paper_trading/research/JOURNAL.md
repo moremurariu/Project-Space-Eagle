@@ -902,3 +902,9 @@ a momentum long *and* the crash_rebound position, so the two books' ZEC P&L move
 Book +0.14% overall. Live crash tally: ENA +3.3% (11-05); ZEC t1 −3.0% (t2 pending). The backtest mean is +2–4%/event with a
 ~35–40% loss rate, so a losing tranche is expected. Note the extension mechanics: re-signals at 17:00/18:00 pushed t1's exit from
 17:00 to 19:00 and raised the t2 reference; t2 then bought lower, which is the averaging-down that r30 found adds value.
+→ 2026-11-12 07:04 ZEC tranche 2 exit: bought 973.34, sold 987.17, **+1.4% gross ≈ +1.3% net (+$97)**. Event #2 total:
+t1 −$221 + t2 +$97 ≈ **−$127 (−0.13% of book; ≈ −0.85% on the $15k deployed)**. crash_rebound book +0.25% → +0.12%.
+Live tally: 2 events, ENA +3.3%, ZEC −0.85% (blended) → both books in profit since start (+0.12% / +0.25%). Scale-in
+helped: t1 alone was −3.0%, and averaging down via t2 cut the event loss to about a quarter. ZEC kept falling for about
+14h after the first signal (re-signals at 17:00/18:00) before rebounding. That is the "slow crash" pattern r37 found
+weaker than sharp 4h cascades.
