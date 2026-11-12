@@ -908,3 +908,14 @@ Live tally: 2 events, ENA +3.3%, ZEC −0.85% (blended) → both books in profit
 helped: t1 alone was −3.0%, and averaging down via t2 cut the event loss to about a quarter. ZEC kept falling for about
 14h after the first signal (re-signals at 17:00/18:00) before rebounding. That is the "slow crash" pattern r37 found
 weaker than sharp 4h cascades.
+
+### r62 crash-rebound: repeated signals and exit anchoring (event study, prompted by ZEC) — live rule kept
+Events = first 4h < −10% hourly close per coin after ≥24h quiet (957 IS / 507 OOS), entry +1h, 0.2% round trip.
+| Group | IS n / exit 24h after first / after last (live) | OOS n / first / last |
+|---|---|---|
+| repeated (≥2 signal bars in 6h) | 463 / +3.16% / +3.79% | 269 / +4.20% / +4.17% |
+| single | 494 / +1.36% / +2.08% | 238 / +3.49% / +3.25% |
+| all | +2.23% / **+2.91%** | +3.87% / **+3.74%** |
+Repeated-signal (cascading) events rebound *more* on average, not less. Anchoring the exit to the last re-signal (the live
+extension) improves IS by +0.7pp and is neutral OOS (−0.1pp). The live rule stays. ZEC (11-10, chain of 3 signal bars) was
+a losing draw from a positive-expectancy distribution; hit rate ~0.6–0.65 means 35–40% of events lose.
