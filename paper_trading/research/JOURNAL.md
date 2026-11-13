@@ -935,3 +935,14 @@ against favourites (all within 6h of close; mostly in-play sports: NBA/NFL/Dota 
 near-expiry in-play favourites look overpriced. NOT actionable: t < 2, lottery-like payoff, many buckets examined (multiple
 testing), no time split, and in-play quotes may be stale relative to game state. Hypothesis for the ~3,000-market re-test (late Nov):
 "fade in-play sports favourites priced 80–95c within 6h of close", with a pre-registered single bucket and a time split.
+
+### 2026-11-13 01:xx — weekly r55 live vs backtest (two weeks live)
+| Book | Window | live | backtest | daily corr | live costs (fees / slippage / funding) |
+|---|---|---:|---:|---:|---|
+| trend_breakout_majors | 10-31 → 11-13 | +5.42% | +5.72% | 0.99 | $62 / $7 / +$154 |
+| xs_momentum | 11-02 → 11-13 | −1.68% | −1.50% | 0.97 | $81 / $30 / −$14 |
+| xs_funding (recon funding) | 10-31 → 11-13 | +1.56% | +2.12% | 0.65 | $251 / $191 / +$100 |
+xs_funding holdings now match the backtest closely (weight corr 0.91, sign agreement 82%, up from 0.84 / 67% last week). The
+remaining gap is the one-off setup turnover (~$284) and edge names (LDO, OP, ETC, ARB). All three systematic books track their
+backtests: live is within 0.2–0.6pp of backtest over two weeks, and execution costs are at or below assumptions. Live P&L so far is
+consistent with the backtested edges. Leverage review (backlog #6) in ~2 weeks.
