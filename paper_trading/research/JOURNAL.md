@@ -925,3 +925,13 @@ BTC 72.9k, 1.2% above the 72k cut rule. New information: stablecoin supply −$1
 leaving; BlackRock ETF outflows $2B over 9 sessions; MSCI confirmed Strategy (MSTR) index removal at end-Nov (forced selling of
 a large BTC proxy); gold −2.5%/24h; ETH 7d RR25 −6.6; F&G 25–32 with no capitulation signal. Cut to a token 5% long. Rules: reclaim
 78k → 0.20; review by 11-16. The book is at −2.35% since start, mostly from the early-November long BTC/ETH into the decline.
+
+### r42/r57 weekly update 2026-11-13 — 2,202 resolved markets (1,903 non-election); new hypothesis: near-expiry favourites OVERpriced
+Pooled calibration (all hourly quotes): 65–85c now wins 78.3% vs 73.7% priced (+4.6pp ± 2.9; was +9pp). The classic favourite-longshot gap shrinks
+as the sample grows. Tradeable test (r57: one quote per market 1–72h before close, median 2h; crossing the spread; event-clustered; 1,273 markets / 836 events):
+buying favourites loses everywhere (0.80–0.95c: −9.6%/event, t −1.9; they win 78% vs 88% implied). Mirror trade, buy NO
+against favourites (all within 6h of close; mostly in-play sports: NBA/NFL/Dota 2/football): mid 0.75–0.90 +20%/event (t 0.8),
+**0.80–0.95 +57% (t 1.54, 82 events, NO at ~15c winning 22%)**, 0.85–0.97 +46% (t 1.0). That is the reverse of the classic FLB:
+near-expiry in-play favourites look overpriced. NOT actionable: t < 2, lottery-like payoff, many buckets examined (multiple
+testing), no time split, and in-play quotes may be stale relative to game state. Hypothesis for the ~3,000-market re-test (late Nov):
+"fade in-play sports favourites priced 80–95c within 6h of close", with a pre-registered single bucket and a time split.

@@ -29,3 +29,14 @@ for lo, hi in ((0.60, 0.80), (0.65, 0.85), (0.70, 0.90), (0.80, 0.95)):
     test(f"buy YES favourites mid {lo:.2f}-{hi:.2f}", q.mid.between(lo, hi), "YES")
 for lo, hi in ((0.03, 0.10), (0.05, 0.15), (0.10, 0.25)):
     test(f"buy NO vs longshots mid {lo:.2f}-{hi:.2f}", q.mid.between(lo, hi), "NO")
+print("--- mirror: fade near-expiry favourites (buy NO at 1-bid)")
+for lo, hi in ((0.75, 0.90), (0.80, 0.95), (0.85, 0.97)):
+    test(f"buy NO vs favourites mid {lo:.2f}-{hi:.2f}", q.mid.between(lo, hi), "NO")
+for hmax in (6, 24):
+    sel = q.mid.between(0.80, 0.95) & (q.hrs <= hmax)
+    test(f"buy NO vs fav 0.80-0.95, ≤{hmax}h", sel, "NO")
+    sel = q.mid.between(0.80, 0.95) & (q.hrs > hmax)
+    test(f"buy NO vs fav 0.80-0.95, >{hmax}h", sel, "NO")
+cat = q.question.astype(str).str.extract(r"^(\w+ \w+)")[0]
+top = q[q.mid.between(0.80, 0.95)].assign(cat=cat).cat.value_counts().head(8)
+print("question stems in the 0.80-0.95 bucket:", top.to_dict())
