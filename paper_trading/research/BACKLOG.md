@@ -6,7 +6,7 @@
    (`deribit.collect_skew` → `state/options/skew_YYYY-MM.csv`: ATM IV, 25Δ RR/BF at ~7d/30d, put/call OI & volume
    ratios, BTC+ETH, hourly). Study RR25 extremes vs fwd returns after ~1-2 months.
 3. Crash-rebound: r10/r16/r17/r28/r30 done (market-wide book; hourly-close signals; scale-in tranches promoted).
-   Left: live-vs-backtest tracking once events occur; exit timing (fixed 24h vs target/trailing).
+   Exit timing r63 done: keep fixed 24h after last signal; stops hurt, longer holds OOS-only, TP 8% marginal. Left: live-vs-backtest tracking once events occur.
 4. ~~TradFi trend on HL xyz~~ — r07 + r08 rejected. r32: weekend single-stock overreaction on xyz → experimental
    `xyz_weekend_fade` book (kill if net < 0 after 12 weekends). 2026-11-08: liquidity cap added (≤25bp est. slippage/name);
    TODO re-run r32 with name-level costs from L2 depth snapshots (thin pre-IPO names overstated). Weekend crypto → Monday xyz lead-lag: r33 rejected (inconclusive).

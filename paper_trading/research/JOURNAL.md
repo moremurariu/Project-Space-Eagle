@@ -946,3 +946,14 @@ xs_funding holdings now match the backtest closely (weight corr 0.91, sign agree
 remaining gap is the one-off setup turnover (~$284) and edge names (LDO, OP, ETC, ARB). All three systematic books track their
 backtests: live is within 0.2–0.6pp of backtest over two weeks, and execution costs are at or below assumptions. Live P&L so far is
 consistent with the backtested edges. Leverage review (backlog #6) in ~2 weeks.
+
+### r63 2026-11-14 02:xx — crash-rebound exit timing (backlog #3): keep the fixed 24h hold, no stops
+1,449 events 2019–2026 (first 4h < −10% per coin after ≥24h quiet; entry = signal close +1h; hold anchored to the last
+re-signal as live; 0.2% rt; t-stat clustered by signal day). Mean % per event, IS / OOS (day-t IS / OOS):
+fixed 6h −0.9 / +1.4 · 12h +0.3 / +3.6 · **24h +3.0 / +3.7 (t 2.9 / 2.7, live)** · 36h +2.0 / +5.7 · 48h +1.7 / +6.5 · 72h +3.2 / +6.6;
+24h + TP 8% +2.5 / +3.5 (t 3.9 / 3.1); 24h + TP 5% +2.1 / +2.8 (t 4.3 / 2.9); stop-loss 8% +0.7 / +2.1, 12% +1.1 / +2.3;
+48h + trail 5% +1.2 / +4.5; recover-50%-of-drop exits +2.3 / +2.9 (24h). Findings: (1) stop-losses cut the mean by more than half in both
+periods — rebounds go through deeper drawdowns first; no stop is right. (2) Longer holds win only OOS (2024–25 trend-up regime;
+2019–2022 36–48h holds were worse than 24h), so not adopted. (3) A take-profit improves day-clustered t in both periods by cutting variance,
+but lowers the mean per event by 0.3–0.9pp; with 15 variants tested the t gain is within multiple-testing noise. Live rule unchanged
+(24h after last signal, no TP/SL). Re-check TP 8% once live crash events accumulate.
