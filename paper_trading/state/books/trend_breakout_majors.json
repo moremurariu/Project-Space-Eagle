@@ -1,35 +1,35 @@
 {
- "cash": 186805.8129356033,
+ "cash": 186805.69611694434,
  "created": "2026-10-31T15:34:06.149723+00:00",
  "description": "Donchian breakout (20/55/120d) long/short on BTC/ETH/SOL, inverse-vol, 25% vol target, daily (cut from 40% on 2026-10-31 to balance risk across books, r15).",
  "fees": 98.7626061509626,
- "funding": 165.46279941170081,
+ "funding": 165.34598075271742,
  "initial": 100000.0,
  "meta": {
-  "last_signal": "2026-11-12T23:00:00+00:00",
+  "last_signal": "2026-11-13T23:00:00+00:00",
   "last_targets": {
-   "BTC": -0.2601,
-   "ETH": -0.2468,
-   "SOL": -0.2842
+   "BTC": -0.2401,
+   "ETH": -0.2321,
+   "SOL": -0.2649
   }
  },
  "name": "trend_breakout_majors",
  "positions": {
   "BTC": {
    "avg_px": 75630.71432293762,
-   "funded_through": "2026-11-13T23:00:00+00:00",
+   "funded_through": "2026-11-14T00:00:00+00:00",
    "opened": "2026-10-31T15:34:06.149723+00:00",
    "qty": -0.3567163246697687
   },
   "ETH": {
    "avg_px": 2187.58191242593,
-   "funded_through": "2026-11-13T23:00:00+00:00",
+   "funded_through": "2026-11-14T00:00:00+00:00",
    "opened": "2026-10-31T15:34:06.149723+00:00",
    "qty": -12.880360006394739
   },
   "SOL": {
    "avg_px": 91.19897361134947,
-   "funded_through": "2026-11-13T23:00:00+00:00",
+   "funded_through": "2026-11-14T00:00:00+00:00",
    "opened": "2026-10-31T15:34:06.149723+00:00",
    "qty": -366.51461754609505
   }
