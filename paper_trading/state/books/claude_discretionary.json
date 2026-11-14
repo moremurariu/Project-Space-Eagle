@@ -1,9 +1,9 @@
 {
- "cash": 92740.62160695938,
+ "cash": 92740.5652631334,
  "created": "2026-10-31T15:34:06.149723+00:00",
  "description": "Claude's discretionary book: targets set by hand in state/discretionary.json after reviewing news, funding, positioning and charts. Measures whether judgment adds value.",
  "fees": 46.406798371306024,
- "funding": -94.66826886297275,
+ "funding": -94.724612688963,
  "initial": 100000.0,
  "meta": {
   "applied": "2026-11-12T12:10Z",
@@ -13,7 +13,7 @@
  "positions": {
   "BTC": {
    "avg_px": 77535.2605796618,
-   "funded_through": "2026-11-14T05:00:00+00:00",
+   "funded_through": "2026-11-14T06:00:00+00:00",
    "opened": "2026-10-31T15:37:04.144057+00:00",
    "qty": 0.06705203616595495
   }
