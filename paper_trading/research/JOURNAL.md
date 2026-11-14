@@ -957,3 +957,11 @@ periods — rebounds go through deeper drawdowns first; no stop is right. (2) Lo
 2019–2022 36–48h holds were worse than 24h), so not adopted. (3) A take-profit improves day-clustered t in both periods by cutting variance,
 but lowers the mean per event by 0.3–0.9pp; with 15 variants tested the t gain is within multiple-testing noise. Live rule unchanged
 (24h after last signal, no TP/SL). Re-check TP 8% once live crash events accumulate.
+
+### r64 2026-11-14 05:xx — extreme fear (F&G ≤ 15) is not a buy signal OOS; discretionary stays at a token 5% BTC long
+Trigger: F&G 13 on 11-14 (BTC 67k, at its 200-week trend line). Episodes = first day ≤ thr after ≥14 days above; BTC forward returns
+from the next daily close. F&G ≤ 15: IS 2019–23 9 episodes, 30d +12.7% vs base +6.3% (hit 78%); **OOS 2024+ 6 episodes, 30d −1.4% vs
+base +2.8% (hit 20%), 60d −4.6% vs +5.5%**. ≤ 10 and ≤ 20 show the same split, and ≤ 20 is below base in both periods. The 2025–26 episodes
+(11-2025, 12-2025, 02-2026, 06-2026) mostly kept falling: in this bear phase fear readings have marked continuation, not bottoms.
+Consistent with r03 (sentiment buckets don't hold OOS). n = 15 episodes in total, so this is evidence against using F&G, not a signal to
+short. Discretionary: no add on fear alone; keep 0.05 BTC with the 78k reclaim rule and review by 11-16.
