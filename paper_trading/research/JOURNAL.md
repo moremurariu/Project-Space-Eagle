@@ -965,3 +965,14 @@ base +2.8% (hit 20%), 60d −4.6% vs +5.5%**. ≤ 10 and ≤ 20 show the same sp
 (11-2025, 12-2025, 02-2026, 06-2026) mostly kept falling: in this bear phase fear readings have marked continuation, not bottoms.
 Consistent with r03 (sentiment buckets don't hold OOS). n = 15 episodes in total, so this is evidence against using F&G, not a signal to
 short. Discretionary: no add on fear alone; keep 0.05 BTC with the 78k reclaim rule and review by 11-16.
+
+### 2026-11-14 08:xx — xyz name-level costs (backlog #4 TODO, first pass on 130 hourly L2 snapshots 11-09 → 11-14)
+Round-trip book-walk cost at $10k (both half-spreads included), median: index/commodity perps 0.3–1.1bp; large-cap stocks (NVDA, AAPL,
+GOOGL, META, MU, TSLA, MSFT) 1.3–2.5bp; mid names (AMD, MSTR, COIN, ORCL, HOOD, NBIS, CRWV) 3–8bp; pre-IPO/thin names (ZHIPU,
+UNITREE, CXMT, ANT) 9–12bp; PURRDAT 29bp weekday / 40bp weekend. Weekend books are only slightly thinner (≤ +2bp for most names).
+The tail is the problem: ANT's visible book holds < $10k 17–18% of the time (PURRDAT 2–6%), so a fill at the wrong hour hits the 1%
+too-thin penalty. Weekend #1 confirms this: fees $186 (9bp/side as r32 assumes) + slippage $356, of which $321 was ANT + PURRDAT (both at
+the 10% name cap and charged the identical 1% penalty, so the matching $101.88 entry slips are not a bug). Excluding those two names,
+realised slippage was ~2bp round trip, so r32's 18bp round-trip cost is about right for names with depth. The `_liquidity_cap` (≤25bp
+est. slippage, halving) covers the tail. Open question for the re-run once ~4 weekends of depth exist: how much of r32's edge comes
+from the thin names that the cap now shrinks.
