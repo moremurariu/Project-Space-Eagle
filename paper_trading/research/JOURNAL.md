@@ -989,3 +989,11 @@ long is a small hedge against a squeeze. Restored 0.04 → 0.05 (+$626). Book �
 COIN 6.6%, HOOD 2.3%. That is ≈ +0.27 net crypto-equity weight. r59 kept that exposure unhedged, and it partly offsets the portfolio's net-short
 BTC beta (−0.08). Shorts are spread thin (largest AAPL −4.3%). At current books the liquidity cap binds on no name (all ≤ 25bp est. slippage).
 It is re-evaluated at entry, where thin books at 23:00 can still cap PURRDAT/ANT.
+
+### 2026-11-15 10:xx — dn_funding_carry hedge desync FIXED (HYPE ~$2k unhedged short since 00:04)
+At the 00:04 daily rebalance, HYPE perp and spot legs both sat at |w| ≈ 0.130 against a 0.15 target, |dw| ≈ 0.0199–0.0201, right at the 2%
+per-leg buffer. Small mark differences between the perp (mid) and spot (oracle) put the perp leg just outside the buffer and the spot leg
+just inside, so only the short was topped up (−31.1 HYPE, $2.0k). The book was then 2% net short HYPE; the 09:00 squeeze contributed to its
+−0.18%/24h. Fix (`DeltaNeutralCarry`): (1) a pair-level buffer, so both legs trade or neither; (2) `_match_hedges` every full cycle,
+re-matching spot qty to −perp qty when the gap exceeds $50. Applied now: bought 31.13 HYPE spot ($2,129, 5bp). Legs now HYPE 233.13/233.13,
+ZEC 17.43/17.43, PENDLE 9,671/9,662 (a $16 gap, within tolerance). Earlier entries (11-09 HYPE −30.84 / +30.57) had only rounding-level gaps.

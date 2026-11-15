@@ -16,7 +16,7 @@ from ..data import hyperliquid as hl
 from ..data.http import get
 from ..strategies import signals as S
 from ..universe import HL_MULT, MAJORS, UNIVERSE
-from .book import Book, coin_of
+from .book import Book, coin_of, is_spot
 
 MIN_ORDER_USD = 10.0
 
@@ -345,9 +345,30 @@ class DeltaNeutralCarry(Strategy):
                    "13.7% CAGR, 1.4% vol, max DD -1.4%.")
     entry, exit_, top_k, max_per, max_tot = 0.15, 0.05, 6, 0.15, 0.90
 
+    hedge_tol_usd = 50.0   # max |spot qty + perp qty| x px before the spot leg is re-matched
+
+    def _match_hedges(self, book, mkt, now) -> int:
+        """Keep spot qty == -perp qty per coin. 2026-11-15: the per-leg 2% buffer let the HYPE perp leg top up while
+        its spot leg sat just inside the buffer, leaving ~$2k (2% of the book) unhedged short."""
+        n = 0
+        for k in [k for k in list(book.positions) if not is_spot(k)]:
+            sk = k + "/spot"
+            perp_q = book.positions[k]["qty"]
+            spot_q = book.positions.get(sk, {}).get("qty", 0.0)
+            diff = -perp_q - spot_q
+            prices = mkt.prices({sk})
+            if sk in prices and abs(diff) * prices[sk] > self.hedge_tol_usd:
+                px = prices[sk]; side = "buy" if diff > 0 else "sell"
+                book.trade(sk, diff, px, mkt.slippage(sk, abs(diff) * px, side), mkt.fee(sk), now, "dn-carry hedge match")
+                n += 1
+        return n
+
     def run(self, book, mkt, data, now, fast):
         if fast:
             return
+        m = self._match_hedges(book, mkt, now)
+        if m:
+            print(f"[{self.name}] hedge match: {m} spot trades")
         day = now.strftime("%Y-%m-%d")
         if book.meta.get("last_day") == day:
             return
@@ -365,7 +386,16 @@ class DeltaNeutralCarry(Strategy):
             targets[c + "/spot"] = n_each
         for k in book.positions:
             targets.setdefault(k, 0.0)
-        n = rebalance(book, mkt, targets, now, "daily dn-carry", buffer=0.02)
+        # pair-level buffer: a coin's two legs trade together or not at all (per-leg buffers desync the hedge)
+        prices = mkt.prices(set(book.positions) | set(targets))
+        cur = book.weights(prices)
+        for c in {coin_of(k) for k in targets}:
+            legs = [c, c + "/spot"]
+            if all(targets.get(l, 0.0) != 0.0 for l in legs) and all(abs(targets[l] - cur.get(l, 0.0)) <= 0.02 for l in legs):
+                for l in legs:
+                    targets[l] = cur.get(l, 0.0)
+        n = rebalance(book, mkt, targets, now, "daily dn-carry", buffer=0.0)
+        n += self._match_hedges(book, mkt, now)
         book.meta["last_day"] = day
         book.meta["holdings_apr"] = {c: round(float(apr[c]) * 100, 1) for c in keep}
         book.meta["top_apr"] = {c: round(float(v) * 100, 1) for c, v in apr.sort_values(ascending=False).head(10).items()}
