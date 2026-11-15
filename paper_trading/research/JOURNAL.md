@@ -997,3 +997,9 @@ just inside, so only the short was topped up (−31.1 HYPE, $2.0k). The book was
 −0.18%/24h. Fix (`DeltaNeutralCarry`): (1) a pair-level buffer, so both legs trade or neither; (2) `_match_hedges` every full cycle,
 re-matching spot qty to −perp qty when the gap exceeds $50. Applied now: bought 31.13 HYPE spot ($2,129, 5bp). Legs now HYPE 233.13/233.13,
 ZEC 17.43/17.43, PENDLE 9,671/9,662 (a $16 gap, within tolerance). Earlier entries (11-09 HYPE −30.84 / +30.57) had only rounding-level gaps.
+
+### 2026-11-15 23:04 — xyz_weekend_fade weekend #2 entry
+36 trades, 38 names, weekend dispersion 2.45%, gross 1.00, net −0.08; exit Mon 21:00 UTC. Entry cost: fees $91 plus slippage $36
+(3.6bp of $101k notional), against $204 slippage on weekend #1's entry. The liquidity cap bound on no name (PURRDAT filled at
+17bp for $10.9k, under the 25bp limit). Long the weekend losers MSTR and PURRDAT (11% each), CRCL and COIN (8%), HOOD 3%; largest short NBIS −5%.
+Running total: weekend #1 +1.22% net.
