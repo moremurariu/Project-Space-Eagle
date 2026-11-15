@@ -1,23 +1,23 @@
 {
- "cash": 92740.0074782253,
+ "cash": 92113.32775969354,
  "created": "2026-10-31T15:34:06.149723+00:00",
  "description": "Claude's discretionary book: targets set by hand in state/discretionary.json after reviewing news, funding, positioning and charts. Measures whether judgment adds value.",
- "fees": 46.406798371306024,
- "funding": -95.2823975970738,
+ "fees": 46.68868778133898,
+ "funding": -95.25931553446355,
  "initial": 100000.0,
  "meta": {
-  "applied": "2026-11-12T12:10Z",
-  "rationale": "Review 2026-11-12 12:10 (due 11-13): cut BTC 0.15 -> 0.05 ahead of the 72k rule. BTC 72.9k, 1.2% above the rule. The liquidity picture keeps worsening: stablecoin supply -$14.2B over 30 days (largest drop since June 2022), BlackRock BTC ETF outflows $2B over 9 sessions, MSCI confirmed Strategy (MSTR) index removal at end-Nov (forced selling of a large BTC proxy), Fed hike odds high, gold -2.5%/24h. ETH 7d RR25 -6.6 (put skew), F&G 25-32. No sign of capitulation/reversal yet. Keep a token long for a fear-driven bounce; systematic books are already net short. Rules: BTC reclaims 78k -> 0.20; review by 11-16."
+  "applied": "2026-11-15T02:10Z",
+  "rationale": "Review 2026-11-15 02:10 (due 11-16): hold a token BTC 0.05 long (restored from drift 0.04). BTC 62.9k (-7.9%/24h, -14% since the 11-12 cut at 72.9k); alts -10 to -17%/24h. Panic signs: F&G 10 (lowest reading of this decline), BTC 25d RR -11.5 (was -4 on 11-13), ATM IV 37 -> 49, ETH/SOL/SUI/kPEPE funding negative (crowded shorts), BTC ETF outflows 11 straight sessions. r64: extreme fear has not marked bottoms OOS (2024+), so no add on fear alone; the systematic books are net short (beta -0.07) and the token long is a small hedge against a short squeeze. Rules: BTC reclaims 72k (the breakdown level) -> 0.15; 78k -> 0.20; daily close < 55k -> 0 (stop being long into a deeper leg). Review by 11-19."
  },
  "name": "claude_discretionary",
  "positions": {
   "BTC": {
-   "avg_px": 77535.2605796618,
-   "funded_through": "2026-11-15T01:00:00+00:00",
+   "avg_px": 75652.68685320222,
+   "funded_through": "2026-11-15T02:00:00+00:00",
    "opened": "2026-10-31T15:37:04.144057+00:00",
-   "qty": 0.06705203616595495
+   "qty": 0.07700080790272683
   }
  },
  "realized": -1919.4062292819135,
- "slippage": 6.21830878781499
+ "slippage": 6.249628267400274
 }

@@ -976,3 +976,9 @@ the 10% name cap and charged the identical 1% penalty, so the matching $101.88 e
 realised slippage was ~2bp round trip, so r32's 18bp round-trip cost is about right for names with depth. The `_liquidity_cap` (≤25bp
 est. slippage, halving) covers the tail. Open question for the re-run once ~4 weekends of depth exist: how much of r32's edge comes
 from the thin names that the cap now shrinks.
+
+### 2026-11-15 02:10 — discretionary review (due 11-16): hold a token BTC 0.05 long; new rules 72k → 0.15, 78k → 0.20, close < 55k → 0
+BTC 62.9k (−7.9%/24h, −14% since the 11-12 cut at 72.9k); alts −10 to −17%/24h. Panic signs: F&G 10, BTC 25Δ RR −11.5 (−4 on 11-13), ATM
+IV 37 → 49, negative funding on ETH/SOL/SUI/kPEPE (crowded shorts), 11 straight sessions of BTC ETF outflows. r64 says extreme fear has not
+marked bottoms since 2024, so no add. The systematic books are net short (combined beta −0.07, trend_breakout_majors +16.7%), and the token
+long is a small hedge against a squeeze. Restored 0.04 → 0.05 (+$626). Book −3.0% since start. Review by 11-19.
