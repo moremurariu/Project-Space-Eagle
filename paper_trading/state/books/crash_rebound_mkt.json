@@ -6,15 +6,15 @@
  "funding": -2.275729485912791,
  "initial": 100000.0,
  "meta": {
-  "last_scan": "2026-11-15T04:04:12.564393+00:00",
+  "last_scan": "2026-11-15T05:04:36.405143+00:00",
   "tranches": {},
   "watch": {},
   "worst_4h": {
-   "AVAX": 0.75,
-   "BTC": 1.05,
-   "FIL": 1.13,
-   "LTC": 0.92,
-   "TRX": 0.2
+   "APT": 2.31,
+   "SOL": 2.18,
+   "TIA": 1.94,
+   "TRX": 0.29,
+   "kPEPE": 2.34
   }
  },
  "name": "crash_rebound_mkt",

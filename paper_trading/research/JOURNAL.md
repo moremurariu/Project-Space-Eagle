@@ -982,3 +982,10 @@ BTC 62.9k (−7.9%/24h, −14% since the 11-12 cut at 72.9k); alts −10 to −1
 IV 37 → 49, negative funding on ETH/SOL/SUI/kPEPE (crowded shorts), 11 straight sessions of BTC ETF outflows. r64 says extreme fear has not
 marked bottoms since 2024, so no add. The systematic books are net short (combined beta −0.07, trend_breakout_majors +16.7%), and the token
 long is a small hedge against a squeeze. Restored 0.04 → 0.05 (+$626). Book −3.0% since start. Review by 11-19.
+
+### 2026-11-15 05:xx — xyz_weekend_fade pre-entry dry run (no trades; live entry at 23:00 UTC)
+38 names, weekend move vs Fri US close: mean −2.76%, cross-sectional dispersion 2.71% (weekend #1: similar). The crypto-linked names fell most
+(PURRDAT −13.1%, MSTR −10.3%, CRCL −7.7%, COIN −6.9%, SOXL −5.1%), so the fade is long them: MSTR and PURRDAT at the 10.7% cap, CRCL 7.8%,
+COIN 6.6%, HOOD 2.3%. That is ≈ +0.27 net crypto-equity weight. r59 kept that exposure unhedged, and it partly offsets the portfolio's net-short
+BTC beta (−0.08). Shorts are spread thin (largest AAPL −4.3%). At current books the liquidity cap binds on no name (all ≤ 25bp est. slippage).
+It is re-evaluated at entry, where thin books at 23:00 can still cap PURRDAT/ANT.
