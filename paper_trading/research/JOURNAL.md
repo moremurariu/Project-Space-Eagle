@@ -1003,3 +1003,11 @@ ZEC 17.43/17.43, PENDLE 9,671/9,662 (a $16 gap, within tolerance). Earlier entri
 (3.6bp of $101k notional), against $204 slippage on weekend #1's entry. The liquidity cap bound on no name (PURRDAT filled at
 17bp for $10.9k, under the 25bp limit). Long the weekend losers MSTR and PURRDAT (11% each), CRCL and COIN (8%), HOOD 3%; largest short NBIS −5%.
 Running total: weekend #1 +1.22% net.
+
+### 2026-11-16 21:04 — xyz_weekend_fade weekend #2 closed: +2.04% net (+$2,067)
+Entry Sun 23:04, exit Mon 21:04 (US close). Equity $101,220 → $103,286. Costs: fees $179 + slippage $65 (entry 3.6bp, exit 2.9bp) =
+$244 (0.24% of book) vs $541 on weekend #1 (the liquidity cap and better weekend depth removed the thin-name penalty). Funding +$27.
+Gross ≈ +2.3%. Path: +1.0% by 02:00, flat through Monday Asia/Europe, then +1.0% in the hour after the US open
+(the long weekend losers MSTR/PURRDAT/CRCL/COIN bounced). Weekend #1 reversed at the open, which r58b flags as a continuation risk.
+**Running: 2 weekends, +1.22% and +2.04%, cumulative +3.29%** (r32 backtest mean +0.47%/wk, std 1.65%, so these are two good draws,
+not evidence yet). Kill rule unchanged: cumulative net < 0 after 12 weekends.
