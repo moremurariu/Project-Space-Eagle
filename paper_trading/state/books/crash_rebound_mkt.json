@@ -6,15 +6,15 @@
  "funding": -2.275729485912791,
  "initial": 100000.0,
  "meta": {
-  "last_scan": "2026-11-16T19:04:12.030197+00:00",
+  "last_scan": "2026-11-16T20:04:29.469067+00:00",
   "tranches": {},
   "watch": {},
   "worst_4h": {
-   "AAVE": -1.9,
-   "ENA": -1.44,
-   "ETH": -1.36,
-   "JUP": -1.88,
-   "RENDER": -1.22
+   "AAVE": -0.1,
+   "ENA": 0.17,
+   "ETH": 0.21,
+   "HBAR": 0.24,
+   "JUP": -0.16
   }
  },
  "name": "crash_rebound_mkt",
