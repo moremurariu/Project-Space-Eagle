@@ -1011,3 +1011,13 @@ Gross ≈ +2.3%. Path: +1.0% by 02:00, flat through Monday Asia/Europe, then +1.
 (the long weekend losers MSTR/PURRDAT/CRCL/COIN bounced). Weekend #1 reversed at the open, which r58b flags as a continuation risk.
 **Running: 2 weekends, +1.22% and +2.04%, cumulative +3.29%** (r32 backtest mean +0.47%/wk, std 1.65%, so these are two good draws,
 not evidence yet). Kill rule unchanged: cumulative net < 0 after 12 weekends.
+
+### 2026-11-17 02:xx — leverage-review prep (backlog #6): live portfolio risk after 16 days (11-02 → 11-17, daily)
+Combined (11 books, $1.1M): +8.1bp/day, realised vol **4.7% annualised**, worst day −0.40%. (A 16-day Sharpe of 6.3 means nothing: it is one
+trend-short regime.) Per-book annualised vol: trend_breakout_majors **46%** (gross 0.5–0.7 short BTC/ETH/SOL at ~60–75% asset vol), discretionary 15%,
+xyz_weekend_fade 13%, xs_momentum 12%, xs_funding 10%, crash_rebound 2%, dn_carry 1%. Idle books (universe LO, EWMAC LO, crash_mkt, retired BAB)
+hold ~$400k doing nothing. Daily correlations: trend vs xs_momentum +0.58 (both gained in the sell-off), trend vs discretionary −0.57;
+xs_funding vs xs_momentum −0.41; xyz ≈ 0 with everything. Takeaways for the late-Nov decision: (1) the portfolio runs at about half of
+r40's ~10% vol target because a third of capital is idle; (2) trend_breakout_majors carries roughly two-thirds of portfolio variance, so any leverage
+should go to the diversifying books (xs_funding, xs_momentum, xyz), not across the board; (3) revisit at ~4 weeks (≈11-28) with r55 live-vs-backtest.
+No change now.
