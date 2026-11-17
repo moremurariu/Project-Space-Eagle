@@ -1021,3 +1021,12 @@ xs_funding vs xs_momentum −0.41; xyz ≈ 0 with everything. Takeaways for the 
 r40's ~10% vol target because a third of capital is idle; (2) trend_breakout_majors carries roughly two-thirds of portfolio variance, so any leverage
 should go to the diversifying books (xs_funding, xs_momentum, xyz), not across the board; (3) revisit at ~4 weeks (≈11-28) with r55 live-vs-backtest.
 No change now.
+
+### 2026-11-17 10:xx — ops: HL main-dex snapshot outage produced bogus equity marks; guard added
+At the 10:04 catch-up the HL `metaAndAssetCtxs` request for the main dex failed (xyz succeeded). With no mids, `Book.equity` fell back
+to each position's avg_px, so every crypto book was marked at entry prices. The report showed benchmark +20%/24h, trend_breakout_majors
+−11.7%, and combined −0.26%. No trades were affected: `rebalance` skips keys without a price, and no rebalance was due. Fixes:
+(1) `Market` retries each dex snapshot once (3s) and records `failed`; (2) `run_cycle` skips the whole cycle when the main dex is down (no
+strategy runs, no equity rows, no report) and skips any book holding a key that has no price; (3) removed the 12 bogus 10:04 rows from
+state/equity.csv. Verified by simulating the outage (0 rows written, report untouched) and by a real cycle (combined +1.30%; max DDs back to
+−5.48% trend / −1.56% xs_funding). HL funding-history POSTs also failed intermittently this morning (HBAR, SOL, TRX); those are retried next cycle.

@@ -17,11 +17,18 @@ class Market:
     def __init__(self, dexes=("", "xyz")):
         self.now = pd.Timestamp.now(tz="UTC")
         frames = []
+        self.failed: list[str] = []   # dexes whose snapshot failed (runner skips books it cannot price)
         for d in dexes:
-            try:
-                frames.append(hl.meta_and_ctxs(d))
-            except Exception as e:  # noqa: BLE001
-                print(f"[market] dex '{d}' failed: {e}")
+            for attempt in range(2):
+                try:
+                    frames.append(hl.meta_and_ctxs(d))
+                    break
+                except Exception as e:  # noqa: BLE001
+                    if attempt == 0:
+                        time.sleep(3)
+                        continue
+                    print(f"[market] dex '{d}' failed: {e}")
+                    self.failed.append(d)
         self.ctx = pd.concat(frames) if frames else pd.DataFrame()
         self._slip_cache: dict = {}
         self._funding_cache: dict = {}

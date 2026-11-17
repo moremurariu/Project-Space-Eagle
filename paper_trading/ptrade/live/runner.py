@@ -63,8 +63,16 @@ def run_cycle(fast: bool = False, only: list[str] | None = None) -> dict:
         mkt = Market()
         strats = [s for s in all_strategies() if (s.fast or not fast) and (not only or s.name in only)]
         data = DataCtx(need_panel=not fast)
+        main_down = "" in getattr(mkt, "failed", [])
+        if main_down:   # 2026-11-17 10:04: a failed main-dex snapshot marked every crypto position at avg_px (bogus equity rows)
+            summary["errors"]["market"] = "HL main dex snapshot failed: cycle skipped (no trades, no equity rows, no report)"
         for s in strats:
             book = s.book(now)
+            missing = [k for k in book.positions if k not in mkt.prices([k])]
+            if main_down or missing:
+                if missing and not main_down:
+                    summary["errors"][s.name] = f"skipped: no price for {', '.join(missing[:6])}"
+                continue
             try:
                 accrue(book, mkt)
                 s.run(book, mkt, data, now, fast)
@@ -78,7 +86,7 @@ def run_cycle(fast: bool = False, only: list[str] | None = None) -> dict:
                 prices = mkt.prices(book.positions)
                 book.log_equity(prices, now)
             book.save()
-        if not fast:
+        if not fast and not main_down:
             write_report(mkt, now)
             try:  # forward data collection for prediction-market research
                 from ..data import polymarket
