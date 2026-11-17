@@ -6,15 +6,15 @@
  "funding": -2.275729485912791,
  "initial": 100000.0,
  "meta": {
-  "last_scan": "2026-11-17T12:04:32.135238+00:00",
+  "last_scan": "2026-11-17T13:04:25.655178+00:00",
   "tranches": {},
   "watch": {},
   "worst_4h": {
-   "ETH": -0.54,
-   "FIL": -0.23,
-   "LDO": -0.07,
-   "TRX": 0.0,
-   "kPEPE": -0.51
+   "ATOM": 0.23,
+   "ETH": 0.19,
+   "FIL": -0.59,
+   "TRX": 0.03,
+   "kPEPE": 0.0
   }
  },
  "name": "crash_rebound_mkt",
