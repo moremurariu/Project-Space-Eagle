@@ -1,35 +1,35 @@
 {
- "cash": 100038.01129454955,
+ "cash": 100038.58308044437,
  "created": "2026-10-31T15:34:06.149723+00:00",
  "description": "Delta-neutral: short HL perp + long spot (priced at HL oracle) on coins whose trailing-7d funding APR > 15% (exit < 5%), top 6, <=15% notional each, daily. r11 (HL data 2024-26): 13.7% CAGR, 1.4% vol, max DD -1.4%.",
  "fees": 171.29553623876222,
- "funding": 323.44353216580777,
+ "funding": 324.0153180606121,
  "initial": 100000.0,
  "meta": {
   "holdings_apr": {
-   "HYPE": 6.5,
+   "HYPE": 8.5,
    "PENDLE": 11.0,
-   "ZEC": 9.7
+   "ZEC": 9.1
   },
-  "last_day": "2026-11-16",
+  "last_day": "2026-11-17",
   "top_apr": {
-   "BNB": 7.0,
-   "BTC": 8.3,
-   "CRV": 9.4,
-   "ETC": 6.4,
-   "HYPE": 6.5,
+   "BNB": 7.6,
+   "BTC": 7.8,
+   "CRV": 7.4,
+   "HBAR": 6.4,
+   "HYPE": 8.5,
    "LDO": 11.0,
    "NEAR": 9.0,
    "PENDLE": 11.0,
-   "TAO": 6.6,
-   "ZEC": 9.7
+   "TAO": 6.5,
+   "ZEC": 9.1
   }
  },
  "name": "dn_funding_carry",
  "positions": {
   "HYPE": {
    "avg_px": 82.77723027850905,
-   "funded_through": "2026-11-16T23:00:00+00:00",
+   "funded_through": "2026-11-17T00:00:00+00:00",
    "opened": "2026-10-31T15:34:06.149723+00:00",
    "qty": -233.12752890362455
   },
@@ -41,7 +41,7 @@
   },
   "PENDLE": {
    "avg_px": 1.8175877529479312,
-   "funded_through": "2026-11-16T23:00:00+00:00",
+   "funded_through": "2026-11-17T00:00:00+00:00",
    "opened": "2026-10-31T15:34:06.149723+00:00",
    "qty": -9671.024471354827
   },
@@ -53,7 +53,7 @@
   },
   "ZEC": {
    "avg_px": 1175.0041928267838,
-   "funded_through": "2026-11-16T23:00:00+00:00",
+   "funded_through": "2026-11-17T00:00:00+00:00",
    "opened": "2026-10-31T15:34:06.149723+00:00",
    "qty": -17.430053928390084
   },
