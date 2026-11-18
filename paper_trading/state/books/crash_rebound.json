@@ -6,15 +6,15 @@
  "funding": -6.943767465011221,
  "initial": 100000.0,
  "meta": {
-  "last_scan": "2026-11-18T07:04:41.338338+00:00",
+  "last_scan": "2026-11-18T08:04:23.677923+00:00",
   "tranches": {},
   "watch": {},
   "worst_4h": {
-   "AAVE": -0.51,
-   "CRV": -0.63,
-   "ENA": -0.79,
-   "RENDER": -0.35,
-   "kPEPE": -1.06
+   "CRV": -0.58,
+   "ENA": -0.44,
+   "JUP": -1.45,
+   "NEAR": -0.47,
+   "RENDER": -1.17
   }
  },
  "name": "crash_rebound",
