@@ -1030,3 +1030,13 @@ to each position's avg_px, so every crypto book was marked at entry prices. The 
 strategy runs, no equity rows, no report) and skips any book holding a key that has no price; (3) removed the 12 bogus 10:04 rows from
 state/equity.csv. Verified by simulating the outage (0 rows written, report untouched) and by a real cycle (combined +1.30%; max DDs back to
 −5.48% trend / −1.56% xs_funding). HL funding-history POSTs also failed intermittently this morning (HBAR, SOL, TRX); those are retried next cycle.
+
+### 2026-11-18 01:xx — r55 live vs backtest (mid-week, prompted by xs_funding's slide from +1.30% to −0.07% since 11-15)
+| Book | Window | live | backtest | daily corr |
+|---|---|---:|---:|---:|
+| trend_breakout_majors | 10-31 → 11-18 | +13.26% | +13.41% | 0.99 |
+| xs_momentum | 11-02 → 11-18 | −0.88% | −0.55% | 0.96 |
+| xs_funding (recon funding) | 10-31 → 11-18 | +0.15% | +0.50% | 0.79 |
+The xs_funding slide is in the backtest too: daily live/bt 11-15 −0.41/−0.56, 11-16 −0.34/−0.29, 11-17 −0.28/−0.39, 11-18 −0.15/−0.17. It is the
+strategy's own drawdown (shorts in BTC/TAO/LDO/PENDLE rallying against longs in JUP/TIA/WLD), not execution. Holdings weight corr 0.90, sign
+agreement 82%. Live costs to date: fees $303 + slippage $229 for xs_funding (the gap to backtest is mostly the 10-31 setup turnover). No action.
