@@ -6,15 +6,15 @@
  "funding": -2.275729485912791,
  "initial": 100000.0,
  "meta": {
-  "last_scan": "2026-11-18T20:04:41.762392+00:00",
+  "last_scan": "2026-11-18T21:04:26.915595+00:00",
   "tranches": {},
   "watch": {},
   "worst_4h": {
-   "HBAR": -1.55,
-   "RENDER": -0.92,
-   "XLM": -1.15,
-   "XRP": -0.99,
-   "ZEC": -1.75
+   "HBAR": -0.86,
+   "RENDER": -1.63,
+   "XLM": -0.29,
+   "XRP": -0.28,
+   "ZEC": -1.27
   }
  },
  "name": "crash_rebound_mkt",
