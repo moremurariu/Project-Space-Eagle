@@ -1040,3 +1040,9 @@ state/equity.csv. Verified by simulating the outage (0 rows written, report unto
 The xs_funding slide is in the backtest too: daily live/bt 11-15 −0.41/−0.56, 11-16 −0.34/−0.29, 11-17 −0.28/−0.39, 11-18 −0.15/−0.17. It is the
 strategy's own drawdown (shorts in BTC/TAO/LDO/PENDLE rallying against longs in JUP/TIA/WLD), not execution. Holdings weight corr 0.90, sign
 agreement 82%. Live costs to date: fees $303 + slippage $229 for xs_funding (the gap to backtest is mostly the 10-31 setup turnover). No action.
+
+### 2026-11-18 18:10 — discretionary review (due 11-19): hold BTC 0.05, next review 11-23
+BTC 63.1k, ranging 62.8–65.5k since the 11-15 squeeze. F&G 10–13 all week. Major-coin funding is back to +4–6% APR (the crowded alt shorts were cleared).
+Macro is more hawkish: Fed's Waller floated a "shock" 50bp hike, gold −3% and oil −4% on the day, and headlines note visible bids near $60k. No new edge,
+so no change: the token long stays as a squeeze hedge against the systematic books' net short (combined beta −0.09). Rules unchanged
+(72k → 0.15, 78k → 0.20, daily close < 55k → 0).
