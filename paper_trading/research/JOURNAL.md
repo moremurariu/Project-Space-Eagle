@@ -1046,3 +1046,9 @@ BTC 63.1k, ranging 62.8–65.5k since the 11-15 squeeze. F&G 10–13 all week. M
 Macro is more hawkish: Fed's Waller floated a "shock" 50bp hike, gold −3% and oil −4% on the day, and headlines note visible bids near $60k. No new edge,
 so no change: the token long stays as a squeeze hedge against the systematic books' net short (combined beta −0.09). Rules unchanged
 (72k → 0.15, 78k → 0.20, daily close < 55k → 0).
+
+### r42 weekly update 2026-11-20 — 2,775 resolved Polymarket markets (2,202 last week)
+Pooled calibration (all hourly quotes): 0.65–0.85 wins 77.2% vs 74.1% priced (+3.1pp ± 2.7; was +4.6 last week, +9 two weeks ago);
+0.85–0.95 wins 93.8% vs 90.7% (+3.1 ± 2.1); 0.35–0.65 +2.7 ± 1.5; tails ≤5c and ≥95c are well calibrated. The favourite-longshot gap keeps shrinking
+as the sample grows. Market mix is still dominated by election and "Will the…" questions. The pre-registered r57 re-test (fade in-play sports favourites
+priced 80–95c within 6h of close, with a time split) waits for ~3,000 markets (next week).
