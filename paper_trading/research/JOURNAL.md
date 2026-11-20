@@ -1052,3 +1052,9 @@ Pooled calibration (all hourly quotes): 0.65–0.85 wins 77.2% vs 74.1% priced (
 0.85–0.95 wins 93.8% vs 90.7% (+3.1 ± 2.1); 0.35–0.65 +2.7 ± 1.5; tails ≤5c and ≥95c are well calibrated. The favourite-longshot gap keeps shrinking
 as the sample grows. Market mix is still dominated by election and "Will the…" questions. The pre-registered r57 re-test (fade in-play sports favourites
 priced 80–95c within 6h of close, with a time split) waits for ~3,000 markets (next week).
+
+### 2026-11-20 16:04 — sell-off leg: BTC 61.5k → 59.0k in 1h (−6.4%/24h), ETH −8%/24h
+Headlines: a tech-equity sell-off (pre-IPO AI names hit on xyz), and the Binance hacker moving ~$600M of ETH through THORChain/Chainflip. Funding flipped
+negative on the majors (BTC −18% APR, ETH −40% APR), so shorts are crowded again. Portfolio at a new high of +1.81% (trend_breakout_majors +19.75%, net −0.55;
+combined beta −0.09). Crash scan: worst 4h PENDLE −7.5%, FIL −7.0%; the market-wide condition (BTC 4h < −3%) is met, but no coin has hit −10%.
+Discretionary: hold the token 0.05 BTC. The 55k daily-close stop is not hit; the review is due 11-23.
