@@ -23,7 +23,8 @@
    r53: daily BTC 'above $K' digitals vs BS (Deribit IV) — no edge on 7 dates; redo at ~30 dates with skew-adjusted
    digitals + barrier ('reach/dip') markets.
    r57: favourite-longshot as a strategy (one quote per market, 1-72h before close, crossing the spread) — NO edge on 955
-   markets / 601 events; re-test by category and time-to-expiry at ~3,000 markets.
+   markets / 601 events. r57b (11-21) pre-registered OOS re-test (fade 80–95c favourites ≤6h before close) REJECTED: OOS −12.6%/event, t −0.58.
+   Resolver fixed 11-21 (was stalled FIFO; 12.1k outcomes now). Calibration parked; collector kept for r53 digital/barrier work.
 9. XS momentum: r38/r39 live (`xs_momentum`, vol-scaled). Low-risk anomalies r46: BAB promoted then retired by r47
    (residual beta, hedged OOS 0.14–0.37, not additive); low-vol / low-MAX rejected.
    ~~Pairs / cointegration~~ (r25 rejected: IS negative, OOS driven by one pair).

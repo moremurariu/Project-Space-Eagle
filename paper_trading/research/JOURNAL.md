@@ -1094,3 +1094,16 @@ therefore biased toward early-November markets, and the r57 re-test (`research/r
 time split (IS bucket as before: NO vs 80–95c favourites ≤6h, 179 markets / 146 events, +32%/event, t 1.29). Fix: newest-first order, a 20h
 re-check cooldown in `state/polymarket/pending.csv`, and incremental saves every 200. A backfill of the ~8.4k unchecked candidates is running.
 The re-test runs once it completes.
+
+### r57b — pre-registered OOS re-test: fade near-expiry favourites — REJECTED (2026-11-21 20:00)
+The backfill finished: 12,134 outcomes (8,227 new; 142 still open in `pending.csv`), 0 errors. Rule (fixed 11-13): buy NO at 1 − bid when the
+latest quote 1–72h before close is ≤6h out and mid is 0.80–0.95, non-election markets, event-clustered. Time split at the 11-13 analysis date.
+| sample | markets | events | NO px | NO won | ret/$ | event mean | t |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| IS (closed < 11-13, now fully resolved) | 314 | 251 | 0.140 | 15.9% | +13.3% | +19.9% | +1.09 |
+| **OOS (closed ≥ 11-14)** | **205** | **148** | 0.142 | **10.7%** | **−14.9%** | **−12.6%** | **−0.58** |
+| OOS sports only | 124 | 106 | 0.144 | 9.7% | −31.6% | −20.0% | −0.84 |
+The in-sample edge also shrank once its sample was completed (+32%/t 1.29 on the biased subset → +20%/t 1.09). Out of sample it reverses. No strategy.
+Full-sample r42 calibration (5,183 markets with forward quotes, 10,901 obs): 0.65–0.85 wins 77.9% vs 73.9% (+4.0pp ± 1.4); 0.85–0.95 88.7% vs 90.4%
+(−1.7 ± 1.7); 0.15–0.35 22.4% vs 25.7% (−3.3 ± 1.2). That is a mild classic favourite-longshot bias in the middle buckets, but r57 already showed it
+does not survive crossing the spread. Polymarket calibration work is parked; the collector keeps running for barrier/digital (r53) work later.
