@@ -1107,3 +1107,10 @@ The in-sample edge also shrank once its sample was completed (+32%/t 1.29 on the
 Full-sample r42 calibration (5,183 markets with forward quotes, 10,901 obs): 0.65–0.85 wins 77.9% vs 73.9% (+4.0pp ± 1.4); 0.85–0.95 88.7% vs 90.4%
 (−1.7 ± 1.7); 0.15–0.35 22.4% vs 25.7% (−3.3 ± 1.2). That is a mild classic favourite-longshot bias in the middle buckets, but r57 already showed it
 does not survive crossing the spread. Polymarket calibration work is parked; the collector keeps running for barrier/digital (r53) work later.
+
+### r53 progress check 2026-11-21 — BTC daily "above $K" digitals: 167 markets, 21 dates (11-01 → 11-21)
+Brier on 1,556 informative quotes: market 0.1887, Black-Scholes (Deribit 7d ATM IV, median 40%) 0.1922, average of the two 0.1899. The market still beats
+the naive lognormal. In every bucket, YES wins less often than priced (90–100c bucket: 71% won vs 95% mid). That reflects the November decline from 77k to 56k
+falling through strikes, not a structural bias: with 21 correlated fixes this is one path. Model-vs-quote trading at gaps of
+>3/5/8/12c: −1.5 / −2.0 / +7.3 / +21c per contract (t −0.3 / −0.3 / +0.9 / +1.6; 77/51/34/13 markets). Only the largest-gap bucket looks
+positive, it is not significant, and four thresholds were tested. No action. The planned early-December run (~30 dates) adds skew and the barrier markets.
