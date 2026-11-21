@@ -11,18 +11,33 @@ now = pd.Timestamp.now(tz="UTC")
 cand = df[df.end < now - pd.Timedelta(hours=2)].id.astype(str).unique()
 opath = STATE / "polymarket" / "outcomes.csv"
 have = pd.read_csv(opath, dtype={"id": str}) if opath.exists() else pd.DataFrame(columns=["id", "yes_won", "closed_time"])
-todo = [m for m in cand if m not in set(have.id)][: int(sys.argv[1]) if len(sys.argv) > 1 else 600]
-rows = []
+# 2026-11-21: newest-first with a 20h re-check cooldown. The old FIFO order re-polled the same ~600 still-unresolved
+# early-November markets every run, so markets closing after ~11-09 were never fetched (biased, stale sample).
+ppath = STATE / "polymarket" / "pending.csv"
+pend = pd.read_csv(ppath, dtype={"id": str}) if ppath.exists() else pd.DataFrame(columns=["id", "checked"])
+recent = set(pend[pd.to_datetime(pend.checked, utc=True) > now - pd.Timedelta(hours=20)].id)
+ends = df.assign(id=df.id.astype(str)).groupby("id").end.max()
+have_ids = set(have.id)
+todo = sorted((m for m in cand if m not in have_ids and m not in recent), key=lambda m: ends[m], reverse=True)
+todo = todo[: int(sys.argv[1]) if len(sys.argv) > 1 else 600]
+rows, unres = [], []
+def _save():
+    global have, pend
+    if rows:
+        have = pd.concat([have, pd.DataFrame(rows)]).drop_duplicates("id", keep="last"); have.to_csv(opath, index=False)
+    if unres:
+        pend = pd.concat([pend, pd.DataFrame({"id": unres, "checked": now.isoformat()})]).drop_duplicates("id", keep="last")
+        pend = pend[~pend.id.isin(set(have.id))]; pend.to_csv(ppath, index=False)
 for i, m in enumerate(todo):
     try:
         r = pm.resolved_outcome(m)
-        if r:
-            rows.append(r)
+        (rows if r else unres).append(r if r else m)
     except Exception as e:  # noqa: BLE001
         print("err", m, str(e)[:80])
     time.sleep(0.15)
-if rows:
-    have = pd.concat([have, pd.DataFrame(rows)]).drop_duplicates("id", keep="last"); have.to_csv(opath, index=False)
+    if i % 200 == 199:
+        _save()
+_save()
 print(f"outcomes cached: {len(have)} (new {len(rows)}, candidates {len(cand)})")
 out = have.dropna(subset=["yes_won"]).copy(); out["yes_won"] = out.yes_won.astype(str).str.lower().eq("true").astype(float)
 d = df.copy(); d["id"] = d.id.astype(str); d = d.merge(out[["id", "yes_won"]], on="id")

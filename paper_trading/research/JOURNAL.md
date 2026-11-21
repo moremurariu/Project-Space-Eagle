@@ -1085,3 +1085,12 @@ mean of the buy/sell book-walk + half the spread. Median across names: US hours 
 - NBIS / MRNA / LITE / CBRS 7–8bp.
 Indices, commodities and megacaps are under 1.5bp. So round-trip slippage (~4bp median) is small next to the conservative 2×9bp HIP-3 taker fees.
 Fees are what drive the 0.24–0.54% per-weekend cost. Only 2 Sunday entries are sampled so far (5 snapshots); the re-test still waits for ~4 weekends.
+
+### 2026-11-21 19:xx — Polymarket outcome backlog bug (blocks the pre-registered r57 re-test); r42 resolver fixed
+`outcomes.csv` has 3,907 markets, and almost all closed 10-31 → 11-08. Only 7–13 a day are cached after 11-09, against 12,276 candidates. Cause: r42
+resolved candidates in snapshot (FIFO) order, capped at 600 a run, and never cached unresolved ones. Each run re-polled the same ~600 old markets
+whose end date had passed but which were still open, so newer markets were never reached. The weekly "resolved markets" counts were
+therefore biased toward early-November markets, and the r57 re-test (`research/r57b_fade_fav_oos.py`) found only 3 markets that closed after the
+time split (IS bucket as before: NO vs 80–95c favourites ≤6h, 179 markets / 146 events, +32%/event, t 1.29). Fix: newest-first order, a 20h
+re-check cooldown in `state/polymarket/pending.csv`, and incremental saves every 200. A backfill of the ~8.4k unchecked candidates is running.
+The re-test runs once it completes.
