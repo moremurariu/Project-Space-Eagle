@@ -108,7 +108,10 @@ def run_cycle(fast: bool = False, only: list[str] | None = None) -> dict:
                 summary["xyz_depth_rows"] = _hl.collect_xyz_depth(now)
             except Exception as e:  # noqa: BLE001
                 summary["errors"]["xyz_depth"] = str(e)[:200]
-        LAST_RUN.write_text(json.dumps({**summary, "kind": "fast" if fast else "full"}, indent=1))
+        # fast cycles go to an untracked file: only the full-cycle record is read (daemon/wakeup), and rewriting the
+        # tracked file every few minutes left the repo dirty between hourly syncs
+        (CACHE / "last_fast.json" if fast else LAST_RUN).write_text(
+            json.dumps({**summary, "kind": "fast" if fast else "full"}, indent=1))
     return summary
 
 
