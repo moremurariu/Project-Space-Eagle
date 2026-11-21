@@ -1075,3 +1075,13 @@ No edge: nothing is significant apart from regulatory (9 events on 3 days, noise
 are follow-ups (laundering moves, commentary) that name a coin only incidentally. These keyword tags cannot separate "coin X was exploited" from "the
 stolen funds passed through X". Next (around mid-December with about 6 weeks of data): an LLM pass that labels each headline (primary coin,
 first-report vs follow-up, direction), then the same event study on first reports only. Script: `research/r65_news_event_study.py`.
+
+### 2026-11-21 18:xx — xyz depth check (input for the r32 name-level-cost re-test)
+Data: `state/xyz_depth`, 312 hourly snapshots from 11-09 to 11-21, about 50 names. Cost metric: one-way cost for $10k (the 10% name cap) =
+mean of the buy/sell book-walk + half the spread. Median across names: US hours 2.2bp, off-hours 2.3bp, weekend 2.8bp, **Sunday 22–01 UTC entry 2.4bp**,
+**Monday 20–21 UTC exit 1.8bp**. Thinnest names at entry:
+- PURRDAT 55bp (already excluded by the 25bp liquidity cap);
+- KORU 12.6bp, STRC 9.3bp, CXMT 8.6bp;
+- NBIS / MRNA / LITE / CBRS 7–8bp.
+Indices, commodities and megacaps are under 1.5bp. So round-trip slippage (~4bp median) is small next to the conservative 2×9bp HIP-3 taker fees.
+Fees are what drive the 0.24–0.54% per-weekend cost. Only 2 Sunday entries are sampled so far (5 snapshots); the re-test still waits for ~4 weekends.
