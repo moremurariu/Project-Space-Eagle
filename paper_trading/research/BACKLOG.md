@@ -29,6 +29,8 @@
    ~~Pairs / cointegration~~ (r25 rejected: IS negative, OOS driven by one pair).
 10. **News/LLM sentiment**: forward headline collector live since 2026-11-01 (`state/news/`, 7 feeds). In ~3-4 weeks:
     classify headlines (topic/sentiment), event-study coin/market returns after shocks (hacks, listings, ETF, macro).
+    r65 (11-21) keyword-tag first pass: no edge; tags can't tell first reports from follow-ups. Redo ~mid-Dec with LLM labels
+    (primary coin, first-report vs follow-up, direction) on first reports only.
 11. ~~Weekend effects~~ (r24 rejected). Trend regime gate: r27 promoted ER30 gate for universe LO.
 13. Wider XS universe — r51 REJECTED for xs_momentum (not robust to N, worse 2026). (scoped 2026-11-08 06:xx): HL main dex has 179 perps; 109 not yet in the universe have a Binance
     USDT spot pair (`research/universe_candidates_2026-11-08.csv`, HL volume/OI snapshot). ~30 trade ≥ $0.3M/day on HL,

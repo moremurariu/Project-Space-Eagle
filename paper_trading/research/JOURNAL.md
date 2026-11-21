@@ -1058,3 +1058,20 @@ Headlines: a tech-equity sell-off (pre-IPO AI names hit on xyz), and the Binance
 negative on the majors (BTC −18% APR, ETH −40% APR), so shorts are crowded again. Portfolio at a new high of +1.81% (trend_breakout_majors +19.75%, net −0.55;
 combined beta −0.09). Crash scan: worst 4h PENDLE −7.5%, FIL −7.0%; the market-wide condition (BTC 4h < −3%) is met, but no coin has hit −10%.
 Discretionary: hold the token 0.05 BTC. The 55k daily-close stop is not hit; the review is due 11-23.
+
+### r65 — news event study, first pass (2026-11-21 17:xx; 1,902 unique headlines 11-01 → 11-21)
+Keyword tags (hack, listing, ETF, regulatory, liquidation, unlock, whale) plus coin-name mapping. The signal is the close of the hour a headline
+was first seen; outcome is the BTC-adjusted forward return of the mentioned alt; t is day-clustered on r24. There are 266 alt events. BTC is
+mentioned in 566 headlines and ETH in 95, so most news is about the majors.
+| tag | n | days | r4 bp | r24 bp | t24 |
+|---|---:|---:|---:|---:|---:|
+| any | 266 | 20 | +7 | +18 | 0.24 |
+| hack | 26 | 12 | −13 | +35 | 0.79 |
+| ETF | 19 | 8 | +10 | −42 | −0.58 |
+| whale/treasury | 16 | 9 | +26 | +26 | 0.47 |
+| regulatory | 9 | 3 | −46 | −187 | −2.39 |
+| listing / liquidation | 5 / 5 | 4 / 3 | | +165 / −273 | |
+No edge: nothing is significant apart from regulatory (9 events on 3 days, noise). Hack tags are dominated by one story, the Binance hack: 20 of 26
+are follow-ups (laundering moves, commentary) that name a coin only incidentally. These keyword tags cannot separate "coin X was exploited" from "the
+stolen funds passed through X". Next (around mid-December with about 6 weeks of data): an LLM pass that labels each headline (primary coin,
+first-report vs follow-up, direction), then the same event study on first reports only. Script: `research/r65_news_event_study.py`.
