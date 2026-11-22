@@ -1114,3 +1114,11 @@ the naive lognormal. In every bucket, YES wins less often than priced (90–100c
 falling through strikes, not a structural bias: with 21 correlated fixes this is one path. Model-vs-quote trading at gaps of
 >3/5/8/12c: −1.5 / −2.0 / +7.3 / +21c per contract (t −0.3 / −0.3 / +0.9 / +1.6; 77/51/34/13 markets). Only the largest-gap bucket looks
 positive, it is not significant, and four thresholds were tested. No action. The planned early-December run (~30 dates) adds skew and the barrier markets.
+
+### 2026-11-22 05:xx — xyz_weekend_fade weekend #3 pre-entry dry run (no trades; live entry at 23:00 UTC)
+38 names. Weekend move vs the Friday 11-20 US close: mean **+2.01%**, cross-sectional dispersion **1.13%** (2.71% last weekend). This is a broad weekend
+rally led by semis and AI infrastructure: IREN +4.9%, SOXL +4.5%, NBIS +4.3%, CBRS / AMD / INTC / SKHY +3.1–3.2%. SP500 is +1.0% and XYZ100 +1.2%. Only
+STRC (−0.3%) and COST (−0.05%) are down. The fade is short the chip/AI winners (IREN −8.7%, SOXL −7.5%, NBIS −6.9%) and long the laggards (STRC +7.0%,
+COST +6.2%, ANT +4.4%). Net −0.025 after caps; the liquidity cap binds only on PURRDAT (×0.125). Low dispersion means the expected gross reversal is
+smaller while costs (~0.25% round trip) stay fixed. The rules stay unchanged mid-experiment: no dispersion filter is added after the fact. This
+weekend is a useful low-dispersion data point for a later r32 check of whether to filter on dispersion.
