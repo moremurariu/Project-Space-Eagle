@@ -1122,3 +1122,10 @@ STRC (−0.3%) and COST (−0.05%) are down. The fade is short the chip/AI winne
 COST +6.2%, ANT +4.4%). Net −0.025 after caps; the liquidity cap binds only on PURRDAT (×0.125). Low dispersion means the expected gross reversal is
 smaller while costs (~0.25% round trip) stay fixed. The rules stay unchanged mid-experiment: no dispersion filter is added after the fact. This
 weekend is a useful low-dispersion data point for a later r32 check of whether to filter on dispersion.
+
+### r66 — weekend fade P&L vs weekend cross-sectional dispersion (2026-11-22 12:xx): no relationship, no filter
+r32 panel: 29 weekends (04-17 → 10-30), equity-like xyz names, the live rule (linear weights, 10% cap, 0.18% round trip). Median dispersion of the
+demeaned weekend move is 1.52%. corr(dispersion, net P&L) is +0.04; corr(|mean weekend move|, P&L) is −0.08. By dispersion tercile, net bp per weekend:
+low (0.46–1.04%) +46 (hit 70%), mid (1.10–1.77%) +19 (56%), high (1.80–3.71%) +72 (60%). Below vs above 1.5%: +46 vs +47. With linear weights,
+expected P&L should scale with dispersion; on 29 weekends it does not, because noise dominates. So weekend #3's low dispersion (1.13%) is not a reason
+to expect less, and no dispersion filter is warranted. Script: `research/r66_weekend_dispersion.py`.
