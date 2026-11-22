@@ -6,15 +6,15 @@
  "funding": -2.275729485912791,
  "initial": 100000.0,
  "meta": {
-  "last_scan": "2026-11-22T10:04:09.001075+00:00",
+  "last_scan": "2026-11-22T11:04:14.508277+00:00",
   "tranches": {},
   "watch": {},
   "worst_4h": {
-   "AAVE": 1.55,
-   "JUP": 1.62,
-   "LTC": 2.1,
-   "TRX": 0.72,
-   "kPEPE": 2.1
+   "BCH": 1.74,
+   "LTC": 1.69,
+   "RENDER": 1.36,
+   "TRX": 0.46,
+   "ZEC": 1.19
   }
  },
  "name": "crash_rebound_mkt",
