@@ -1129,3 +1129,10 @@ demeaned weekend move is 1.52%. corr(dispersion, net P&L) is +0.04; corr(|mean w
 low (0.46–1.04%) +46 (hit 70%), mid (1.10–1.77%) +19 (56%), high (1.80–3.71%) +72 (60%). Below vs above 1.5%: +46 vs +47. With linear weights,
 expected P&L should scale with dispersion; on 29 weekends it does not, because noise dominates. So weekend #3's low dispersion (1.13%) is not a reason
 to expect less, and no dispersion filter is warranted. Script: `research/r66_weekend_dispersion.py`.
+
+### 2026-11-22 23:04 — xyz_weekend_fade weekend #3 entry
+36 trades on 38 names. Weekend dispersion at entry was **2.05%**: it widened from 1.13% at the 05:00 dry run as the chip/AI rally stretched further on Sunday.
+Gross 0.92, net +0.08. Largest weights: short SOXL −8.7%, NBIS −4.7%, NVDA −3.6%, MSTR −3.2%; long COST +5.8%, SP500 +4.4%, STRC +4.1%, ANT +4.0%.
+The liquidity cap bound on IREN (×0.25) and PURRDAT (×0.5). Entry cost is listed in the line below. Exit is Monday 21:00 UTC (US close).
+Entry cost: fees $86 + slippage $36 = **0.117%** of equity on $95.1k notional (3.8bp average slippage). The most expensive fills were PURRDAT 24bp, IREN 20bp, COST 18bp
+(COST slippage was 3x the depth-snapshot median, since Sunday-night books are thin) and ZHIPU 8bp. Round trip should land near 0.22%, against 0.24% on weekend #2 and 0.54% on #1.
