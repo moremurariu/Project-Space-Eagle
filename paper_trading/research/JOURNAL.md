@@ -1142,3 +1142,15 @@ BTC 61.5k (+4%/24h), off the 11-20 low near 56k. BTC funding is back to +11% APR
 in 2024+. Macro is mixed: Ackman warns of a December Fed "mistake", gold +2.4%, SP500 perp +1%. Crypto risk headlines: Kraken flash print to $17K, Chainflip
 $12M hack. No new edge, so the token long stays as a squeeze hedge against the systematic books' net short (beta −0.07). Rules unchanged:
 72k → 0.15, 78k → 0.20, daily close < 55k → 0.
+
+### 2026-11-23 14:04 — weekend #3 hit by a news gap: NVDA +27% pre-market (Jensen Huang returns as CEO); xyz_weekend_fade −5.1% in one hour
+The book went from $102,933 at 13:04 to $97,723 at 14:04: −$5,055 open P&L, now −2.28% total since launch. The fade was short the weekend's chip/AI winners, and
+Monday's news pushed them much further: SOXL +29.5% (−8.6% weight, −$2,633), NBIS +20.4% (−$998), NVDA +21.9% (−$806), ZHIPU, SKHY, IREN,
+MSTR, CBRS. The longs (UNITREE +20%, XYZ100 +4.8%, SP500 +3.0%) offset little. Marks are real: book mid, oracle and mark agree. This is the
+strategy's known tail. When the weekend move is a leak of real news, Monday continues it instead of reverting. No mid-trade action: the experiment holds
+to the 21:00 UTC exit, as backtested.
+**r67 post-mortem: exclude leveraged ETFs from the next entry.** SOXL (3x semis) got the same 10% cap as single stocks, which is about 3x the risk, and it
+double-counts names already in the book. On the pre-incident r32 sample (29 weekends to 10-30): baseline +46.6bp/wk (t 1.52, worst −262bp, sd 165) vs
+excluding SOXL/KORU **+55.2bp/wk (t 1.93, worst −195bp, sd 154)**; H1 is unchanged (+63.6) and H2 better (+47.3 vs +30.8). Inverse-vol weighting cut return
+more than risk (+33bp, t 1.47) and was rejected. Change: `XYZWeekendFade.LEVERAGED = {SOXL, KORU, MUU}` is excluded from the universe. The 12-weekend kill rule
+is unchanged and keeps counting from weekend #1. Script: `research/r67_weekend_levetf.py`.

@@ -557,6 +557,8 @@ class XYZWeekendFade(Strategy):
                    "short the winners, weights ∝ −(weekend move − mean), ≤10%/name, gross 1; exit at Monday's US close.")
     NON_EQUITY = {"GOLD", "SILVER", "CL", "BRENTOIL", "COPPER", "NATGAS", "PLATINUM", "PALLADIUM", "JPY", "EUR",
                   "URANIUM", "ALUMINIUM", "DXY", "VIX", "CORN", "WHEAT", "TTF"}
+    LEVERAGED = {"SOXL", "KORU", "MUU"}   # 2026-11-23 (r67): 3x/2x ETFs got the same 10% cap = 2-3x the risk and double-count
+                                          # their underlyings; excluding them: +55 vs +47bp/wk, worst -195 vs -262bp (pre-incident sample)
     top_n, min_names, cap = 45, 10, 0.10
     max_slip = 0.0025   # 2026-11-08: first entry paid 1% (capped) book-walk slippage on ANT/PURRDAT ($10k into ~$1k top-5 depth)
 
@@ -607,7 +609,7 @@ class XYZWeekendFade(Strategy):
         fri_close = self._ny_close(sunday - pd.Timedelta(days=2))
         meta = hl.meta_and_ctxs("xyz")
         meta = meta[~meta["delisted"]].sort_values("oi_usd", ascending=False).head(self.top_n)
-        coins = [c for c in meta.index if c.split(":")[1] not in self.NON_EQUITY and mkt.has(c)]
+        coins = [c for c in meta.index if c.split(":")[1] not in self.NON_EQUITY | self.LEVERAGED and mkt.has(c)]
         wk = {}
         for c in coins:
             try:
