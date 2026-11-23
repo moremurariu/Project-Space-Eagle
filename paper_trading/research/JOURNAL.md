@@ -1154,3 +1154,12 @@ double-counts names already in the book. On the pre-incident r32 sample (29 week
 excluding SOXL/KORU **+55.2bp/wk (t 1.93, worst −195bp, sd 154)**; H1 is unchanged (+63.6) and H2 better (+47.3 vs +30.8). Inverse-vol weighting cut return
 more than risk (+33bp, t 1.47) and was rejected. Change: `XYZWeekendFade.LEVERAGED = {SOXL, KORU, MUU}` is excluded from the universe. The 12-weekend kill rule
 is unchanged and keeps counting from weekend #1. Script: `research/r67_weekend_levetf.py`.
+
+### 2026-11-23 21:04 — xyz_weekend_fade weekend #3 closed: **−4.66% net** (worse than the backtest's worst weekend, −2.62%); cumulative −1.52% after 3 of 12
+Equity $103,286 → $98,477. Gross price P&L −$4,735. Costs $240 (fees $86 + $93, slippage $36 + $25; 0.23% round trip, as expected). Funding received +$105.
+The loss came from the NVDA CEO-return gap (NVDA +23.2%, SOXL +27.8% entry→exit, SP500 +3.5%). By name: SOXL −$2,477, NVDA −$857, NBIS −$641, CBRS −$390,
+SKHY −$361, IREN −$323; UNITREE +$757 was the only large winner. Excluding SOXL (the r67 change now live) the weekend would still have been about −2.3%: the short
+book was one correlated chip/AI cluster (SOXL, NVDA, NBIS, CBRS, SKHY, IREN, SKHX, ZHIPU, MU ≈ −30% of gross) facing a single-stock news gap.
+Live record: +1.25%, +2.04%, −4.66%, a mean of −0.46%/weekend against +0.47% backtest. Kill rule unchanged (cumulative < 0 after 12 weekends; 9 to go).
+New backlog item: test a sector/cluster cap on r32 (e.g. ≤ 25% of gross per theme: semis/AI, crypto-equity, China/Korea tech), because a fade that is in effect one
+sector bet makes a single news event a portfolio-level loss.
