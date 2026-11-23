@@ -1163,3 +1163,16 @@ book was one correlated chip/AI cluster (SOXL, NVDA, NBIS, CBRS, SKHY, IREN, SKH
 Live record: +1.25%, +2.04%, −4.66%, a mean of −0.46%/weekend against +0.47% backtest. Kill rule unchanged (cumulative < 0 after 12 weekends; 9 to go).
 New backlog item: test a sector/cluster cap on r32 (e.g. ≤ 25% of gross per theme: semis/AI, crypto-equity, China/Korea tech), because a fade that is in effect one
 sector bet makes a single news event a portfolio-level loss.
+
+### r68 — weekend fade theme cap (2026-11-23 22:xx): PROMOTED as a risk control, |net| ≤ 15% of gross per theme
+Hand-labelled themes, fixed before looking at results: semis/AI (15 names in the panel), crypto-equity (6), Asia tech (3); every other name is its own theme. Run on the ex-leveraged-ETF
+rule over the pre-incident r32 sample (29 weekends):
+| variant | net bp/wk | t | worst | sd | H1 | H2 |
+|---|---:|---:|---:|---:|---:|---:|
+| live rule (ex-lev) | +55.2 | 1.93 | −195 | 154 | +63.6 | +47.3 |
+| theme cap 0.35 | +55.1 | 1.94 | −195 | 153 | +62.9 | +47.7 |
+| theme cap 0.25 | +52.5 | 1.93 | −195 | 147 | +58.2 | +47.1 |
+| **theme cap 0.15** | **+54.7** | **2.12** | −195 | **139** | +57.2 | +52.4 |
+The gain is modest (lower variance, the same return; the worst weekend is unchanged) and three caps were tried, so this is a risk control, not an alpha claim.
+On weekend #3's entry (ex-SOXL) the semis/AI net was −24.3%; the cap would have cut it to −15%. Live in `XYZWeekendFade` (theme_cap 0.15, applied before the
+liquidity cap) from weekend #4. Script: `research/r68_weekend_cluster_cap.py`.

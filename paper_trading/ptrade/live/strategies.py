@@ -559,6 +559,11 @@ class XYZWeekendFade(Strategy):
                   "URANIUM", "ALUMINIUM", "DXY", "VIX", "CORN", "WHEAT", "TTF"}
     LEVERAGED = {"SOXL", "KORU", "MUU"}   # 2026-11-23 (r67): 3x/2x ETFs got the same 10% cap = 2-3x the risk and double-count
                                           # their underlyings; excluding them: +55 vs +47bp/wk, worst -195 vs -262bp (pre-incident sample)
+    THEME = {**{c: "semis_ai" for c in ("NVDA MU SKHX SKHY DRAM SNDK INTC AMD TSM MRVL SMSN CXMT KIOXIA LITE CBRS NBIS CRWV "
+                                         "ORCL AVGO ARM SMH").split()},
+             **{c: "crypto_eq" for c in "MSTR COIN HOOD CRCL STRC PURRDAT IREN BMNR".split()},
+             **{c: "asia" for c in "BABA ZHIPU UNITREE EWY MINIMAX".split()}}
+    theme_cap = 0.15    # 2026-11-23 (r68): |net weight| per theme <= 15% of gross (sd 139 vs 154bp/wk, t 2.12 vs 1.93, return unchanged)
     top_n, min_names, cap = 45, 10, 0.10
     max_slip = 0.0025   # 2026-11-08: first entry paid 1% (capped) book-walk slippage on ANT/PURRDAT ($10k into ~$1k top-5 depth)
 
@@ -625,6 +630,14 @@ class XYZWeekendFade(Strategy):
         x = pd.Series(wk); x = x - x.mean()
         w = (-x / x.abs().sum()).clip(-self.cap, self.cap)       # linear in the (demeaned) weekend move
         w = w / w.abs().sum()                                     # gross 1, ~dollar-neutral
+        theme = pd.Series({c: self.THEME.get(c.split(":")[1], c) for c in w.index})
+        for _ in range(20):                                       # r68 theme cap: shrink any theme over the net cap, renormalise
+            net = w.groupby(theme).sum(); bad = net[net.abs() > self.theme_cap + 1e-9]
+            if bad.empty:
+                break
+            for t, v in bad.items():
+                w[theme == t] *= self.theme_cap / abs(v)
+            w = w / w.abs().sum()
         w, thin = self._liquidity_cap(w, mkt, book.equity(mkt.prices(book.positions)))
         targets = w[w.abs() > 0.002].to_dict()
         n = rebalance(book, mkt, targets, now, "weekend fade entry")
