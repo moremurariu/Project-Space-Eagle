@@ -6,15 +6,15 @@
  "funding": -2.275729485912791,
  "initial": 100000.0,
  "meta": {
-  "last_scan": "2026-11-23T17:04:24.146231+00:00",
+  "last_scan": "2026-11-23T18:04:33.776640+00:00",
   "tranches": {},
   "watch": {},
   "worst_4h": {
-   "BNB": 1.7,
-   "BTC": 1.5,
-   "OP": 2.38,
-   "RENDER": 1.73,
-   "TRX": 1.4
+   "AAVE": -3.74,
+   "ENA": -5.1,
+   "ETH": -3.7,
+   "ONDO": -3.44,
+   "SOL": -3.8
   }
  },
  "name": "crash_rebound_mkt",
