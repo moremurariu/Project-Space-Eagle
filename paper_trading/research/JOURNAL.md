@@ -1136,3 +1136,9 @@ Gross 0.92, net +0.08. Largest weights: short SOXL −8.7%, NBIS −4.7%, NVDA �
 The liquidity cap bound on IREN (×0.25) and PURRDAT (×0.5). Entry cost is listed in the line below. Exit is Monday 21:00 UTC (US close).
 Entry cost: fees $86 + slippage $36 = **0.117%** of equity on $95.1k notional (3.8bp average slippage). The most expensive fills were PURRDAT 24bp, IREN 20bp, COST 18bp
 (COST slippage was 3x the depth-snapshot median, since Sunday-night books are thin) and ZHIPU 8bp. Round trip should land near 0.22%, against 0.24% on weekend #2 and 0.54% on #1.
+
+### 2026-11-23 07:10 — discretionary review (due today): hold BTC 0.05, next review 11-30
+BTC 61.5k (+4%/24h), off the 11-20 low near 56k. BTC funding is back to +11% APR, F&G 10–12 for two weeks, and r64 says fear has not marked bottoms
+in 2024+. Macro is mixed: Ackman warns of a December Fed "mistake", gold +2.4%, SP500 perp +1%. Crypto risk headlines: Kraken flash print to $17K, Chainflip
+$12M hack. No new edge, so the token long stays as a squeeze hedge against the systematic books' net short (beta −0.07). Rules unchanged:
+72k → 0.15, 78k → 0.20, daily close < 55k → 0.
