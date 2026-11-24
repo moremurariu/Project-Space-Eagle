@@ -6,15 +6,15 @@
  "funding": -2.275729485912791,
  "initial": 100000.0,
  "meta": {
-  "last_scan": "2026-11-24T07:04:46.009811+00:00",
+  "last_scan": "2026-11-24T08:04:26.928563+00:00",
   "tranches": {},
   "watch": {},
   "worst_4h": {
-   "ALGO": 0.25,
-   "AVAX": 0.39,
-   "PENDLE": 0.31,
-   "TRX": 0.32,
-   "XLM": 0.31
+   "AAVE": -1.96,
+   "ALGO": -0.99,
+   "BCH": -0.7,
+   "PENDLE": -0.99,
+   "XLM": -0.69
   }
  },
  "name": "crash_rebound_mkt",
