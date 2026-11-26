@@ -6,15 +6,15 @@
  "funding": -2.275729485912791,
  "initial": 100000.0,
  "meta": {
-  "last_scan": "2026-11-26T21:03:58.933205+00:00",
+  "last_scan": "2026-11-26T22:04:45.186851+00:00",
   "tranches": {},
   "watch": {},
   "worst_4h": {
-   "ETC": 0.34,
-   "FIL": 0.26,
-   "PENDLE": -1.14,
-   "TIA": -0.47,
-   "XRP": 0.24
+   "CRV": -0.67,
+   "ETC": -0.17,
+   "FIL": 0.02,
+   "PENDLE": -0.33,
+   "TIA": -0.73
   }
  },
  "name": "crash_rebound_mkt",
