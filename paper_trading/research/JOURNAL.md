@@ -1176,3 +1176,13 @@ rule over the pre-incident r32 sample (29 weekends):
 The gain is modest (lower variance, the same return; the worst weekend is unchanged) and three caps were tried, so this is a risk control, not an alpha claim.
 On weekend #3's entry (ex-SOXL) the semis/AI net was −24.3%; the cap would have cut it to −15%. Live in `XYZWeekendFade` (theme_cap 0.15, applied before the
 liquidity cap) from weekend #4. Script: `research/r68_weekend_cluster_cap.py`.
+
+### 2026-11-26 05:xx — r55 live vs backtest (weekly; xs_momentum at a new live max DD of −3.22%)
+| Book | Window | live | backtest | daily corr | live costs (fees / slippage / funding) |
+|---|---|---:|---:|---:|---|
+| trend_breakout_majors | 10-31 → 11-26 | +17.11% | +17.31% | 0.98 | $81 / $9 / +$188 |
+| xs_momentum | 11-02 → 11-26 | −1.97% | −2.27% | 0.95 | $150 / $55 / +$60 |
+| xs_funding (recon funding) | 10-31 → 11-26 | +1.43% | +2.14% | 0.84 | $347 / $276 / +$353 |
+Execution still tracks the backtest closely. The xs_momentum slide is the strategy's own drawdown in the backtest too; live actually does 0.3pp better. xs_funding holdings: weight
+corr 0.88, sign agreement 90%. The only notable difference is TRX, held long in the backtest at 9.7% but at 0 live, from a one-day lag in the live funding signal (asof 11-25 vs bt 11-26).
+The 0.7pp live shortfall is still mostly the 10-31 setup turnover and slippage. No action; these numbers feed the 11-28 leverage review.
