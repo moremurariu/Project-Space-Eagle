@@ -1,11 +1,10 @@
 {
  "fast": false,
- "errors": {
-  "xyz_depth": "POST failed https://api.hyperliquid.xyz/info {'type': 'metaAndAssetCtxs', 'dex': 'xyz'}: None"
- },
- "ts": "2026-11-27T04:04:03.539325+00:00",
- "polymarket_rows": 130,
- "news_rows": 1,
+ "errors": {},
+ "ts": "2026-11-27T05:04:23.951908+00:00",
+ "polymarket_rows": 133,
+ "news_rows": 5,
  "skew_rows": 4,
+ "xyz_depth_rows": 45,
  "kind": "full"
 }
