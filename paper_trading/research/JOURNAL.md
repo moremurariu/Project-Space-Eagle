@@ -1186,3 +1186,14 @@ liquidity cap) from weekend #4. Script: `research/r68_weekend_cluster_cap.py`.
 Execution still tracks the backtest closely. The xs_momentum slide is the strategy's own drawdown in the backtest too; live actually does 0.3pp better. xs_funding holdings: weight
 corr 0.88, sign agreement 90%. The only notable difference is TRX, held long in the backtest at 9.7% but at 0 live, from a one-day lag in the live funding signal (asof 11-25 vs bt 11-26).
 The 0.7pp live shortfall is still mostly the 10-31 setup turnover and slippage. No action; these numbers feed the 11-28 leverage review.
+
+### r42 weekly update 2026-11-27: 15,081 outcomes cached (+2,947), 6,341 markets with forward quotes (13,325 obs)
+The resolver fix (11-21) is holding: 191 markets are still open in pending.csv, and there were 0 fetch errors. Pooled calibration, priced vs won:
+- 0.65–0.85: 74.0% vs 75.9% (+1.9pp ± 1.3; +4.0 last week)
+- 0.85–0.95: 90.4% vs 88.9% (−1.5 ± 1.5)
+- 0.15–0.35: 25.8% vs 22.9% (−2.9 ± 1.1)
+- 0.35–0.65: +0.9 ± 0.6
+- tails: well calibrated
+The favourite-longshot pattern keeps shrinking toward zero as the sample grows. The only gap beyond 2 SE is longshots at 15–35c, overpriced by about 3pp, which is
+less than the typical crossed spread on those markets. r57 already rejected buying NO against longshots after costs. I'm not re-testing, to avoid fishing.
+Polymarket stays parked; the collector continues for r53 (BTC digitals, ~30 dates in early December).
