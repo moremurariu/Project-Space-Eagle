@@ -1,11 +1,10 @@
 {
  "fast": false,
- "errors": {
-  "skew_collect": "GET failed https://www.deribit.com/api/v2/public/get_book_summary_by_currency {'currency': 'BTC', 'kind': 'option'}: 503 Server Error: Service Unavailable for url: https://www.deribit.com/api/v2/publi"
- },
- "ts": "2026-11-27T09:04:29.465779+00:00",
- "polymarket_rows": 118,
- "news_rows": 2,
+ "errors": {},
+ "ts": "2026-11-27T10:04:15.590647+00:00",
+ "polymarket_rows": 125,
+ "news_rows": 3,
+ "skew_rows": 4,
  "xyz_depth_rows": 45,
  "kind": "full"
 }
