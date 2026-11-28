@@ -1197,3 +1197,22 @@ The resolver fix (11-21) is holding: 191 markets are still open in pending.csv, 
 The favourite-longshot pattern keeps shrinking toward zero as the sample grows. The only gap beyond 2 SE is longshots at 15–35c, overpriced by about 3pp, which is
 less than the typical crossed spread on those markets. r57 already rejected buying NO against longshots after costs. I'm not re-testing, to avoid fishing.
 Polymarket stays parked; the collector continues for r53 (BTC digitals, ~30 dates in early December).
+
+### 2026-11-28 00:xx — portfolio leverage review (backlog #6, ~4 weeks live): **xs_funding → 1.5x from the 11-29 rebalance; everything else 1.0x**
+Live, daily, 11-03 → 11-28 (26 days): combined ex-benchmark +1.22%, vol **4.6% annualised**, worst day −0.41%, max DD −0.79%, which is under half of r40's
+~10% vol for equal-weight books (four books are idle or regime-gated and hold ~$400k). Variance share: trend_breakout_majors **79%**, xyz 14%, xs_momentum 9%,
+xs_funding 5%. Daily correlations: trend vs BTC −0.95, trend vs xs_momentum +0.56, xs_funding vs everything ≤ |0.16|, xyz ≈ 0.
+Per-book live (return / vol / worst day): trend +16.6% / 39% / −3.1%; xs_funding +2.8% / 11% / −1.1%; xs_momentum −2.0% / 10% / −1.3%; xyz −1.5% / 20% / −4.5%.
+r55 tracking (11-26) is 0.98 / 0.95 / 0.84 daily corr for trend / xs_mom / xs_fund.
+Decision:
+1. **Lever xs_funding 1.5x.** It has the best OOS Sharpe in r40 (1.41, the highest of the books) and is ~uncorrelated with the rest live. It runs at 11% vol live vs 17% in the backtest at gross 1,
+   so 1.5x brings it to backtest risk, and it adds about 0.15pp of portfolio vol.
+2. **Keep the rest at 1.0x.**
+   - xs_momentum: lower Sharpe (0.85) and +0.56 corr to trend live.
+   - trend: already most of the risk.
+   - xyz: experimental, under its kill rule.
+   - crash books: event-driven, with capital reserved.
+3. **Revert xs_funding to 1.0x** if its live drawdown passes −10%, or if r55 daily corr to the (scaled) backtest drops below 0.6.
+Implemented as `XSFunding.leverage = 1.5`, which multiplies the beta-neutral weights. It takes effect at the 11-29 00:04 rebalance; the 11-28 rebalance already ran.
+`research/r55_live_vs_bt.py` scales the backtest weights from 11-29 by the same factor, so the comparison stays like-for-like. Next review ~12-26, with about 2 months
+of live data, for dynamic allocation.

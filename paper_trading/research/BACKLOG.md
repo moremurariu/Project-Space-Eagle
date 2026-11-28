@@ -17,6 +17,7 @@
 6. Ensemble / allocator: r15 + r40 done (equal-weight beats inverse-vol; portfolio OOS Sharpe ~2.0 at ~10% vol).
    After ~4 weeks live: if live ≈ backtest, consider 1.5x book-level leverage. Later: dynamic allocation from LIVE
    book returns once ~2 months of data exist; portfolio-level drawdown control.
+   11-28 review: xs_funding -> 1.5x from 11-29 (revert if live DD < -10% or r55 corr < 0.6); others 1.0x. Next review ~12-26.
 7. OI / positioning: r18 done (weak, rejected standalone). `binance.load_metrics` available as ML features.
 8. **Prediction markets (Polymarket)** — forward collector live since 2026-10-31 20:05 (`ptrade/data/polymarket.py`,
    hourly near-expiry + daily top-500 snapshots → `state/polymarket/`). After ~3-4 weeks: join with resolved outcomes

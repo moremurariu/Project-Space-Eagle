@@ -216,13 +216,15 @@ class TrendEWMACMajorsLO(DailySignal):
 class XSFunding(Strategy):
     name = "xs_funding"
     description = ("Market-neutral: long lowest / short highest trailing-7d *Binance* funding (quartiles, 40 coins), "
-                   "inverse-vol, gross 1.0, daily. Binance funding is reconstructed from 1-minute premium-index "
+                   "inverse-vol, gross 1.0 x leverage (1.5 since 2026-11-29), daily. Binance funding is reconstructed from 1-minute premium-index "
                    "archives (~1-2 day lag; r21 corr 0.99/settlement). r22 backtest 2024-26 w/ HL funding paid: "
                    "Sharpe 1.44 / 0.82 / 1.20 at 0 / 24 / 48h lag. Legs beta-neutralised since 2026-11-03 (r44: "
                    "Sharpe IS 1.31→1.37, OOS 1.46→1.95).")
     paused = False
     pause_reason = ""
     max_staleness = pd.Timedelta(days=4)
+    leverage = 1.5   # 2026-11-28 leverage review (backlog #6): best OOS Sharpe (r40 1.41), ~0 corr to the other books live, live vol 11%
+                     # vs 17% bt at gross 1. Revert to 1.0 if live DD < -10% or the r55 daily corr vs backtest drops below 0.6.
 
     def _binance_funding_7d(self, now) -> tuple[pd.Series, pd.Timestamp | None]:
         from ..data import funding_recon
@@ -289,7 +291,7 @@ class XSFunding(Strategy):
         w = pd.Series(0.0, index=P.columns)
         w[longs] = iv[longs] / iv[longs].sum() * 0.5
         w[shorts] = -iv[shorts] / iv[shorts].sum() * 0.5
-        w = self._beta_neutral(w, P)
+        w = self._beta_neutral(w, P) * self.leverage
         targets = {k_: v for k_, v in binance_to_hl_weights(w).items() if mkt.has(k_)}
         n = rebalance(book, mkt, targets, now, "daily xs-funding (Binance recon)", buffer=0.01)
         book.meta.pop("warning", None)

@@ -26,6 +26,8 @@ wf = S.xs_funding_carry(P, FR.shift(48), lookback_h=168, rebalance_h=24)
 _start = E[(E.book == "xs_funding") & (E.n_pos > 0)].ts.min() - pd.Timedelta(days=2)
 for t in wf.index[(wf.index >= _start) & wf.notna().any(axis=1)]:      # live legs are beta-neutral (r44)
     wf.loc[t] = XSFunding._beta_neutral(wf.loc[t].fillna(0.0), P.loc[:t].iloc[-24 * 65:]).reindex(wf.columns).fillna(0.0)
+LEV_START = pd.Timestamp("2026-11-29", tz="UTC")   # live xs_funding runs at XSFunding.leverage from the 11-29 rebalance
+wf.loc[wf.index >= LEV_START] *= XSFunding.leverage
 recipes = {"xs_funding": (wf, None, 0.01, FR), "xs_momentum": (wm, None, 0.01, F),
            "trend_breakout_majors": (S.trend_breakout(P[MAJORS], long_only=False, port_vol_target=0.25), MAJORS, 0.02, F)}
 for name, (w, cols, mt, FF) in recipes.items():
