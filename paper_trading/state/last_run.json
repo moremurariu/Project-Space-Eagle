@@ -1,9 +1,9 @@
 {
  "fast": false,
  "errors": {},
- "ts": "2026-11-28T11:04:29.305257+00:00",
- "polymarket_rows": 201,
- "news_rows": 3,
+ "ts": "2026-11-28T12:04:10.663073+00:00",
+ "polymarket_rows": 203,
+ "news_rows": 0,
  "skew_rows": 4,
  "xyz_depth_rows": 45,
  "kind": "full"
